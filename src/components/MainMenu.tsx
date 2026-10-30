@@ -1,89 +1,32 @@
 import React, { useState } from 'react';
 import { STATIC_ART } from '../cardArt';
-
+import '../menu.css';
 interface MainMenuProps {
-  onStartLocal: (botCount: number) => void;
-  onOpenOnline: () => void;
-  onResume: () => void;
-  hasResume: boolean;
-  onOpenRules: () => void;
-  onOpenAudit: () => void;
-  onOpenSettings: () => void;
+  onStartLocal: (botCount:number)=>void;
+  onResume:()=>void;
+  hasResume:boolean;
+  onOpenRules:()=>void;
+  onOpenAudit:()=>void;
+  onOpenSettings:()=>void;
+  onlineContent:React.ReactNode;
+  inRoom:boolean;
 }
-
-export const MainMenu: React.FC<MainMenuProps> = ({
-  onStartLocal,
-  onOpenOnline,
-  onResume,
-  hasResume,
-  onOpenRules,
-  onOpenAudit,
-  onOpenSettings,
-}) => {
-  const [botCount, setBotCount] = useState<number>(2);
-
-  return (
-    <main className="menu">
-      <div className="menuhero">
-        <img src={STATIC_ART.logo} alt="Monopoly Deal Lvl. Up — made by Kaze" />
-        <p className="eyebrow">Your empire. One rotation to defend it.</p>
-      </div>
-
-      <section className="menucopy">
-        <div className="eyebrow">Local edition · 130 cards</div>
-        <h1>
-          Build it.<br />
-          Steal it.<br />
-          <span style={{ color: '#efc46f' }}>Hold it.</span>
-        </h1>
-        <p>
-          Collect three different complete property sets, then defend them until your next turn.
-          Play offline against bots using Kaze’s custom deck.
-        </p>
-
-        <div className="settingsbox form">
-          <label>
-            Opponents
-            <select
-              id="botCount"
-              value={botCount}
-              onChange={(e) => setBotCount(Number(e.target.value))}
-            >
-              <option value="1">1 bot · quick duel</option>
-              <option value="2">2 bots · classic table</option>
-              <option value="3">3 bots · busy table</option>
-              <option value="4">4 bots · full table</option>
-            </select>
-          </label>
-          <p>Bot pace: Relaxed</p>
-        </div>
-
-        <div className="menubuttons">
-          <button className="gold start" onClick={() => onStartLocal(botCount)}>
-            Start local game →
-          </button>
-          <button className="quiet" onClick={onOpenOnline}>
-            Online lobby · 5 slots
-          </button>
-          <button className="quiet" onClick={onResume} disabled={!hasResume}>
-            Continue game
-          </button>
-          <button className="quiet" onClick={onOpenRules}>
-            How to play
-          </button>
-          <button className="quiet" onClick={onOpenAudit}>
-            Card library &amp; values
-          </button>
-          <button className="quiet" onClick={onOpenSettings}>
-            Settings
-          </button>
-        </div>
-
-        <p style={{ fontSize: '11px', marginTop: '16px' }}>
-          made by Kaze · Local + online edition v2.7<br />
-          Local play runs offline. Online rooms use the included server.
-        </p>
-      </section>
-    </main>
-  );
+export const MainMenu:React.FC<MainMenuProps>=({onStartLocal,onResume,hasResume,onOpenRules,onOpenAudit,onOpenSettings,onlineContent,inRoom})=>{
+ const [botCount,setBotCount]=useState(2);
+ return <main className="home-menu">
+  <header className="home-header"><img src={STATIC_ART.logo} alt="Monopoly Deal Lvl. Up — made by Kaze"/><button className="quiet home-gear" aria-label="Settings" onClick={onOpenSettings}>⚙</button></header>
+  <div className="home-columns">
+   <nav className="home-actions" aria-label="Main menu">
+    <button className="gold" disabled={inRoom} onClick={()=>onStartLocal(botCount)}>Play locally <span>›</span></button>
+    <div className="home-bots"><span>Local opponents</span><div>{[1,2,3,4].map(n=><button key={n} disabled={inRoom} className={botCount===n?'gold':'quiet'} aria-pressed={botCount===n} onClick={()=>setBotCount(n)}>{n}</button>)}</div></div>
+    <button className="quiet" disabled={!hasResume||inRoom} onClick={onResume}>Continue local game <span>›</span></button>
+    <button className="quiet" onClick={onOpenRules}>Rules <span>›</span></button>
+    <button className="quiet" onClick={onOpenSettings}>Settings <span>›</span></button>
+    <button className="quiet home-library" onClick={onOpenAudit}>Card library &amp; values</button>
+    {inRoom&&<small>Leave the lobby before starting a local game.</small>}
+   </nav>
+   <section className="home-online" aria-label="Online lobby">{onlineContent}</section>
+  </div>
+  <footer className="home-footer">made by Kaze · Defend three complete sets for one rotation.</footer>
+ </main>;
 };

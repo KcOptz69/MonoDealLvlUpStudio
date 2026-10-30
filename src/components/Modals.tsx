@@ -113,11 +113,13 @@ export const AuditModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
 
 // 3. Settings Modal
 export const SettingsModal: React.FC<{
+  musicEnabled: boolean;
   soundEnabled: boolean;
   reducedMotion: boolean;
-  onApply: (sound: boolean, reduced: boolean) => void;
+  onApply: (sound: boolean, reduced: boolean, music: boolean) => void;
   onClose: () => void;
-}> = ({ soundEnabled, reducedMotion, onApply, onClose }) => {
+}> = ({ musicEnabled, soundEnabled, reducedMotion, onApply, onClose }) => {
+  const [music, setMusic] = useState(musicEnabled);
   const [sound, setSound] = useState(soundEnabled);
   const [motion, setMotion] = useState(reducedMotion);
 
@@ -130,28 +132,15 @@ export const SettingsModal: React.FC<{
         </div>
         <div className="form">
           <p>Bot pace: Relaxed · 3–5 seconds per play</p>
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={sound}
-              onChange={(e) => setSound(e.target.checked)}
-            />
-            Sound effects
-          </label>
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={motion}
-              onChange={(e) => setMotion(e.target.checked)}
-            />
-            Reduce card animations
-          </label>
+          <label className="setting-row"><span>Music</span><span className="setting-switch"><span>{music?'On':'Off'}</span><input type="checkbox" role="switch" checked={music} onChange={e=>setMusic(e.target.checked)}/></span></label>
+          <label className="setting-row"><span>Sound effects</span><span className="setting-switch"><span>{sound?'On':'Off'}</span><input type="checkbox" role="switch" checked={sound} onChange={e=>setSound(e.target.checked)}/></span></label>
+          <label className="setting-row"><span>Reduce motion</span><span className="setting-switch"><span>{motion?'On':'Off'}</span><input type="checkbox" role="switch" checked={motion} onChange={e=>setMotion(e.target.checked)}/></span></label>
           <small>
             Games save automatically on this browser when local storage is available. No account or
             internet connection is required.
           </small>
-          <button className="gold" onClick={() => onApply(sound, motion)}>
-            Apply
+          <button className="gold" onClick={() => onApply(sound, motion, music)}>
+            Done
           </button>
         </div>
       </section>

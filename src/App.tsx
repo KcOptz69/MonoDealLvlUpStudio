@@ -30,7 +30,7 @@ import {
 type ViewMode = 'menu' | 'lobby' | 'game';
 
 export const App: React.FC = () => {
-  const [view, setView] = useState<ViewMode>('lobby');
+  const [view, setView] = useState<ViewMode>('menu');
   const [game, setGame] = useState<any>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
 
@@ -709,7 +709,9 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleApplySettings = (newSound: boolean, newReduced: boolean) => {
+  const handleApplySettings = (newSound: boolean, newReduced: boolean, newMusic: boolean) => {
+    setMusicOn(newMusic);
+    setMusicEnabled(newMusic);
     setSound(newSound);
     setSoundEnabled(newSound);
     setReducedMotion(newReduced);
@@ -733,7 +735,7 @@ export const App: React.FC = () => {
 
   return (
     <>
-      <button className="quiet" style={{position:'fixed',right:12,bottom:12,zIndex:1500,background:'#133c3e'}} aria-pressed={musicOn} onClick={()=>{const enabled=!musicOn;setMusicOn(enabled);setMusicEnabled(enabled);}}>{musicOn?'♫ Music on':'♫ Music off'}</button>
+
 
       {/* Toast popup */}
       {toastMessage && (
@@ -758,22 +760,18 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* Main Menu View */}
-      {view === 'menu' && (
+      {/* One main menu contains local controls and the online lobby. */}
+      {(view === 'menu' || view === 'lobby') && (
         <MainMenu
           onStartLocal={handleStartLocal}
-          onOpenOnline={() => setView('lobby')}
           onResume={handleResume}
           hasResume={hasResume}
           onOpenRules={() => setShowRules(true)}
           onOpenAudit={() => setShowAudit(true)}
           onOpenSettings={() => setShowSettings(true)}
-        />
-      )}
-
-      {/* Online Lobby View */}
-      {view === 'lobby' && (
-        <OnlineLobby
+          inRoom={!!onlineSession}
+          onlineContent={
+<OnlineLobby
           roomView={onlineView}
           onCreateRoom={handleCreateRoom}
           onJoinRoom={handleJoinRoom}
@@ -784,8 +782,9 @@ export const App: React.FC = () => {
           onRemoveBot={handleRemoveBot}
           onStartGame={handleStartOnlineGame}
           onLeaveRoom={handleLeaveRoom}
-          onBackToMenu={() => setView('menu')}
           loading={onlineLoading}
+        />
+          }
         />
       )}
 
@@ -882,6 +881,7 @@ export const App: React.FC = () => {
       {showAudit && <AuditModal onClose={() => setShowAudit(false)} />}
       {showSettings && (
         <SettingsModal
+          musicEnabled={musicOn}
           soundEnabled={sound}
           reducedMotion={reducedMotion}
           onApply={handleApplySettings}
