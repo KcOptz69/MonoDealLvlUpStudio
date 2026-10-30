@@ -7,6 +7,7 @@
     "start": "node dev-server.cjs",
     "build": "node build.cjs",
     "check": "tsc --noEmit",
+    "lint": "tsc --noEmit",
     "test": "node test.js && node test-online.js && node test-startup.cjs && node test-artwork.cjs && node test-lobby-reconnect.cjs",
     "test:dev": "node test-react-dev.cjs"
   },
