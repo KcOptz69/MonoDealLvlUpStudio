@@ -10,6 +10,7 @@ import { OpponentField } from './components/OpponentField';
 import { SharedBoard } from './components/SharedBoard';
 import { PlayerZone } from './components/PlayerZone';
 import { SidebarRail } from './components/SidebarRail';
+import { useMobileLayout, MobileTableOverlays } from './MobileTable';
 import { TargetingWizard } from './components/TargetingWizard';
 import { RearrangeModal } from './components/RearrangeModal';
 import {
@@ -30,6 +31,7 @@ import {
 type ViewMode = 'menu' | 'lobby' | 'game';
 
 export const App: React.FC = () => {
+  const {mobile,portrait}=useMobileLayout();
   const [view, setView] = useState<ViewMode>('menu');
   const [game, setGame] = useState<any>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -735,6 +737,7 @@ export const App: React.FC = () => {
 
   return (
     <>
+      <MobileTableOverlays enabled={mobile} portrait={portrait}/>
 
 
       {/* Toast popup */}
@@ -801,7 +804,7 @@ export const App: React.FC = () => {
 
           <div className="game">
             <main className="table">
-      {view==='game' && onlineView && <div role="status" style={{display:'flex',gap:16,flexWrap:'wrap',padding:'6px 12px',background:'#133c3e',color:'#fff'}}>{onlineView.seats.filter(Boolean).map((seat,i)=><span key={i}>{seat!.name}: {!seat!.connected?'Disconnected · seat reserved':seat!.status || 'Waiting'}</span>)}<button className="quiet" onClick={handleLeaveRoom}>Exit · keep seat</button></div>}
+      {view==='game' && onlineView && <div className="online-player-status" role="status" style={{display:'flex',gap:16,flexWrap:'wrap',padding:'6px 12px',background:'#133c3e',color:'#fff'}}>{onlineView.seats.filter(Boolean).map((seat,i)=><span key={i}>{seat!.name}: {!seat!.connected?'Disconnected · seat reserved':seat!.status || 'Waiting'}</span>)}<button className="quiet" onClick={handleLeaveRoom}>Exit · keep seat</button></div>}
               {/* Opponents fields */}
               <OpponentField
                 state={gameState}
@@ -867,11 +870,11 @@ export const App: React.FC = () => {
             </main>
 
             {/* Right sidebar rail: card preview & event log */}
-            <SidebarRail
+            {!mobile && <SidebarRail
               selectedCard={selectedCard}
               selectedOwner={selectedOwner}
               state={gameState}
-            />
+            />}
           </div>
         </div>
       )}
