@@ -1,0 +1,186 @@
+import React from 'react';
+import { GameState, CardInstance, PropertyGroup } from '../types';
+import { getCardDef, COLORS } from '../engineBridge';
+import { getCardArt } from '../cardArt';
+
+interface OpponentFieldProps {
+  state: GameState;
+  onSelectCard: (card: CardInstance, owner: number) => void;
+  onViewBank: (playerIndex: number) => void;
+  onViewPlayer: (playerIndex: number) => void;
+  selectedCardId?: string;
+}
+
+export const OpponentField: React.FC<OpponentFieldProps> = ({
+  state,
+  onSelectCard,
+  onViewBank,
+  onViewPlayer,
+  selectedCardId,
+}) => {
+  const isSetup = state.phase === 'setup';
+
+  const calculateSets = (groups: PropertyGroup[]) => {
+    const fullColors = new Set<string>();
+    for (const g of groups) {
+      const colInfo = COLORS[g.color];
+      if (colInfo && g.cards.length === colInfo.size && g.cards.some((c) => getCardDef(c).value > 0)) {
+        fullColors.add(g.color);
+      }
+    }
+    return fullColors.size;
+  };
+
+  const remainingDefense = (i: number) => {
+    return (
+      (i - state.turn + state.players.length) % state.players.length || state.players.length
+    );
+  };
+
+  const getBankTotal = (bank: CardInstance[]) => {
+    return bank.reduce((sum, c) => sum + getCardDef(c).value, 0);
+  };
+
+  return (
+    <div className="opponents">
+      {state.players.slice(1).map((p, idx) => {
+        const playerIndex = idx + 1;
+        const isActive = isSetup ? !p.setupDone : state.turn === playerIndex;
+        const setsCount = calculateSets(p.groups);
+        const bankTotal = getBankTotal(p.bank);
+
+        return (
+          <section
+            key={playerIndex}
+            data-player={playerIndex}
+            className={`opponent ${isActive ? 'active' : ''}`}
+            aria-label={`${p.name}’s board`}
+          >
+            <div className="ophead">
+              <button
+                type="button"
+                className="opponent-open"
+                onClick={() => onViewPlayer(playerIndex)}
+              >
+                <span className="avatar">{p.name[0]}</span>
+                <strong>{p.name}</strong>
+                <span>
+                  {isSetup
+                    ? p.setupDone
+                      ? '✓ Ready'
+                      : `${3 - (p.setupPlayed || 0)} setup actions`
+                    : state.turn === playerIndex
+                    ? '● Playing'
+                    : 'View field ↗'}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="quiet compactbtn"
+                onClick={() => onViewBank(playerIndex)}
+              >
+                Bank {bankTotal}M
+              </button>
+            </div>
+
+            <div className="opmeta">
+              <span>▣ {p.hand.length} cards</span>
+              <span>{setsCount} / 3 sets</span>
+              {p.defending && (
+                <span className="defense">
+                  DEFENDING · {remainingDefense(playerIndex)} turns to victory
+                </span>
+              )}
+            </div>
+
+            <div className="opponent-field">
+              {p.groups.length > 0 || p.special.length > 0 ? (
+                <>
+                  {p.groups.map((g) => {
+                    const colInfo = COLORS[g.color] || { size: 2, hex: '#8b5438' };
+                    const isFull =
+                      g.cards.length === colInfo.size &&
+                      g.cards.some((c) => getCardDef(c).value > 0);
+
+                    return (
+                      <section
+                        key={g.id}
+                        className={`group ${isFull ? 'complete' : ''}`}
+                        style={{ '--c': colInfo.hex } as React.CSSProperties}
+                      >
+                        <div className="grouphead">
+                          <span>{g.color}</span>
+                          <span>
+                            {isFull ? 'FULL SET' : `${g.cards.length} / ${colInfo.size}`}
+                          </span>
+                        </div>
+                        <div className="groupcards">
+                          {g.cards.map((c) => {
+                            const def = getCardDef(c);
+                            const artUrl = getCardArt(c);
+                            return (
+                              <button
+                                key={c.id}
+                                type="button"
+                                data-card-id={c.id}
+                                className={`card ${selectedCardId === c.id ? 'selected' : ''}`}
+                                onClick={() => onSelectCard(c, playerIndex)}
+                                title={`${def.name} — ${def.value}M`}
+                              >
+                                <img
+                                  className={c.locked && c.locked !== g.color ? 'inverted' : ''}
+                                  src={artUrl}
+                                  alt={def.name}
+                                  draggable={false}
+                                />
+                                {c.locked && <span className="lock">🔒 {c.locked}</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div className="grouprent">
+                          <span>
+                            {g.house && <span className="building">House </span>}
+                            {g.hotel && <span className="building">Hotel</span>}
+                          </span>
+                        </div>
+                      </section>
+                    );
+                  })}
+
+                  {p.special.length > 0 && (
+                    <section className="group specialgroup">
+                      <div className="grouphead" style={{ '--c': '#a88037' } as React.CSSProperties}>
+                        <span>SPECIALS</span>
+                      </div>
+                      <div className="groupcards">
+                        {p.special.map((c) => {
+                          const def = getCardDef(c);
+                          const artUrl = getCardArt(c);
+                          return (
+                            <button
+                              key={c.id}
+                              type="button"
+                              data-card-id={c.id}
+                              className={`card ${selectedCardId === c.id ? 'selected' : ''}`}
+                              onClick={() => onSelectCard(c, playerIndex)}
+                              title={`${def.name} — ${def.value}M`}
+                            >
+                              <img src={artUrl} alt={def.name} draggable={false} />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  )}
+                </>
+              ) : (
+                <small>No properties yet</small>
+              )}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+};

@@ -1,0 +1,265 @@
+
+> monopoly-deal-lvl-up@2.7.1 test
+> node test.js && node test-online.js && node test-startup.cjs
+
+PASS 130 cards; eight Just Say No; seven specials at3M
+PASS money values and classic action face values
+PASS start draws2; empty hand draws5; Investment draws3
+PASS Corporate4plays, PrivateVault9, banked actions lose effect
+PASS Just Say No counter chain restores action without turn cost
+PASS rent doubles before luxury and final -2 reduction
+PASS Insurance pays out for special properties surrendered as rent
+PASS Compulsory Purchase cannot use bank money
+PASS tax counts own complete sets, bank first, discarded payment
+PASS Tough Luck takes hand properties including specials, no table cards
+PASS wildcard color locks survive ownership changes
+PASS Eviction breaks complete set and returns buildings
+PASS three different sets wait full rotation, victory before draw
+PASS breaking defense requires a new defending attempt
+PASS payment no change, no hand payments, zero-value wildcard excluded
+PASS Tough Luck rejects incomplete targets without spending the card
+PASS equal target choices are not biased to player zero
+PASS bot preview leaves all card zones unchanged
+PASS random setup starter is uniform, all hands five, normal draw follows full setup rotation
+PASS properties autojoin compatible sets; full sets start a new group
+PASS manual rearrangement may split a set despite automatic hand placement
+PASS unused actions draw cards, then enforce the hand limit exactly once
+PASS passing without drawing preserves cards; headquarters grants four unused draws
+PASS setup enforces bank/properties only and exactly three action capacity
+PASS every bot uses three setup plays before normal play starts
+PASS bot avoids attacking an empty field and keeps one Just Say No
+PASS payment optimizer preserves a complete set when cash can pay
+PASS payment events report exact public cards and recipients
+PASS discard and draw events retain card identity for feedback
+PASS bot breaks a defending opponent set rather than harassing an empty opponent
+PASS bot steals a property that immediately completes its own set
+PASS simultaneous setup has independent action budgets and waits for every Ready
+PASS all-target Just Say No cancels everyone before any payment, including later response
+PASS countered global Just Say No restores every bill after response round
+PASS Double the Rent requires an extra available action
+PASS I Owe You replaces entire payment without action use and gives its 5M card to creditor bank
+PASS blocked I Owe You is discarded and the original bill stays payable
+PASS countering Just Say No restores I Owe You; tax cannot use it
+PASS Emergency Treasury creates 5M only at normal turn start with an empty bank
+PASS property theft and exchanges report exact transfer directions for animation
+PASS whole-set transfer includes buildings; eviction reports a move to the owner hand
+PASS bots use unique randomized names from all nine approved names
+Unfinished: []
+{
+  "unitTests": 42,
+  "selfPlay": [
+    {
+      "seed": 1,
+      "players": 3,
+      "steps": 185,
+      "winner": 2,
+      "round": 11
+    },
+    {
+      "seed": 2,
+      "players": 4,
+      "steps": 251,
+      "winner": 0,
+      "round": 9
+    },
+    {
+      "seed": 3,
+      "players": 5,
+      "steps": 476,
+      "winner": 4,
+      "round": 12
+    },
+    {
+      "seed": 4,
+      "players": 2,
+      "steps": 158,
+      "winner": 1,
+      "round": 15
+    },
+    {
+      "seed": 5,
+      "players": 3,
+      "steps": 168,
+      "winner": 2,
+      "round": 11
+    },
+    {
+      "seed": 6,
+      "players": 4,
+      "steps": 161,
+      "winner": 0,
+      "round": 6
+    },
+    {
+      "seed": 7,
+      "players": 5,
+      "steps": 169,
+      "winner": 2,
+      "round": 5
+    },
+    {
+      "seed": 8,
+      "players": 2,
+      "steps": 101,
+      "winner": 1,
+      "round": 11
+    },
+    {
+      "seed": 9,
+      "players": 3,
+      "steps": 170,
+      "winner": 1,
+      "round": 10
+    },
+    {
+      "seed": 10,
+      "players": 4,
+      "steps": 253,
+      "winner": 3,
+      "round": 10
+    },
+    {
+      "seed": 11,
+      "players": 5,
+      "steps": 1096,
+      "winner": 3,
+      "round": 25
+    },
+    {
+      "seed": 12,
+      "players": 2,
+      "steps": 92,
+      "winner": 1,
+      "round": 9
+    },
+    {
+      "seed": 13,
+      "players": 3,
+      "steps": 206,
+      "winner": 0,
+      "round": 13
+    },
+    {
+      "seed": 14,
+      "players": 4,
+      "steps": 175,
+      "winner": 0,
+      "round": 8
+    },
+    {
+      "seed": 15,
+      "players": 5,
+      "steps": 437,
+      "winner": 1,
+      "round": 12
+    },
+    {
+      "seed": 16,
+      "players": 2,
+      "steps": 141,
+      "winner": 1,
+      "round": 13
+    },
+    {
+      "seed": 17,
+      "players": 3,
+      "steps": 223,
+      "winner": 1,
+      "round": 13
+    },
+    {
+      "seed": 18,
+      "players": 4,
+      "steps": 340,
+      "winner": 0,
+      "round": 12
+    },
+    {
+      "seed": 19,
+      "players": 5,
+      "steps": 644,
+      "winner": 4,
+      "round": 15
+    },
+    {
+      "seed": 20,
+      "players": 2,
+      "steps": 169,
+      "winner": 1,
+      "round": 15
+    },
+    {
+      "seed": 21,
+      "players": 3,
+      "steps": 145,
+      "winner": 1,
+      "round": 9
+    },
+    {
+      "seed": 22,
+      "players": 4,
+      "steps": 833,
+      "winner": 0,
+      "round": 26
+    },
+    {
+      "seed": 23,
+      "players": 5,
+      "steps": 1156,
+      "winner": 4,
+      "round": 26
+    },
+    {
+      "seed": 24,
+      "players": 2,
+      "steps": 120,
+      "winner": 0,
+      "round": 11
+    },
+    {
+      "seed": 25,
+      "players": 3,
+      "steps": 226,
+      "winner": 2,
+      "round": 12
+    },
+    {
+      "seed": 26,
+      "players": 4,
+      "steps": 132,
+      "winner": 0,
+      "round": 6
+    },
+    {
+      "seed": 27,
+      "players": 5,
+      "steps": 1360,
+      "winner": 2,
+      "round": 27
+    },
+    {
+      "seed": 28,
+      "players": 2,
+      "steps": 100,
+      "winner": 1,
+      "round": 8
+    },
+    {
+      "seed": 29,
+      "players": 3,
+      "steps": 207,
+      "winner": 0,
+      "round": 12
+    },
+    {
+      "seed": 30,
+      "players": 4,
+      "steps": 239,
+      "winner": 0,
+      "round": 9
+    }
+  ]
+}
+PASS host + four online bots: add/remove slots, readiness gate, five-seat match, all bots autonomously complete three setup plays and enter normal play
+PASS online HTTP/SSE: five seats, host-only controls, readiness gate, private hands/deck/draw events, independent setup, ownership validation, reconnect state, late/full-room rejection
+PASS actual dev entry: persistent server, arbitrary working directory, CLI port priority, HTML + health + online bot room startup

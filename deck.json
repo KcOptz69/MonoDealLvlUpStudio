@@ -1,0 +1,720 @@
+[
+  {
+    "key": "mediterranean_avenue",
+    "name": "Mediterranean Avenue",
+    "copies": 1,
+    "value": 1,
+    "text": "Brown; full set 2",
+    "type": "property",
+    "colors": [
+      "Brown"
+    ]
+  },
+  {
+    "key": "baltic_avenue",
+    "name": "Baltic Avenue",
+    "copies": 1,
+    "value": 1,
+    "text": "Brown; full set 2",
+    "type": "property",
+    "colors": [
+      "Brown"
+    ]
+  },
+  {
+    "key": "oriental_avenue",
+    "name": "Oriental Avenue",
+    "copies": 1,
+    "value": 1,
+    "text": "Light Blue; full set 3",
+    "type": "property",
+    "colors": [
+      "Light Blue"
+    ]
+  },
+  {
+    "key": "vermont_avenue",
+    "name": "Vermont Avenue",
+    "copies": 1,
+    "value": 1,
+    "text": "Light Blue; full set 3",
+    "type": "property",
+    "colors": [
+      "Light Blue"
+    ]
+  },
+  {
+    "key": "connecticut_avenue",
+    "name": "Connecticut Avenue",
+    "copies": 1,
+    "value": 1,
+    "text": "Light Blue; full set 3",
+    "type": "property",
+    "colors": [
+      "Light Blue"
+    ]
+  },
+  {
+    "key": "st_charles_place",
+    "name": "St. Charles Place",
+    "copies": 1,
+    "value": 2,
+    "text": "Pink; full set 3",
+    "type": "property",
+    "colors": [
+      "Pink"
+    ]
+  },
+  {
+    "key": "states_avenue",
+    "name": "States Avenue",
+    "copies": 1,
+    "value": 2,
+    "text": "Pink; full set 3",
+    "type": "property",
+    "colors": [
+      "Pink"
+    ]
+  },
+  {
+    "key": "virginia_avenue",
+    "name": "Virginia Avenue",
+    "copies": 1,
+    "value": 2,
+    "text": "Pink; full set 3",
+    "type": "property",
+    "colors": [
+      "Pink"
+    ]
+  },
+  {
+    "key": "st_james_place",
+    "name": "St. James Place",
+    "copies": 1,
+    "value": 2,
+    "text": "Orange; full set 3",
+    "type": "property",
+    "colors": [
+      "Orange"
+    ]
+  },
+  {
+    "key": "tennessee_avenue",
+    "name": "Tennessee Avenue",
+    "copies": 1,
+    "value": 2,
+    "text": "Orange; full set 3",
+    "type": "property",
+    "colors": [
+      "Orange"
+    ]
+  },
+  {
+    "key": "new_york_avenue",
+    "name": "New York Avenue",
+    "copies": 1,
+    "value": 2,
+    "text": "Orange; full set 3",
+    "type": "property",
+    "colors": [
+      "Orange"
+    ]
+  },
+  {
+    "key": "kentucky_avenue",
+    "name": "Kentucky Avenue",
+    "copies": 1,
+    "value": 3,
+    "text": "Red; full set 3",
+    "type": "property",
+    "colors": [
+      "Red"
+    ]
+  },
+  {
+    "key": "indiana_avenue",
+    "name": "Indiana Avenue",
+    "copies": 1,
+    "value": 3,
+    "text": "Red; full set 3",
+    "type": "property",
+    "colors": [
+      "Red"
+    ]
+  },
+  {
+    "key": "illinois_avenue",
+    "name": "Illinois Avenue",
+    "copies": 1,
+    "value": 3,
+    "text": "Red; full set 3",
+    "type": "property",
+    "colors": [
+      "Red"
+    ]
+  },
+  {
+    "key": "atlantic_avenue",
+    "name": "Atlantic Avenue",
+    "copies": 1,
+    "value": 3,
+    "text": "Yellow; full set 3",
+    "type": "property",
+    "colors": [
+      "Yellow"
+    ]
+  },
+  {
+    "key": "ventnor_avenue",
+    "name": "Ventnor Avenue",
+    "copies": 1,
+    "value": 3,
+    "text": "Yellow; full set 3",
+    "type": "property",
+    "colors": [
+      "Yellow"
+    ]
+  },
+  {
+    "key": "marvin_gardens",
+    "name": "Marvin Gardens",
+    "copies": 1,
+    "value": 3,
+    "text": "Yellow; full set 3",
+    "type": "property",
+    "colors": [
+      "Yellow"
+    ]
+  },
+  {
+    "key": "pacific_avenue",
+    "name": "Pacific Avenue",
+    "copies": 1,
+    "value": 4,
+    "text": "Green; full set 3",
+    "type": "property",
+    "colors": [
+      "Green"
+    ]
+  },
+  {
+    "key": "north_carolina_avenue",
+    "name": "North Carolina Avenue",
+    "copies": 1,
+    "value": 4,
+    "text": "Green; full set 3",
+    "type": "property",
+    "colors": [
+      "Green"
+    ]
+  },
+  {
+    "key": "pennsylvania_avenue",
+    "name": "Pennsylvania Avenue",
+    "copies": 1,
+    "value": 4,
+    "text": "Green; full set 3",
+    "type": "property",
+    "colors": [
+      "Green"
+    ]
+  },
+  {
+    "key": "park_place",
+    "name": "Park Place",
+    "copies": 1,
+    "value": 4,
+    "text": "Dark Blue; full set 2",
+    "type": "property",
+    "colors": [
+      "Dark Blue"
+    ]
+  },
+  {
+    "key": "boardwalk",
+    "name": "Boardwalk",
+    "copies": 1,
+    "value": 4,
+    "text": "Dark Blue; full set 2",
+    "type": "property",
+    "colors": [
+      "Dark Blue"
+    ]
+  },
+  {
+    "key": "reading_railroad",
+    "name": "Reading Railroad",
+    "copies": 1,
+    "value": 2,
+    "text": "Railroad; full set 4",
+    "type": "property",
+    "colors": [
+      "Railroad"
+    ]
+  },
+  {
+    "key": "pennsylvania_railroad",
+    "name": "Pennsylvania Railroad",
+    "copies": 1,
+    "value": 2,
+    "text": "Railroad; full set 4",
+    "type": "property",
+    "colors": [
+      "Railroad"
+    ]
+  },
+  {
+    "key": "b_o_railroad",
+    "name": "B. & O. Railroad",
+    "copies": 1,
+    "value": 2,
+    "text": "Railroad; full set 4",
+    "type": "property",
+    "colors": [
+      "Railroad"
+    ]
+  },
+  {
+    "key": "short_line",
+    "name": "Short Line",
+    "copies": 1,
+    "value": 2,
+    "text": "Railroad; full set 4",
+    "type": "property",
+    "colors": [
+      "Railroad"
+    ]
+  },
+  {
+    "key": "electric_company",
+    "name": "Electric Company",
+    "copies": 1,
+    "value": 2,
+    "text": "Utility; full set 2",
+    "type": "property",
+    "colors": [
+      "Utility"
+    ]
+  },
+  {
+    "key": "water_works",
+    "name": "Water Works",
+    "copies": 1,
+    "value": 2,
+    "text": "Utility; full set 2",
+    "type": "property",
+    "colors": [
+      "Utility"
+    ]
+  },
+  {
+    "key": "pass_go",
+    "name": "Pass Go",
+    "copies": 10,
+    "value": 1,
+    "text": "Draw 2 cards.",
+    "type": "action"
+  },
+  {
+    "key": "deal_breaker",
+    "name": "Deal Breaker",
+    "copies": 2,
+    "value": 5,
+    "text": "Steal a complete property set.",
+    "type": "action"
+  },
+  {
+    "key": "forced_deal",
+    "name": "Forced Deal",
+    "copies": 3,
+    "value": 3,
+    "text": "Swap one of your properties with an opponent property outside a complete set.",
+    "type": "action"
+  },
+  {
+    "key": "sly_deal",
+    "name": "Sly Deal",
+    "copies": 3,
+    "value": 3,
+    "text": "Steal a property outside a complete set.",
+    "type": "action"
+  },
+  {
+    "key": "just_say_no",
+    "name": "Just Say No",
+    "copies": 8,
+    "value": 4,
+    "text": "Cancel an action played against you.",
+    "type": "action"
+  },
+  {
+    "key": "debt_collector",
+    "name": "Debt Collector",
+    "copies": 3,
+    "value": 3,
+    "text": "One opponent pays you 5M.",
+    "type": "action"
+  },
+  {
+    "key": "its_my_birthday",
+    "name": "It\u2019s My Birthday",
+    "copies": 3,
+    "value": 2,
+    "text": "Every other player pays you 2M.",
+    "type": "action"
+  },
+  {
+    "key": "double_the_rent",
+    "name": "Double the Rent",
+    "copies": 2,
+    "value": 1,
+    "text": "Play with rent to double rent; uses an additional card play.",
+    "type": "action"
+  },
+  {
+    "key": "house",
+    "name": "House",
+    "copies": 3,
+    "value": 3,
+    "text": "Add to a complete color set for +3M rent. Not railroads or utilities.",
+    "type": "action"
+  },
+  {
+    "key": "hotel",
+    "name": "Hotel",
+    "copies": 2,
+    "value": 4,
+    "text": "Add after a House for another +4M rent. Not railroads or utilities.",
+    "type": "action"
+  },
+  {
+    "key": "eviction_notice",
+    "name": "Eviction Notice",
+    "copies": 2,
+    "value": 3,
+    "text": "Return one opponent property to their hand, including from a complete set.",
+    "type": "action"
+  },
+  {
+    "key": "forced_rezoning",
+    "name": "Forced Rezoning",
+    "copies": 2,
+    "value": 2,
+    "text": "Permanently lock an opponent wildcard to one of its allowed colors, including after ownership changes.",
+    "type": "action"
+  },
+  {
+    "key": "compulsory_purchase",
+    "name": "Compulsory Purchase",
+    "copies": 2,
+    "value": 4,
+    "text": "Opponent pays you at least 5M in properties only, of their choice; no change. If insufficient, pay all eligible properties.",
+    "type": "action"
+  },
+  {
+    "key": "luxury_tax",
+    "name": "Luxury Tax",
+    "copies": 2,
+    "value": 3,
+    "text": "Every other player discards 5M per complete set they own. Bank first, then properties. Activating player exempt. Just Say No protects only its user.",
+    "type": "action"
+  },
+  {
+    "key": "tough_luck",
+    "name": "Tough Luck",
+    "copies": 2,
+    "value": 4,
+    "text": "Target an opponent with at least one complete property set. Take all cards of your chosen category (Property, Action, or Money) from their hand.",
+    "type": "action"
+  },
+  {
+    "key": "money_1m",
+    "name": "Money 1M",
+    "copies": 6,
+    "value": 1,
+    "text": "Bank money; no change when paying.",
+    "type": "money"
+  },
+  {
+    "key": "money_2m",
+    "name": "Money 2M",
+    "copies": 5,
+    "value": 2,
+    "text": "Bank money; no change when paying.",
+    "type": "money"
+  },
+  {
+    "key": "money_3m",
+    "name": "Money 3M",
+    "copies": 3,
+    "value": 3,
+    "text": "Bank money; no change when paying.",
+    "type": "money"
+  },
+  {
+    "key": "money_4m",
+    "name": "Money 4M",
+    "copies": 3,
+    "value": 4,
+    "text": "Bank money; no change when paying.",
+    "type": "money"
+  },
+  {
+    "key": "money_5m",
+    "name": "Money 5M",
+    "copies": 2,
+    "value": 5,
+    "text": "Bank money; no change when paying.",
+    "type": "money"
+  },
+  {
+    "key": "money_10m",
+    "name": "Money 10M",
+    "copies": 1,
+    "value": 10,
+    "text": "Bank money; no change when paying.",
+    "type": "money"
+  },
+  {
+    "key": "rent_brown_light_blue",
+    "name": "Rent Brown Light Blue",
+    "copies": 2,
+    "value": 1,
+    "text": "Any Color targets one opponent; two-color rent targets every other player.",
+    "type": "rent",
+    "any": false,
+    "colors": [
+      "Brown",
+      "Light Blue"
+    ]
+  },
+  {
+    "key": "rent_pink_orange",
+    "name": "Rent Pink Orange",
+    "copies": 2,
+    "value": 1,
+    "text": "Any Color targets one opponent; two-color rent targets every other player.",
+    "type": "rent",
+    "any": false,
+    "colors": [
+      "Pink",
+      "Orange"
+    ]
+  },
+  {
+    "key": "rent_red_yellow",
+    "name": "Rent Red Yellow",
+    "copies": 2,
+    "value": 1,
+    "text": "Any Color targets one opponent; two-color rent targets every other player.",
+    "type": "rent",
+    "any": false,
+    "colors": [
+      "Red",
+      "Yellow"
+    ]
+  },
+  {
+    "key": "rent_dark_blue_green",
+    "name": "Rent Dark Blue Green",
+    "copies": 2,
+    "value": 1,
+    "text": "Any Color targets one opponent; two-color rent targets every other player.",
+    "type": "rent",
+    "any": false,
+    "colors": [
+      "Green",
+      "Dark Blue"
+    ]
+  },
+  {
+    "key": "rent_railroad_utility",
+    "name": "Rent Railroad Utility",
+    "copies": 2,
+    "value": 1,
+    "text": "Any Color targets one opponent; two-color rent targets every other player.",
+    "type": "rent",
+    "any": false,
+    "colors": [
+      "Railroad",
+      "Utility"
+    ]
+  },
+  {
+    "key": "rent_any_color",
+    "name": "Rent Any Color",
+    "copies": 3,
+    "value": 3,
+    "text": "Any Color targets one opponent; two-color rent targets every other player.",
+    "type": "rent",
+    "any": true
+  },
+  {
+    "key": "pink_orange_wildcard",
+    "name": "Pink Orange Wildcard",
+    "copies": 2,
+    "value": 2,
+    "text": "Two colors in opposing orientations; rent follows assigned color.",
+    "type": "wild",
+    "colors": [
+      "Pink",
+      "Orange"
+    ]
+  },
+  {
+    "key": "multicolor_wildcard",
+    "name": "Multicolor Wildcard",
+    "copies": 2,
+    "value": 0,
+    "text": "Any property color. Cannot be banked or used as payment.",
+    "type": "wild",
+    "colors": [
+      "Brown",
+      "Light Blue",
+      "Pink",
+      "Orange",
+      "Red",
+      "Yellow",
+      "Green",
+      "Dark Blue",
+      "Railroad",
+      "Utility"
+    ]
+  },
+  {
+    "key": "brown_light_blue_wildcard",
+    "name": "Brown Light Blue Wildcard",
+    "copies": 1,
+    "value": 1,
+    "text": "Reversible dual-color wildcard. Use the assigned color rent table.",
+    "type": "wild",
+    "colors": [
+      "Brown",
+      "Light Blue"
+    ]
+  },
+  {
+    "key": "light_blue_railroad_wildcard",
+    "name": "Light Blue Railroad Wildcard",
+    "copies": 1,
+    "value": 4,
+    "text": "Reversible dual-color wildcard. Use the assigned color rent table.",
+    "type": "wild",
+    "colors": [
+      "Light Blue",
+      "Railroad"
+    ]
+  },
+  {
+    "key": "red_yellow_wildcard",
+    "name": "Red Yellow Wildcard",
+    "copies": 2,
+    "value": 3,
+    "text": "Reversible dual-color wildcard. Use the assigned color rent table.",
+    "type": "wild",
+    "colors": [
+      "Red",
+      "Yellow"
+    ]
+  },
+  {
+    "key": "dark_blue_green_wildcard",
+    "name": "Dark Blue Green Wildcard",
+    "copies": 1,
+    "value": 4,
+    "text": "Reversible dual-color wildcard. Use the assigned color rent table.",
+    "type": "wild",
+    "colors": [
+      "Green",
+      "Dark Blue"
+    ]
+  },
+  {
+    "key": "green_railroad_wildcard",
+    "name": "Green Railroad Wildcard",
+    "copies": 1,
+    "value": 4,
+    "text": "Reversible dual-color wildcard. Use the assigned color rent table.",
+    "type": "wild",
+    "colors": [
+      "Green",
+      "Railroad"
+    ]
+  },
+  {
+    "key": "railroad_utility_wildcard",
+    "name": "Railroad Utility Wildcard",
+    "copies": 1,
+    "value": 2,
+    "text": "Reversible dual-color wildcard. Use the assigned color rent table.",
+    "type": "wild",
+    "colors": [
+      "Railroad",
+      "Utility"
+    ]
+  },
+  {
+    "key": "corporate_headquarters",
+    "name": "Corporate Headquarters",
+    "copies": 1,
+    "value": 3,
+    "type": "special",
+    "text": "Play up to 4 cards per turn instead of 3."
+  },
+  {
+    "key": "private_vault",
+    "name": "Private Vault",
+    "copies": 1,
+    "value": 3,
+    "type": "special",
+    "text": "Your end-of-turn hand limit is 9 instead of 7."
+  },
+  {
+    "key": "luxury_district",
+    "name": "Luxury District",
+    "copies": 1,
+    "value": 3,
+    "type": "special",
+    "text": "Add 1M to each opponent\u2019s rent bill."
+  },
+  {
+    "key": "rent_controlled_residence",
+    "name": "Rent-Controlled Residence",
+    "copies": 1,
+    "value": 3,
+    "type": "special",
+    "text": "Reduce rent you owe by 2M, minimum 0M."
+  },
+  {
+    "key": "investment_office",
+    "name": "Investment Office",
+    "copies": 1,
+    "value": 3,
+    "type": "special",
+    "text": "Draw 3 cards instead of 2 at the start of your turn. An empty hand still draws 5."
+  },
+  {
+    "key": "insurance_agency",
+    "name": "Insurance Agency",
+    "copies": 1,
+    "value": 3,
+    "type": "special",
+    "text": "Draw 1 card per property taken or surrendered to pay another player, after resolution. Includes special properties."
+  },
+  {
+    "key": "i_owe_you",
+    "name": "I Owe You",
+    "type": "action",
+    "value": 5,
+    "copies": 2,
+    "text": "Give this card from your hand to the creditor instead of paying them. If blocked by Just Say No, discard this card; the original bill remains due."
+  },
+  {
+    "key": "emergency_treasury",
+    "name": "Emergency Treasury",
+    "type": "special",
+    "value": 3,
+    "copies": 1,
+    "text": "At the start of your normal turn, if your bank is empty, create a 5M money card in your bank. Active while in your field."
+  }
+]

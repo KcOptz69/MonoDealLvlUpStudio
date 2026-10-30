@@ -1,0 +1,250 @@
+
+> monopoly-deal-lvl-up@1.9.0 test
+> node test.js
+
+PASS 127 cards; eight Just Say No; six specials at3M
+PASS money values and classic action face values
+PASS start draws2; empty hand draws5; Investment draws3
+PASS Corporate4plays, PrivateVault9, banked actions lose effect
+PASS Just Say No counter chain restores action without turn cost
+PASS rent doubles before luxury and final -2 reduction
+PASS Insurance pays out for special properties surrendered as rent
+PASS Compulsory Purchase cannot use bank money
+PASS tax counts own complete sets, bank first, discarded payment
+PASS Tough Luck takes hand properties including specials, no table cards
+PASS wildcard color locks survive ownership changes
+PASS Eviction breaks complete set and returns buildings
+PASS three different sets wait full rotation, victory before draw
+PASS breaking defense requires a new defending attempt
+PASS payment no change, no hand payments, zero-value wildcard excluded
+PASS Tough Luck rejects incomplete targets without spending the card
+PASS equal target choices are not biased to player zero
+PASS bot preview leaves all card zones unchanged
+PASS random setup starter is uniform, all hands five, normal draw follows full setup rotation
+PASS properties autojoin compatible sets; full sets start a new group
+PASS manual rearrangement may split a set despite automatic hand placement
+PASS unused actions draw cards, then enforce the hand limit exactly once
+PASS passing without drawing preserves cards; headquarters grants four unused draws
+PASS setup enforces bank/properties only and exactly three action capacity
+PASS every bot uses three setup plays before normal play starts
+PASS bot avoids attacking an empty field and keeps one Just Say No
+PASS payment optimizer preserves a complete set when cash can pay
+PASS payment events report exact public cards and recipients
+PASS discard and draw events retain card identity for feedback
+PASS bot breaks a defending opponent set rather than harassing an empty opponent
+PASS bot steals a property that immediately completes its own set
+{
+  "unitTests": 31,
+  "selfPlay": [
+    {
+      "seed": 1,
+      "players": 3,
+      "steps": 156,
+      "winner": 1,
+      "round": 9
+    },
+    {
+      "seed": 2,
+      "players": 4,
+      "steps": 569,
+      "winner": 1,
+      "round": 17
+    },
+    {
+      "seed": 3,
+      "players": 5,
+      "steps": 377,
+      "winner": 2,
+      "round": 10
+    },
+    {
+      "seed": 4,
+      "players": 2,
+      "steps": 109,
+      "winner": 0,
+      "round": 11
+    },
+    {
+      "seed": 5,
+      "players": 3,
+      "steps": 134,
+      "winner": 2,
+      "round": 8
+    },
+    {
+      "seed": 6,
+      "players": 4,
+      "steps": 317,
+      "winner": 2,
+      "round": 12
+    },
+    {
+      "seed": 7,
+      "players": 5,
+      "steps": 527,
+      "winner": 1,
+      "round": 13
+    },
+    {
+      "seed": 8,
+      "players": 2,
+      "steps": 105,
+      "winner": 1,
+      "round": 12
+    },
+    {
+      "seed": 9,
+      "players": 3,
+      "steps": 196,
+      "winner": 1,
+      "round": 11
+    },
+    {
+      "seed": 10,
+      "players": 4,
+      "steps": 223,
+      "winner": 2,
+      "round": 9
+    },
+    {
+      "seed": 11,
+      "players": 5,
+      "steps": 445,
+      "winner": 0,
+      "round": 11
+    },
+    {
+      "seed": 12,
+      "players": 2,
+      "steps": 83,
+      "winner": 0,
+      "round": 8
+    },
+    {
+      "seed": 13,
+      "players": 3,
+      "steps": 146,
+      "winner": 1,
+      "round": 9
+    },
+    {
+      "seed": 14,
+      "players": 4,
+      "steps": 250,
+      "winner": 1,
+      "round": 10
+    },
+    {
+      "seed": 15,
+      "players": 5,
+      "steps": 428,
+      "winner": 2,
+      "round": 10
+    },
+    {
+      "seed": 16,
+      "players": 2,
+      "steps": 129,
+      "winner": 0,
+      "round": 13
+    },
+    {
+      "seed": 17,
+      "players": 3,
+      "steps": 203,
+      "winner": 0,
+      "round": 11
+    },
+    {
+      "seed": 18,
+      "players": 4,
+      "steps": 212,
+      "winner": 0,
+      "round": 9
+    },
+    {
+      "seed": 19,
+      "players": 5,
+      "steps": 613,
+      "winner": 3,
+      "round": 15
+    },
+    {
+      "seed": 20,
+      "players": 2,
+      "steps": 109,
+      "winner": 0,
+      "round": 11
+    },
+    {
+      "seed": 21,
+      "players": 3,
+      "steps": 140,
+      "winner": 1,
+      "round": 8
+    },
+    {
+      "seed": 22,
+      "players": 4,
+      "steps": 295,
+      "winner": 2,
+      "round": 11
+    },
+    {
+      "seed": 23,
+      "players": 5,
+      "steps": 372,
+      "winner": 3,
+      "round": 9
+    },
+    {
+      "seed": 24,
+      "players": 2,
+      "steps": 108,
+      "winner": 1,
+      "round": 11
+    },
+    {
+      "seed": 25,
+      "players": 3,
+      "steps": 159,
+      "winner": 2,
+      "round": 10
+    },
+    {
+      "seed": 26,
+      "players": 4,
+      "steps": 218,
+      "winner": 3,
+      "round": 9
+    },
+    {
+      "seed": 27,
+      "players": 5,
+      "steps": 482,
+      "winner": 4,
+      "round": 12
+    },
+    {
+      "seed": 28,
+      "players": 2,
+      "steps": 107,
+      "winner": 0,
+      "round": 11
+    },
+    {
+      "seed": 29,
+      "players": 3,
+      "steps": 233,
+      "winner": 1,
+      "round": 13
+    },
+    {
+      "seed": 30,
+      "players": 4,
+      "steps": 270,
+      "winner": 1,
+      "round": 11
+    }
+  ]
+}

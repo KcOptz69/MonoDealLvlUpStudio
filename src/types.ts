@@ -1,0 +1,122 @@
+export interface CardDef {
+  key: string;
+  name: string;
+  copies: number;
+  value: number;
+  text: string;
+  type: 'property' | 'wild' | 'special' | 'action' | 'rent' | 'money' | 'building';
+  colors?: string[];
+  any?: boolean;
+}
+
+export interface CardInstance {
+  id: string;
+  key: string;
+  locked?: string;
+  generated?: boolean;
+}
+
+export interface PropertyGroup {
+  id: string;
+  color: string;
+  cards: CardInstance[];
+  house?: CardInstance;
+  hotel?: CardInstance;
+}
+
+export interface PlayerState {
+  name: string;
+  hand: CardInstance[];
+  bank: CardInstance[];
+  groups: PropertyGroup[];
+  special: CardInstance[];
+  defending: boolean;
+  setupPlayed?: number;
+  setupDone?: boolean;
+}
+
+export interface GameEvent {
+  seq: number;
+  type: 'draw' | 'bank' | 'property' | 'play' | 'charge' | 'transfer' | 'payment' | 'discard' | 'negate' | 'setup_turn';
+  actor: number;
+  target?: number | null;
+  card?: CardInstance;
+  cards?: CardInstance[];
+  color?: string;
+  key?: string;
+  amount?: number;
+  owed?: number;
+  destination?: string;
+  replacement?: boolean;
+  passive?: boolean;
+  blocked?: boolean;
+}
+
+export interface PendingAction {
+  kind: 'counter' | 'payment' | 'discard';
+  responder: number;
+  negated?: boolean;
+  e: {
+    actor: number;
+    target: number;
+    key: string;
+    cardKey?: string;
+    amount?: number;
+    property?: string;
+    own?: string;
+    group?: string;
+    color?: string;
+    category?: string;
+    global?: boolean;
+    args?: any;
+  };
+}
+
+export interface GameState {
+  version: number;
+  players: PlayerState[];
+  deck: CardInstance[];
+  discard: CardInstance[];
+  turn: number;
+  startPlayer: number;
+  played: number;
+  pending: PendingAction | null;
+  queue: any[];
+  log: string[];
+  winner: number | null;
+  nextId: number;
+  round: number;
+  phase: 'setup' | 'play';
+  setupTurnsLeft: number;
+  events: GameEvent[];
+  eventSeq: number;
+  minted?: number;
+  batch?: any;
+  iou?: any;
+}
+
+export interface SeatInfo {
+  name: string;
+  bot: boolean;
+  ready: boolean;
+  connected?: boolean;
+  host?: boolean;
+  status?: string;
+}
+
+export interface OnlineRoomView {
+  code: string;
+  host: boolean;
+  seat: number;
+  revision: number;
+  seats: (SeatInfo | null)[];
+  started: boolean;
+  state?: GameState;
+  offset?: number;
+  reveal?: {
+    actor: number;
+    card: CardInstance;
+    mode: string;
+    color?: string;
+  } | null;
+}
