@@ -58,7 +58,7 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
             className={`opponent ${isActive ? 'active' : ''} ${p.defending ? 'opponent-defending' : ''}`}
             aria-label={`${p.name}’s board`}
           >
-            <div className="ophead">
+            {p.jailed&&<img className="jail-field-icon" src="/ui/jail.png" alt="In Jail"/>}<div className="ophead">
               <button
                 type="button"
                 className="opponent-open"
@@ -107,6 +107,7 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
                     return (
                       <section
                         key={g.id}
+                        data-group-id={g.id}
                         className={`group ${isFull ? 'complete' : ''}`}
                         style={{ '--c': colInfo.hex } as React.CSSProperties}
                       >
@@ -123,8 +124,8 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
                             return (
                               <button
                                 key={c.id}
-                                type="button"
                                 data-card-id={c.id}
+                                type="button"
                                 className={`card ${selectedCardId === c.id ? 'selected' : ''}`}
                                 onClick={() => onSelectCard(c, playerIndex)}
                                 title={`${def.name} — ${def.value}M`}
@@ -162,8 +163,8 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
                           return (
                             <button
                               key={c.id}
-                              type="button"
                               data-card-id={c.id}
+                              type="button"
                               className={`card ${selectedCardId === c.id ? 'selected' : ''}`}
                               onClick={() => onSelectCard(c, playerIndex)}
                               title={`${def.name} — ${def.value}M`}

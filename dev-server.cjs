@@ -3,8 +3,8 @@ const fs=require('node:fs'),path=require('node:path');
 // One persistent process; paths do not depend on the IDE's working directory.
 process.chdir(__dirname);
 (async()=>{try{
- // The complete package includes the built React app. Build only if absent.
- if(!fs.existsSync(path.join(__dirname,'dist/index.html')))await require('./build.cjs');
+ // Rebuild on startup so source/artwork patches cannot serve stale dist assets.
+ await require('./build.cjs');
  const at=process.argv.indexOf('--port');
  const port=Number(at>=0?process.argv[at+1]:(process.env.PORT||3000));
  if(!Number.isInteger(port)||port<0||port>65535)throw Error('Invalid port: use --port NUMBER or PORT=NUMBER.');

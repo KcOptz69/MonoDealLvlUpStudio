@@ -478,7 +478,7 @@
   {
     "key": "rent_brown_light_blue",
     "name": "Rent Brown Light Blue",
-    "copies": 2,
+    "copies": 3,
     "value": 1,
     "text": "Any Color targets one opponent; two-color rent targets every other player.",
     "type": "rent",
@@ -491,7 +491,7 @@
   {
     "key": "rent_pink_orange",
     "name": "Rent Pink Orange",
-    "copies": 2,
+    "copies": 3,
     "value": 1,
     "text": "Any Color targets one opponent; two-color rent targets every other player.",
     "type": "rent",
@@ -504,7 +504,7 @@
   {
     "key": "rent_red_yellow",
     "name": "Rent Red Yellow",
-    "copies": 2,
+    "copies": 3,
     "value": 1,
     "text": "Any Color targets one opponent; two-color rent targets every other player.",
     "type": "rent",
@@ -517,7 +517,7 @@
   {
     "key": "rent_dark_blue_green",
     "name": "Rent Dark Blue Green",
-    "copies": 2,
+    "copies": 3,
     "value": 1,
     "text": "Any Color targets one opponent; two-color rent targets every other player.",
     "type": "rent",
@@ -530,7 +530,7 @@
   {
     "key": "rent_railroad_utility",
     "name": "Rent Railroad Utility",
-    "copies": 2,
+    "copies": 3,
     "value": 1,
     "text": "Any Color targets one opponent; two-color rent targets every other player.",
     "type": "rent",
@@ -543,7 +543,7 @@
   {
     "key": "rent_any_color",
     "name": "Rent Any Color",
-    "copies": 3,
+    "copies": 4,
     "value": 3,
     "text": "Any Color targets one opponent; two-color rent targets every other player.",
     "type": "rent",
@@ -667,7 +667,7 @@
     "copies": 1,
     "value": 3,
     "type": "special",
-    "text": "Your end-of-turn hand limit is 9 instead of 7."
+    "text": "Your end-of-turn hand limit is 9. Start your turn with an empty hand: draw 7 instead of 5."
   },
   {
     "key": "luxury_district",
@@ -715,6 +715,67 @@
     "type": "special",
     "value": 3,
     "copies": 1,
-    "text": "At the start of your normal turn, if your bank is empty, create a 5M money card in your bank. Active while in your field."
+    "text": "At the start of each turn, add a 3M money card to your bank."
+  },
+  {
+    "key": "go_to_jail",
+    "name": "Go to Jail",
+    "copies": 2,
+    "value": 4,
+    "type": "action",
+    "text": "Choose an opponent. At the start of their next turn, discard 10M from bank/field or skip that turn."
+  },
+  {
+    "key": "expansion_property",
+    "name": "Expansion Property",
+    "copies": 4,
+    "value": 0,
+    "type": "wild",
+    "colors": [
+      "Brown",
+      "Light Blue",
+      "Pink",
+      "Orange",
+      "Red",
+      "Yellow",
+      "Green",
+      "Dark Blue",
+      "Railroad",
+      "Utility"
+    ],
+    "text": "Join a color already on your field. Color is fixed until ownership changes. Cannot be banked or paid."
+  },
+  {
+    "key": "free_parking",
+    "name": "Free Parking",
+    "copies": 1,
+    "value": 3,
+    "type": "special",
+    "text": "Once per turn, bank one card without spending an action."
+  },
+  {
+    "key": "community_chest",
+    "name": "Community Chest",
+    "copies": 3,
+    "value": 2,
+    "type": "action",
+    "text": "Free action: draw 2; every other player draws 1."
+  },
+  {
+    "key": "chance",
+    "name": "Chance",
+    "copies": 2,
+    "value": 2,
+    "type": "action",
+    "text": "Free action: reveal top 3, keep 1, discard the other 2."
+  },
+  {
+    "key": "empire_rent",
+    "name": "Empire Rent",
+    "copies": 2,
+    "value": 3,
+    "type": "rent",
+    "any": true,
+    "text": "One opponent pays 1M for each property on your field, including special properties."
   }
 ]

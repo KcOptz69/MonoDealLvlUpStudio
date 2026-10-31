@@ -72,7 +72,13 @@ export const STATIC_ART: Record<string,string> = {
   "logo": "/artwork/logo.png",
   "card_back": "/artwork/card_back.svg",
   "i_owe_you": "/artwork/i_owe_you.png",
-  "emergency_treasury": "/artwork/emergency_treasury.png"
+  "emergency_treasury": "/artwork/emergency_treasury.webp",
+  "go_to_jail": "/artwork/go_to_jail.webp",
+  "expansion_property": "/artwork/expansion_property.webp",
+  "free_parking": "/artwork/free_parking.webp",
+  "community_chest": "/artwork/community_chest.webp",
+  "chance": "/artwork/chance.webp",
+  "empire_rent": "/artwork/empire_rent.webp"
 };
 export function generateCardSvg(def: CardDef, _lockedColor?: string): string { return STATIC_ART[def.key] || STATIC_ART.card_back; }
 export function getCardArt(card: CardInstance | string, _lockedColor?: string): string { const key = typeof card === 'string' ? card : card.key; return STATIC_ART[key] || STATIC_ART.card_back; }

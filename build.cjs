@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path');
 process.chdir(__dirname);
 module.exports=(async()=>{
  const deck=JSON.parse(fs.readFileSync('deck.json','utf8')),art={},imagePaths={};
- if(deck.reduce((n,c)=>n+c.copies,0)!==130)throw Error('Expected 130 cards');
+ if(deck.reduce((n,c)=>n+c.copies,0)!==150)throw Error('Expected 150 cards');
  const mime={'.webp':'webp','.png':'png','.jpg':'jpeg','.svg':'svg+xml'};
  for(const file of fs.readdirSync('public/artwork')){
   const ext=path.extname(file);if(!mime[ext])continue;
@@ -24,6 +24,6 @@ module.exports=(async()=>{
   if(name==='server')code=code.replace("require('./rooms')","require('./rooms.cjs')");
   fs.writeFileSync(name+'.cjs',code);
  }
- console.log('Built React game, music, online backend and all 73 approved artwork assets.');
+ console.log('Built React game, music, online backend and all approved artwork assets.');
 })();
 if(require.main===module)module.exports.catch(error=>{console.error(error);process.exitCode=1});

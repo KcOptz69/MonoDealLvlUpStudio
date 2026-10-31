@@ -64,6 +64,8 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
   const setsCount = calculateSets(player?.groups || []);
   const bankTotal = (player?.bank || []).reduce((sum, c) => sum + getCardDef(c).value, 0);
 
+  const freeBank=state.phase!=='setup'&&player.special.some(c=>c.key==='free_parking')&&!player.freeBankUsed;
+  const freeSelected=selectedCard&&['community_chest','chance'].includes(selectedCard.key);
   const canAct = myTurn && !state.pending && state.winner === null && used < limit;
 
   // Selected card actions
@@ -80,7 +82,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
             {player?.defending && <span className="defense">DEFENDING</span>}
           </div>
 
-          <div className="field-body">
+          <div className="field-body">{player.jailed&&<img className="jail-field-icon" src="/ui/jail.png" alt="In Jail"/>}
             <div className="groups">
               {player && (player.groups.length > 0 || player.special.length > 0) ? (
                 <>
@@ -93,6 +95,8 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
                     return (
                       <section
                         key={g.id}
+                        data-group-id={g.id}
+                        data-group-color={g.color}
                         className={`group ${isFull ? 'complete' : ''}`}
                         style={{ '--c': colInfo.hex } as React.CSSProperties}
                         onDragOver={(e) => {
@@ -271,7 +275,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
                     <button
                       type="button"
                       className="gold"
-                      disabled={!canAct}
+                      disabled={!myTurn||!!state.pending||(!canAct&&!freeSelected)}
                       onClick={() => onPlaySelected(selectedCard.id)}
                     >
                       Play card
@@ -283,7 +287,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
                     disabled={!canAct}
                     onClick={() => onBankSelected(selectedCard.id)}
                   >
-                    Bank {selectedDef.value}M
+                    Bank {freeBank?'(FREE)':selectedDef.value+'M'}
                   </button>
                 )}
               </>

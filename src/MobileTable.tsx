@@ -26,7 +26,7 @@ export function MobileTableOverlays({enabled,portrait}:{enabled:boolean;portrait
   let x=0,y=0,pointer=-1,held:Element|null=null,suppressUntil=0;
   const cancel=()=>{if(timer)clearTimeout(timer);timer=null;image=null;pointer=-1;};
   const findImage=(target:EventTarget|null)=>{
-   if(!(target instanceof Element)||target.closest('.mobile-card-view,.mobile-rotate'))return null;
+   if(!(target instanceof Element)||target.closest('.mobile-card-view,.mobile-rotate,.transfer-enabled .groupcards,.field-art'))return null;
    const img=target.closest('img') || target.closest('.card,button')?.querySelector('img');
    if(!(img instanceof HTMLImageElement))return null;
    // All approved cards use this artwork directory; omit the logo and hidden card back.

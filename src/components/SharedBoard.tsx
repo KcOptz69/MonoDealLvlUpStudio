@@ -30,6 +30,7 @@ function TurnPlayedCards({state,upcoming,onSelectCard}:{state:GameState;upcoming
   const preview=upcoming?.preview&&upcoming.card.key!=='just_say_no'&&!plays.some(e=>e.card?.id===upcoming.card.id)?upcoming:null;
   const strip=useRef<HTMLDivElement>(null);
   useEffect(()=>{if(strip.current)strip.current.scrollLeft=strip.current.scrollWidth;},[plays.at(-1)?.seq,preview?.card.id]);
+  if(state.pending?.kind==='chance')return <div className="chance-board-reveal"><strong>{state.players[state.pending.responder].name} · Chance</strong><div>{state.pending.cards?.map(c=><img key={c.id} src={getCardArt(c)} alt={getCardDef(c).name}/>)}</div></div>;
   if(!plays.length&&!preview)return <div className="turn-plays-empty"><strong>{state.players[state.turn]?.name === 'You' ? 'Your turn' : state.players[state.turn]?.name+"’s turn"}</strong><span>Cards played this turn appear here</span></div>;
   return <div className="turn-play-strip" ref={strip}>{plays.map((e)=>{
     const nope=(state.events||[]).filter(n=>n.type==='negate'&&n.targetPlaySeq===e.seq).at(-1);

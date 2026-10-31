@@ -11,5 +11,5 @@ const {createServer}=require('./server.cjs');
   assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),crypto.createHash('sha256').update(expected).digest('hex'),key);
  }
  for(const c of ctx.deck)assert.ok(ctx.images[c.key],c.key);
- console.log('PASS all 73 artwork files served over HTTP; exact approved image hashes; every card has artwork');
+ console.log('PASS all approved artwork files served over HTTP; exact approved image hashes; every card has artwork');
 }finally{server.closeAllConnections();await new Promise(r=>server.close(r));}})().catch(e=>{console.error(e);process.exitCode=1});

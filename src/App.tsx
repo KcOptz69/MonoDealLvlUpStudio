@@ -1,3 +1,8 @@
+import {SpecialTriggerNotices} from './components/SpecialTriggerNotices';
+import {getCardArt} from './cardArt';
+import {BoardTarget,usesBoardTarget} from './components/BoardTarget';
+import {TurnNotices} from './components/TurnNotices';
+import './tabletop.css';
 import {GameFeedback} from './GameFeedback';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GameState, CardInstance, OnlineRoomView } from './types';
@@ -139,20 +144,6 @@ export const App: React.FC = () => {
     // clone to force React update
     setGameState(JSON.parse(JSON.stringify(s)));
 
-    // Turn announcement
-    const turnKey = g.isSetup()
-      ? 'setup'
-      : `${s.round}:${s.turn}:${s.phase}`;
-    if (s.winner === null && lastAnnouncedTurnRef.current !== turnKey) {
-      lastAnnouncedTurnRef.current = turnKey;
-      const text = g.isSetup()
-        ? 'SETUP'
-        : s.turn === 0
-        ? 'YOUR TURN'
-        : `${s.players[s.turn]?.name.toUpperCase()}’S TURN`;
-      setTurnAnnouncement(text);
-      setTimeout(() => setTurnAnnouncement(null), 1600);
-    }
   }, []);
 
   // Start new local game
@@ -514,6 +505,8 @@ export const App: React.FC = () => {
     }
   };
 
+  const runChoice=(method:'jail'|'choose',args:any[])=>{if(onlineSession){remoteAction(method,args);return;}try{game[method](0,...args);refreshGameState(game);saveLocalGame(game);}catch(err:any){showToast(err.message);}};
+
   // Human actions (Local or Remote)
   const handleBankCard = (cardId: string) => {
     if (onlineSession) {
@@ -554,7 +547,7 @@ export const App: React.FC = () => {
 
     if (
       def.type === 'special' ||
-      ['pass_go', 'its_my_birthday'].includes(card.key) ||
+      ['pass_go','its_my_birthday','luxury_tax','community_chest','chance'].includes(card.key) ||
       isSingleColorProp
     ) {
       executePlay(cardId, {
@@ -583,7 +576,7 @@ export const App: React.FC = () => {
     const limit = onlineSession
       ? gameState?.phase === 'setup'
         ? 3
-        : 3
+        : gameState?.players[0].special.some(c=>c.key==='corporate_headquarters')?4:3
       : game?.limit(0);
 
     if (
@@ -627,16 +620,16 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleDoubleRentConfirm = (useDouble: boolean) => {
+  const handleDoubleRentConfirm = (count: number) => {
     if (!doubleRentPending) return;
     const { cardId, args } = doubleRentPending;
     const hand = onlineSession ? gameState?.players[0]?.hand : game?.p(0)?.hand;
-    const doubleCard = hand?.find((c: any) => c.key === 'double_the_rent');
+    const doubleCards=hand?.filter((c:any)=>c.key==='double_the_rent')||[];
 
     const nextArgs = {
       ...args,
       doubleAsked: true,
-      doubleId: useDouble && doubleCard ? doubleCard.id : undefined,
+      doubleIds:doubleCards.slice(0,count).map((c:any)=>c.id),
     };
     setDoubleRentPending(null);
     executePlay(cardId, nextArgs);
@@ -809,7 +802,7 @@ export const App: React.FC = () => {
     return () => { eventSourceRef.current?.close(); };
   }, []);
   const defendingMusic = view==='game' && gameState?.winner===null && gameState?.players.some(p=>p.defending);
-  useEffect(() => { setMusicScene(view==='game' ? (defendingMusic?'defending':'game') : 'menu'); }, [view,defendingMusic]);
+  useEffect(() => { setMusicScene(view==='game' ? (gameState?.winner!=null?'victory':defendingMusic?'defending':'game') : 'menu'); }, [view,defendingMusic,gameState?.winner]);
 
   return (
     <>
@@ -820,22 +813,6 @@ export const App: React.FC = () => {
       {toastMessage && (
         <div id="notifications" aria-live="polite">
           <div className="toast">{toastMessage}</div>
-        </div>
-      )}
-
-      {/* Turn Announcement Banner */}
-      {turnAnnouncement && (
-        <div className="your-turn-notice" role="status">
-          <div>
-            <span>{turnAnnouncement}</span>
-            <small>
-              {turnAnnouncement === 'SETUP'
-                ? 'Everyone sets up together · 3 actions each'
-                : turnAnnouncement === 'YOUR TURN'
-                ? 'Build your empire'
-                : 'Opponent is playing'}
-            </small>
-          </div>
         </div>
       )}
 
@@ -873,7 +850,7 @@ export const App: React.FC = () => {
       {/* Active Game Table View */}
       {view === 'game' && gameState && (
         <div className="app">
-          <GameFeedback key={onlineSession?.code||'local'} state={gameState} onMoving={setMovingEvents}/>
+          <TurnNotices state={gameState}/><SpecialTriggerNotices state={gameState}/><GameFeedback key={onlineSession?.code||'local'} state={gameState} onMoving={setMovingEvents}/>
           <TopBar
             state={gameState}
             isOnline={!!onlineSession}
@@ -1020,17 +997,17 @@ export const App: React.FC = () => {
 
       {/* Interactive Action Wizard Modal */}
       {wizardCard && gameState && (
-        <TargetingWizard
+        <React.Fragment>{usesBoardTarget(wizardCard)?<BoardTarget card={wizardCard} state={gameState} onConfirm={args=>executePlay(wizardCard.id,args)} onCancel={()=>setWizardCard(null)}/>:<TargetingWizard
           card={wizardCard}
           state={gameState}
           onConfirm={(args) => executePlay(wizardCard.id, args)}
           onCancel={() => setWizardCard(null)}
-        />
+        />}</React.Fragment>
       )}
 
       {/* Double Rent Prompt */}
       {doubleRentPending && (
-        <DoubleRentModal onConfirm={handleDoubleRentConfirm} />
+        <DoubleRentModal maxDoubles={Math.max(0,Math.min((gameState?.players[0].hand.filter(c=>c.key==='double_the_rent').length||0),(gameState?.players[0].special.some(c=>c.key==='corporate_headquarters')?4:3)-(gameState?.played||0)-1))} onConfirm={handleDoubleRentConfirm} />
       )}
 
       {/* End Turn with Unused Actions prompt */}
@@ -1063,9 +1040,13 @@ export const App: React.FC = () => {
             state={gameState}
             onPay={handlePay}
             onOfferIOU={handleOfferIOU}
+            onSkipJail={()=>runChoice('jail',[false])}
           />
         )}
 
+      {gameState?.pending?.responder===0&&['jail','chance','expansion'].includes(gameState.pending.kind)&&<div className="overlay"><section className="modal new-rule-choice" role="dialog" aria-modal="true" aria-label="Resolve card effect">
+        {gameState.pending.kind==='jail'?<><img className="jail-choice-art" src="/ui/jail.png" alt="In Jail"/><h2>Pay bail or skip your turn</h2><p>Discard at least 10M from your bank and/or field to take this turn.</p><button className="gold" onClick={()=>runChoice('jail',[true])}>Pay 10M bail</button><button className="quiet" onClick={()=>runChoice('jail',[false])}>Skip this turn</button></>:gameState.pending.kind==='chance'?<><h2>Chance · keep one card</h2><div className="chance-options">{gameState.pending.cards?.map(c=><button key={c.id} onClick={()=>runChoice('choose',[c.id])}><img src={getCardArt(c)} alt={getCardDef(c).name}/></button>)}</div></>:<><h2>Expansion Property · choose an existing color</h2>{gameState.pending.colors?.map(color=><button className="quiet" key={color} onClick={()=>runChoice('choose',[color])}>{color}</button>)}</>}
+      </section></div>}
       {/* Hand Limit Discard Modal */}
       {gameState?.pending &&
         gameState.pending.responder === 0 &&
@@ -1084,13 +1065,15 @@ export const App: React.FC = () => {
       {showExit && <div className="overlay exit-game-overlay"><section className="modal exit-game-dialog" role="dialog" aria-modal="true" aria-labelledby="exit-game-title"><h2 id="exit-game-title">Exit game?</h2><p>{onlineSession ? 'Save and exit keeps your seat. Just exit ends the match for everyone if you are host; otherwise you forfeit and return to the lobby.' : 'Save your progress to continue this game later, or exit without keeping this game.'}</p><div className="exit-game-options"><button className="gold" onClick={()=>handleExitGame(true)}>Save and exit</button><button className="quiet" onClick={()=>handleExitGame(false)}>Just exit</button><button className="quiet" onClick={()=>setShowExit(false)}>Cancel</button></div></section></div>}
 
       {/* Winner Celebration Modal */}
-      {gameState && gameState.winner !== null && (
+      {view==='game' && gameState && gameState.winner !== null && (
         <WinnerModal
           winner={gameState.winner}
           winnerName={gameState.players[gameState.winner]?.name || 'Player'}
+          winnerToken={gameState.players[gameState.winner]?.tokenIndex??0}
+          sets={gameState.players[gameState.winner]?.groups??[]}
           round={gameState.round}
           logCount={gameState.log.length}
-          onMenu={() => setView('menu')}
+          onMenu={async()=>{if(onlineSession){if(onlineView?.host){await roomRequest({...onlineSession,cmd:'stop'});setGameState(null);setGame(null);setView('lobby');}else await handleLeaveRoom();}else await handleExitGame(false);}}
         />
       )}
     </>

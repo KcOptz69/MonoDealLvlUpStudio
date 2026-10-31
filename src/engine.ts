@@ -102,6 +102,7 @@ export class Game {
 
   has(i: number, key: string) { return this.p(i).special.some((c: any) => c.key === key); }
   limit(i: number) { return this.isSetup() ? 3 : this.has(i, 'corporate_headquarters') ? 4 : 3; }
+  trigger(i:number,key:string,message:string,amount?:number){const card=this.p(i).special.find((c:any)=>c.key===key)||{id:'trigger-'+key,key};this.event('special_trigger',{actor:i,card:{...card},key,message,amount});}
   handLimit(i: number) { return this.has(i, 'private_vault') ? 9 : 7; }
 
   draw(i: number, n: number) {
@@ -147,22 +148,46 @@ export class Game {
       return;
     }
     this.s.turnSerial = (this.s.turnSerial || 0) + 1;
-    if (p.defending && this.sets(i) >= 3) {
-      this.s.winner = i;
-      this.log(p.name + ' held three sets for a full rotation and wins!');
-      return;
-    }
     this.s.played = 0;
-    if (this.has(i, 'emergency_treasury') && !p.bank.length) {
-      const c = { id: 'mint' + this.s.nextId++, key: 'money_5m', generated: true };
-      p.bank.push(c);
-      this.s.minted = (this.s.minted || 0) + 1;
-      this.event('bank', { actor: i, card: { ...c }, passive: true });
-      this.log(p.name + ' created 5M with Emergency Treasury.');
+    p.freeBankUsed = false;
+    p.botFreeSeen=[];
+    if(p.jailed){this.s.pending={kind:'jail',responder:i,e:{actor:i,target:i,key:'jail_bail',amount:10}};return;}
+    this.startTurn(i);
+  }
+
+  startTurn(i:number){
+    const p=this.p(i);
+    if (p.defending && this.sets(i) >= 3) {this.s.winner=i;this.log(p.name+' held three sets for a full rotation and wins!');return;}
+    if(this.has(i,'emergency_treasury')){
+      const c={id:'mint'+this.s.nextId++,key:'money_3m',generated:true};p.bank.push(c);this.s.minted=(this.s.minted||0)+1;
+      this.event('bank',{actor:i,card:{...c},passive:true});this.log(p.name+' gained 3M with Emergency Treasury.');this.trigger(i,'emergency_treasury','+3M added to bank',3);
     }
-    const n = p.hand.length ? (this.has(i, 'investment_office') ? 3 : 2) : 5;
-    this.draw(i, n);
-    this.log(p.name + ' drew ' + n + ' cards.');
+    const n=p.hand.length?(this.has(i,'investment_office')?3:2):(this.has(i,'private_vault')?7:5);
+    this.draw(i,n);this.log(p.name+' drew '+n+' cards.');
+    if(n===7)this.trigger(i,'private_vault','Empty hand · drew 7 cards',7);
+    if(this.has(i,'investment_office'))this.trigger(i,'investment_office',n===3?'Extra draw · drew 3 cards':'Start-of-turn draw bonus active',n);
+  }
+
+  jail(i:number,bail:boolean){
+    if(!(this.s.pending?.kind==='jail'||this.s.pending?.kind==='payment'&&this.s.pending.e.key==='jail_bail')||this.s.pending.responder!==i)throw Error('No jail decision requested.');
+    if(bail){if(this.assetValue(i)<10)throw Error('Bail requires at least 10M.');this.s.pending={kind:'payment',responder:i,e:{actor:i,target:i,key:'jail_bail',amount:10}};}
+    else{this.p(i).jailed=false;this.s.pending=null;this.log(this.p(i).name+' skipped their turn in jail.');this.finishTurn(i);}
+  }
+
+  freeBank(i:number){return !this.isSetup()&&this.has(i,'free_parking')&&!this.p(i).freeBankUsed;}
+  freePlay(c:any,mode:string){return mode!=='bank'&&['community_chest','chance'].includes(c.key);}
+  doubleIds(a:any){return a.doubleIds|| (a.doubleId?[a.doubleId]:[]);}
+
+  choose(i:number,value:string){
+    const p=this.s.pending;if(!p||p.responder!==i)throw Error('Choice not requested.');
+    if(p.kind==='chance'){
+      const cards=p.cards;const c=cards.find((c:any)=>c.id===value);if(!c)throw Error('Choose one revealed card.');
+      this.p(i).hand.push(c);this.s.discard.push(...cards.filter((x:any)=>x!==c));this.event('discard',{actor:i,cards:cards.filter((x:any)=>x!==c)});this.log(this.p(i).name+' kept '+this.d(c).name+' from Chance.');this.s.pending=null;this.nextEffect();return;
+    }
+    if(p.kind==='expansion'){
+      if(!p.colors.includes(value))throw Error('Choose an existing color.');const c=this.removeProp(i,p.card.id,false);c.expansionColor=value;c.expansionOwner=i;this.place(i,c,value);this.clean(i);this.s.pending=null;this.nextEffect();return;
+    }
+    throw Error('Invalid choice.');
   }
 
   group(i: number, id: string) { return this.p(i).groups.find((g: any) => g.id === id); }
@@ -216,6 +241,19 @@ export class Game {
       this.p(i).special.push(c);
       return;
     }
+    if(c.key==='expansion_property'){
+      const owned=c.expansionOwner===i;
+      if(owned)color=c.locked||c.expansionColor;
+      else{
+        const colors=[...new Set(this.p(i).groups.filter((g:any)=>g.cards.length).map((g:any)=>g.color))];
+        if(!colors.length){delete c.expansionOwner;delete c.expansionColor;this.p(i).hand.push(c);this.log('Expansion Property needs an existing color and returned to hand.');return;}
+        const incoming=c.expansionOwner!==undefined;
+        color=c.locked|| (color&&colors.includes(color)?color:colors[0] as string);
+        if(c.locked&&!colors.includes(c.locked)){this.p(i).hand.push(c);return;}
+        c.expansionColor=color;c.expansionOwner=i;
+        if(incoming&&!c.locked)(this.s.expansionChoices||(this.s.expansionChoices=[])).push({player:i,card:{...c},colors});
+      }
+    }
     color = c.locked || color || this.p(i).groups.find((g: any) => d.colors.includes(g.color) && g.cards.length < COLORS[g.color].size)?.color || d.colors[0];
     if (!d.colors.includes(color)) throw Error('That color is not allowed.');
     let g = gid ? this.group(i, gid) : null;
@@ -242,14 +280,19 @@ export class Game {
 
   play(i: number, id: string, mode: string, args: any = {}) {
     this.ready(i);
-    if (this.used(i) >= this.limit(i)) throw Error('No card plays remaining.');
+
     let c = this.p(i).hand.find((c: any) => c.id === id);
     if (!c) throw Error('Card not in hand');
     const d = this.d(c);
+    const free=this.freePlay(c,mode)||(mode==='bank'&&this.freeBank(i));
+    if(this.used(i)>=this.limit(i)&&!free)throw Error('No card plays remaining.');
     this.validate(i, c, mode, args);
     c = this.takeHand(i, id);
     if (this.isSetup()) this.p(i).setupPlayed = (this.p(i).setupPlayed || 0) + 1;
-    else this.s.played++;
+    else if(!free)this.s.played++;
+    if(this.freePlay(c,mode))(this.p(i).botFreeSeen||(this.p(i).botFreeSeen=[])).push(c.id);
+    if(mode==='bank'&&free){this.p(i).freeBankUsed=true;this.trigger(i,'free_parking','Free bank used · no action spent');}
+    if(!this.isSetup()&&!free&&this.s.played===4)this.trigger(i,'corporate_headquarters','Fourth action granted');
     this.event(mode === 'bank' ? 'bank' : ['property', 'wild', 'special'].includes(d.type) ? 'property' : 'play', {
       actor: i,
       card: { ...c },
@@ -275,22 +318,20 @@ export class Game {
     }
     this.s.discard.push(c);
     this.log(this.p(i).name + ' played ' + d.name + '.');
+    if(c.key==='community_chest'){this.s.players.forEach((p:any,j:number)=>{if(!p.forfeited)this.draw(j,j===i?2:1);});return;}
+    if(c.key==='chance'){const before=this.p(i).hand.length;this.draw(i,3);const cards=this.p(i).hand.splice(before);if(!cards.length)return;this.event('reveal',{actor:i,cards:cards.map((c:any)=>({...c}))});this.s.pending={kind:'chance',responder:i,cards,e:{actor:i,target:i,key:'chance'}};return;}
     if (c.key === 'pass_go') {
       this.draw(i, 2);
       return;
     }
     if (d.type === 'rent') {
-      const g = this.group(i, args.group);
-      let r = this.rent(i, g);
-      if (args.doubleId) {
-        const double = this.takeHand(i, args.doubleId);
-        this.s.discard.push(double);
-        this.event('play', {actor:i, card:{...double}, key:double.key});
-        this.s.played++;
-        r *= 2;
+      const g = this.group(i,args.group);
+      let r=c.key==='empire_rent'?this.allProps(i).length:this.rent(i,g);
+      for(const id of this.doubleIds(args)){
+        const double=this.takeHand(i,id);this.s.discard.push(double);this.event('play',{actor:i,card:{...double},key:double.key});this.s.played++;r*=2;
       }
-      if (this.has(i, 'luxury_district')) r++;
-      const ts = d.any ? [args.target] : this.s.players.map((_: any, j: number) => j).filter((j: number) => j !== i);
+      if (this.has(i, 'luxury_district')){r++;this.trigger(i,'luxury_district','Rent increased by 1M',1);}
+      const ts = d.any ? [args.target] : this.s.players.map((_: any, j: number) => j).filter((j: number) => j !== i && !this.p(j).forfeited);
       this.s.queue = ts.map((t: number) => ({
         actor: i,
         target: t,
@@ -299,11 +340,11 @@ export class Game {
         amount: Math.max(0, r - (this.has(t, 'rent_controlled_residence') ? 2 : 0))
       }));
     } else if (c.key === 'its_my_birthday') {
-      this.s.queue = this.s.players.map((_: any, j: number) => j).filter((j: number) => j !== i).map((t: number) => ({
+      this.s.queue = this.s.players.map((_: any, j: number) => j).filter((j: number) => j !== i && !this.p(j).forfeited).map((t: number) => ({
         actor: i, target: t, key: c.key, amount: 2
       }));
     } else if (c.key === 'luxury_tax') {
-      this.s.queue = this.s.players.map((_: any, j: number) => j).filter((j: number) => j !== i).map((t: number) => ({
+      this.s.queue = this.s.players.map((_: any, j: number) => j).filter((j: number) => j !== i && !this.p(j).forfeited).map((t: number) => ({
         actor: i, target: t, key: c.key, amount: 5 * this.p(t).groups.filter((g: any) => this.full(g)).length
       }));
     } else {
@@ -353,7 +394,8 @@ export class Game {
       return;
     }
     if (['property', 'wild'].includes(d.type)) {
-      const color = c.locked || a.color || d.colors[0];
+      const color = c.locked || (c.expansionOwner===i?c.expansionColor:undefined) || a.color || d.colors[0];
+      if(c.key==='expansion_property'&&!this.p(i).groups.some((g:any)=>g.color===color&&g.cards.length))throw Error('Expansion Property must join a color already on your field.');
       if (!d.colors.includes(color)) throw Error('Invalid property color');
       if (a.group) {
         const g = this.group(i, a.group);
@@ -361,7 +403,7 @@ export class Game {
       }
       return;
     }
-    if (d.type === 'special' || c.key === 'pass_go') return;
+    if (d.type === 'special' || ['pass_go','community_chest','chance'].includes(c.key)) return;
     if (['house', 'hotel'].includes(c.key)) {
       const g = this.group(i, a.group);
       if (!g || !this.full(g) || ['Railroad', 'Utility'].includes(g.color) || g[c.key] || (c.key === 'hotel' && !g.house)) {
@@ -373,18 +415,15 @@ export class Game {
     if (c.key === 'just_say_no') throw Error('Use Just Say No when responding to an action, or bank it.');
     if (c.key === 'double_the_rent') throw Error('Select a Rent card and enable Double the Rent.');
     if (d.type === 'rent') {
-      const g = this.group(i, a.group);
-      if (!g || (d.colors && !d.colors.includes(g.color))) throw Error('Choose one of your matching property sets.');
-      if (a.doubleId) {
-        const doub = this.p(i).hand.find((c: any) => c.id === a.doubleId);
-        if (!doub || doub.key !== 'double_the_rent' || this.s.played + 2 > this.limit(i)) {
-          throw Error('Doubling rent needs a Double the Rent card and two available plays.');
-        }
-      }
+      const g=this.group(i,a.group);
+      if(c.key==='empire_rent'){if(!this.allProps(i).length)throw Error('You need properties to charge Empire Rent.');}
+      else if(!g||(d.colors&&!d.colors.includes(g.color)))throw Error('Choose one of your matching property sets.');
+      const ids=this.doubleIds(a);
+      if(!Array.isArray(ids)||new Set(ids).size!==ids.length||this.s.played+1+ids.length>this.limit(i)||ids.some((id:string)=>!this.p(i).hand.some((c:any)=>c.id===id&&c.key==='double_the_rent')))throw Error('Each Double the Rent needs a card and enough available plays.');
       if (!d.any) return;
     }
     if (['its_my_birthday', 'luxury_tax'].includes(c.key)) return;
-    if (!Number.isInteger(a.target) || a.target === i || !this.p(a.target)) throw Error('Choose an opponent.');
+    if (!Number.isInteger(a.target) || a.target === i || (!this.p(a.target)||this.p(a.target).forfeited)) throw Error('Choose an opponent.');
     if (['sly_deal', 'eviction_notice', 'forced_deal', 'forced_rezoning'].includes(c.key)) {
       const f: any = this.find(a.target, a.property);
       if (!f) throw Error('Choose an opponent property.');
@@ -395,7 +434,7 @@ export class Game {
         throw Error('Choose an unlocked wildcard and an allowed color.');
       }
     }
-    if (c.key === 'forced_deal' && !this.find(i, a.own)) throw Error('Choose a property to give.');
+    if(c.key==='forced_deal'){const f:any=this.find(i,a.own);if(!f||(f.group&&this.full(f.group)))throw Error('Choose your property outside a complete set.');}
     if (c.key === 'deal_breaker') {
       const g = this.group(a.target, a.group);
       if (!g || !this.full(g)) throw Error('Choose a complete opponent set.');
@@ -409,6 +448,9 @@ export class Game {
   }
 
   nextEffect() {
+    const choices=this.s.expansionChoices;
+    while(choices?.length){const choice=choices.shift();if(this.find(choice.player,choice.card.id)){this.s.pending={kind:'expansion',responder:choice.player,...choice,e:{actor:choice.player,target:choice.player,key:'expansion_property'}};return;}}
+
     if (!this.s.queue.length) {
       this.s.pending = null;
       this.check();
@@ -476,6 +518,7 @@ export class Game {
     if (n && active) {
       this.draw(i, n);
       this.log(this.p(i).name + ' drew ' + n + ' with Insurance Agency.');
+      this.trigger(i,'insurance_agency','Drew '+n+' for lost properties',n);
     }
   }
 
@@ -484,6 +527,7 @@ export class Game {
     const t = e.target;
     const p = this.p(t);
     const ins = this.has(t, 'insurance_agency');
+    if(e.key==='go_to_jail'){p.jailed=true;this.log(p.name+' must pay 10M bail or skip their next turn.');this.nextEffect();return;}
     if (e.key === 'i_owe_you') {
       const debt = this.s.iou;
       this.s.iou = null;
@@ -517,6 +561,7 @@ export class Game {
         const c = this.removeProp(t, e.property);
         p.hand.push(c);
         this.event('transfer', { actor: t, target: t, destination: 'hand', cards: [{ ...c }] });
+        this.insurance(t,1,ins);
       } else if (e.key === 'forced_rezoning') {
         const same = f.group.color === e.color;
         const old = f.group.id;
@@ -554,6 +599,7 @@ export class Game {
         p.groups = p.groups.filter((x: any) => x !== g);
         g.id = 'g' + this.s.nextId++;
         this.p(i).groups.push(g);
+        for(const c of g.cards)if(c.key==='expansion_property'){c.expansionOwner=i;c.expansionColor=g.color;const colors=[...new Set(this.p(i).groups.map((g:any)=>g.color))];if(!c.locked)(this.s.expansionChoices||(this.s.expansionChoices=[])).push({player:i,card:{...c},colors});}
         this.event('transfer', {
           actor: t,
           target: i,
@@ -604,13 +650,15 @@ export class Game {
     if (new Set(ids).size !== ids.length || picked.some(x => !x)) throw Error('Invalid payment selection');
     const total = all.reduce((s: number, x: any) => s + x.value, 0);
     const sum = picked.reduce((s: number, x: any) => s + x.value, 0);
+    if(e.key==='jail_bail'&&sum<10)throw Error('Bail requires at least 10M.');
     if (sum < Math.min(total, e.amount)) throw Error('Select enough value, or all available assets if unable to pay.');
     if (e.key === 'luxury_tax' && picked.some(x => x.zone !== 'bank') && all.some(x => x.zone === 'bank' && !ids.includes(x.id))) {
       throw Error('Luxury Tax uses bank cards before properties.');
     }
     const ins = this.has(i, 'insurance_agency');
+    if(e.key==='rent'&&this.has(i,'rent_controlled_residence'))this.trigger(i,'rent_controlled_residence','Rent reduced by 2M',2);
     let lost = 0;
-    const receiver = e.key === 'luxury_tax' ? null : e.actor;
+    const receiver = ['luxury_tax','jail_bail'].includes(e.key) ? null : e.actor;
     for (const x of picked) {
       const c = x.card;
       if (x.zone === 'bank') this.p(i).bank = this.p(i).bank.filter((c: any) => c.id !== x.id);
@@ -628,9 +676,10 @@ export class Game {
       else this.p(receiver).bank.push(c);
     }
     this.clean(i);
-    this.insurance(i, lost, ins);
+    this.insurance(i,lost,ins);
     this.log(this.p(i).name + ' paid ' + sum + 'M' + (receiver === null ? ' to the discard pile.' : ' to ' + this.p(receiver).name + '.'));
     this.event('payment', { actor: i, target: receiver, key: e.key, amount: sum, owed: e.amount, cards: picked.map(x => ({ ...x.card })) });
+    if(e.key==='jail_bail'){this.p(i).jailed=false;this.s.pending=null;this.startTurn(i);return;}
     const remaining=pending.payments?.filter((e:any)=>e.target!==i);
     if(remaining?.length)this.s.pending={kind:'payment',responder:remaining[0].target,e:remaining[0],payments:remaining};
     else{this.s.pending = null;this.nextEffect();}
@@ -639,7 +688,7 @@ export class Game {
   owe(i: number, id: string) {
     const p = this.s.pending;
     if(p?.payments?.some((e:any)=>e.target===i)){const own=p.payments.find((e:any)=>e.target===i);this.s.queue.unshift(...p.payments.filter((e:any)=>e.target!==i));p.e=own;p.responder=i;delete p.payments;}
-    if (!p || p.kind !== 'payment' || p.responder !== i || p.e.key === 'luxury_tax') {
+    if (!p || p.kind !== 'payment' || p.responder !== i || ['luxury_tax','jail_bail'].includes(p.e.key)) {
       throw Error('I Owe You replaces payments to another player only.');
     }
     const c = this.p(i).hand.find((c: any) => c.id === id && c.key === 'i_owe_you');
@@ -720,6 +769,7 @@ export class Game {
     this.ready(i);
     const f: any = this.find(i, id);
     if (!f || f.special) throw Error('Choose a normal property or wildcard.');
+    if(f.card.key==='expansion_property'&&f.card.expansionOwner===i&&color!==f.card.expansionColor)throw Error('Expansion Property color is fixed until ownership changes.');
     if (f.card.locked && color !== f.card.locked) throw Error('This wildcard is permanently locked.');
     if (!this.d(f.card).colors.includes(color)) throw Error('Color not allowed');
     if (gid === f.group.id) throw Error('Already in that set');
@@ -752,6 +802,7 @@ export class Game {
       this.s.played = this.limit(i);
       this.log(p.name + ' converted ' + remaining + ' unused action' + (remaining === 1 ? '' : 's') + ' into ' + remaining + ' draw' + (remaining === 1 ? '' : 's') + '.');
     }
+    if(this.has(i,'private_vault')&&p.hand.length>7)this.trigger(i,'private_vault','Protected up to 9 cards in hand');
     if (p.hand.length > this.handLimit(i)) {
       this.s.pending = { kind: 'discard', responder: i };
       return;
@@ -800,11 +851,11 @@ export class Game {
   }
 
   options(i: number) {
-    if (this.s.pending || !this.canAct(i) || this.used(i) >= this.limit(i)) return [];
+    if (this.s.pending || !this.canAct(i)) return [];
     const out: any[] = [];
     const p = this.p(i);
-    const others = this.s.players.map((_: any, j: number) => j).filter((j: number) => j !== i);
-    const push = (c: any, a = {}, score = 1, mode = 'play') => out.push({ id: c.id, mode, args: a, score });
+    const others = this.s.players.map((_: any, j: number) => j).filter((j: number) => j !== i && !this.p(j).forfeited);
+    const push = (c:any,a={},score=1,mode='play')=>{if(this.used(i)<this.limit(i)||this.freePlay(c,mode)||(mode==='bank'&&this.freeBank(i)))out.push({id:c.id,mode,args:a,score});};
     for (const c of p.hand) {
       const d = this.d(c);
       if (!['property', 'wild', 'special'].includes(d.type)) {
@@ -816,6 +867,7 @@ export class Game {
       }
       if (['property', 'wild'].includes(d.type)) {
         for (const color of c.locked ? [c.locked] : d.colors) {
+          if(c.key==='expansion_property'&&!p.groups.some((g:any)=>g.color===color&&g.cards.length))continue;
           const gs = p.groups.filter((g: any) => g.color === color && g.cards.length < COLORS[color].size);
           for (const g of gs) push(c, { color, group: g.id }, 5 + g.cards.length * 2 + (g.cards.length === COLORS[color].size - 1 ? 9 : 0));
           push(c, { color }, 4 + (COLORS[color].size === 2 ? 1 : 0));
@@ -823,6 +875,7 @@ export class Game {
         continue;
       }
       if (c.key === 'pass_go') push(c, {}, 4);
+      if(['community_chest','chance'].includes(c.key))push(c,{},10);
       if (['house', 'hotel'].includes(c.key)) {
         for (const g of p.groups) {
           if (this.full(g) && !['Railroad', 'Utility'].includes(g.color) && !g[c.key] && (c.key !== 'hotel' || g.house)) {
@@ -830,7 +883,8 @@ export class Game {
           }
         }
       }
-      if (d.type === 'rent') {
+      if(c.key==='empire_rent'){for(const target of others){const score=this.allProps(i).length;if(score){push(c,{target},score);const ids=p.hand.filter((c:any)=>c.key==='double_the_rent').slice(0,Math.max(0,this.limit(i)-this.used(i)-1)).map((c:any)=>c.id);if(ids.length)push(c,{target,doubleIds:ids},score*2**ids.length);}}}
+      else if (d.type === 'rent') {
         for (const g of p.groups) {
           if (d.any || d.colors.includes(g.color)) {
             const ts = d.any ? others : [undefined];
@@ -851,6 +905,7 @@ export class Game {
       for (const target of others) {
         const danger = this.p(target).defending ? 12 : 0;
         if (c.key === 'debt_collector') push(c, { target }, 4);
+        if(c.key==='go_to_jail'&&!this.p(target).jailed)push(c,{target},7+danger);
         if (c.key === 'compulsory_purchase' && this.allProps(target).some((c: any) => this.d(c).value > 0)) {
           push(c, { target }, 8 + danger);
         }
@@ -908,11 +963,12 @@ export class Game {
     }
     if (d.type === 'special') return this.propertyUtility(i, c) + (c.key === 'corporate_headquarters' && !this.isSetup() ? 3 : 0);
     if (c.key === 'pass_go') return p.hand.length < 3 ? 7 : 2;
+    if(['community_chest','chance'].includes(c.key))return this.p(i).botFreeSeen?.includes(c.id)?-5:10;
     if (['house', 'hotel'].includes(c.key)) return this.sets(i) >= 2 ? 6 : 3;
     if (d.type === 'rent') {
       const g = this.group(i, a.group);
-      const base = this.rent(i, g) * (a.doubleId ? 2 : 1) + (this.has(i, 'luxury_district') ? 1 : 0);
-      const targets = d.any ? [a.target] : this.s.players.map((_: any, j: number) => j).filter((j: number) => j !== i);
+      const base = (c.key==='empire_rent'?this.allProps(i).length:this.rent(i,g))*2**this.doubleIds(a).length + (this.has(i, 'luxury_district') ? 1 : 0);
+      const targets = d.any ? [a.target] : this.s.players.map((_: any, j: number) => j).filter((j: number) => j !== i && !this.p(j).forfeited);
       const gain = targets.reduce((n: number, j: number) => n + Math.min(this.assetValue(j), Math.max(0, base - (this.has(j, 'rent_controlled_residence') ? 2 : 0))), 0);
       return gain * (a.doubleId ? 0.65 : 0.85) - 1 + (bank < 3 ? 1 : 0) + (d.any && this.assetValue(a.target) > 0 ? this.threat(a.target) * 0.3 : 0);
     }
@@ -923,6 +979,7 @@ export class Game {
     if (!foe) return -5;
     const threat = this.threat(t);
     const f: any = a.property ? this.find(t, a.property) : null;
+    if(c.key==='go_to_jail')return this.p(t).jailed?-5:7+threat*.7;
     if (c.key === 'debt_collector') return Math.min(5, this.assetValue(t)) * 0.9 - 1 + (bank < 3 ? 1 : 0) + (this.assetValue(t) ? threat * 0.15 : 0);
     if (c.key === 'compulsory_purchase') {
       const props = this.allProps(t).filter((c: any) => this.d(c).value > 0);
@@ -957,7 +1014,7 @@ export class Game {
     }
     if (i !== e.target) return false;
     if (e.key === 'i_owe_you') return e.owed > 5 || this.s.iou?.payment.key === 'compulsory_purchase';
-    if (e.key === 'deal_breaker') return true;
+    if (e.key === 'deal_breaker'||e.key==='go_to_jail') return true;
     if (e.property) {
       const f: any = this.find(i, e.property);
       return !!f && (f.special || !!f.group && (this.full(f.group) || f.group.cards.length >= 2) || own.defending);
@@ -980,11 +1037,14 @@ export class Game {
         return;
       }
       if (preview) return null;
+      if(p.kind==='chance'){this.choose(i,[...p.cards].sort((a:any,b:any)=>this.keep(i,b)-this.keep(i,a))[0].id);return;}
+      if(p.kind==='expansion'){this.choose(i,p.colors[0]);return;}
+      if(p.kind==='jail'){this.jail(i,this.assetValue(i)>=10&&this.p(i).bank.reduce((n:number,c:any)=>n+this.d(c).value,0)>=10);return;}
       if (p.kind === 'payment') {
         const card = this.p(i).hand.find((c: any) => c.key === 'i_owe_you');
         const ownEffect=p.payments?.find((e:any)=>e.target===i)||p.e;
         const ids = this.autoPayment(i, ownEffect);
-        if (card && ownEffect.key !== 'luxury_tax' && (ownEffect.amount >= 5 || ids.some((id: string) => this.find(i, id)))) this.owe(i, card.id);
+        if (card && !['luxury_tax','jail_bail'].includes(ownEffect.key) && (ownEffect.amount >= 5 || ids.some((id: string) => this.find(i, id)))) this.owe(i, card.id);
         else this.pay(i, ids);
         return;
       }
@@ -998,9 +1058,9 @@ export class Game {
     for (const from of this.p(i).groups) {
       if (!this.full(from)) {
         for (const c of from.cards) {
-          if (this.d(c).type === 'wild' && !c.locked) {
+          if (this.d(c).type === 'wild' && !c.locked && c.key!=='expansion_property') {
             for (const dest of this.p(i).groups) {
-              if (dest !== from && !this.full(dest) && dest.cards.length === COLORS[dest.color].size - 1 && this.d(c).colors.includes(dest.color)) {
+              if (dest !== from && !this.full(dest) && dest.cards.length === COLORS[dest.color].size - 1 && this.d(c).colors.includes(dest.color)&&(this.d(c).value>0||dest.cards.some((x:any)=>this.d(x).value>0))) {
                 if (preview) return null;
                 this.move(i, c.id, dest.color, dest.id);
                 return;

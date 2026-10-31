@@ -13,6 +13,8 @@ export interface CardInstance {
   id: string;
   key: string;
   locked?: string;
+  expansionColor?:string;
+  expansionOwner?:number;
   generated?: boolean;
 }
 
@@ -25,6 +27,8 @@ export interface PropertyGroup {
 }
 
 export interface PlayerState {
+  jailed?:boolean;
+  freeBankUsed?:boolean;
   forfeited?:boolean;
   tokenIndex?: number;
   name: string;
@@ -41,7 +45,7 @@ export interface GameEvent {
   turnId?: number;
   targetPlaySeq?: number;
   seq: number;
-  type: 'draw' | 'bank' | 'property' | 'play' | 'charge' | 'transfer' | 'payment' | 'discard' | 'negate' | 'setup_turn';
+  type: 'draw' | 'bank' | 'property' | 'play' | 'charge' | 'transfer' | 'payment' | 'discard' | 'negate' | 'setup_turn' | 'reveal' | 'special_trigger';
   actor: number;
   target?: number | null;
   card?: CardInstance;
@@ -49,6 +53,7 @@ export interface GameEvent {
   color?: string;
   key?: string;
   amount?: number;
+  message?:string;
   owed?: number;
   destination?: string;
   replacement?: boolean;
@@ -60,7 +65,10 @@ export interface PendingAction {
   responders?:number[];
   deadline?:number;
   payments?:PendingAction['e'][];
-  kind: 'counter' | 'payment' | 'discard';
+  kind: 'counter' | 'payment' | 'discard' | 'jail' | 'chance' | 'expansion';
+  cards?:CardInstance[];
+  colors?:string[];
+  card?:CardInstance;
   responder: number;
   negated?: boolean;
   e: {

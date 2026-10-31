@@ -1,5 +1,5 @@
 // Original procedural instrumental loops. No downloads or copyrighted recordings.
-type Scene = 'menu' | 'game' | 'defending';
+type Scene = 'menu' | 'game' | 'defending' | 'victory';
 let scene: Scene = 'menu', enabled = true, ctx: AudioContext | null = null;
 let master: GainNode | null = null, timer: ReturnType<typeof setInterval> | null = null;
 let next = 0, step = 0;
@@ -18,9 +18,9 @@ function tone(midi:number,time:number,duration:number,volume:number,type:Oscilla
 function silence(){for(const voice of voices){try{voice.stop();}catch{}}voices.clear();}
 function tick(){
  if(!ctx||ctx.state!=='running'||!enabled||document.hidden)return;
- const beats=scene==='defending' ? .25 : scene==='game' ? .32 : .39;
- const roots=scene==='defending'?[45,41,48,43]:scene==='game'?[48,45,41,43]:[48,52,45,43];
- const melody=scene==='defending'?[0,7,12,10,7,3,10,7]:scene==='game'?[0,4,7,12,7,4,9,7]:[7,12,16,14,12,7,9,4];
+ const beats=scene==='victory'?.24:scene==='defending' ? .25 : scene==='game' ? .32 : .39;
+ const roots=scene==='victory'?[48,53,55,48]:scene==='defending'?[45,41,48,43]:scene==='game'?[48,45,41,43]:[48,52,45,43];
+ const melody=scene==='victory'?[0,4,7,12,16,14,12,7]:scene==='defending'?[0,7,12,10,7,3,10,7]:scene==='game'?[0,4,7,12,7,4,9,7]:[7,12,16,14,12,7,9,4];
  if(next<ctx.currentTime)next=ctx.currentTime+.04;
  while(next<ctx.currentTime+.18){
   const root=roots[Math.floor(step/16)%4];
@@ -28,6 +28,7 @@ function tick(){
   if(step%2===0)tone(root+12+melody[(step/2)%8],next,beats*2,.075,'sine');
   if(step%8===0){tone(root+7,next,beats*7,.035);tone(root+ (scene==='defending'?3:4),next,beats*7,.035);}
   if(scene==='defending')tone(root+24+(step%2?7:0),next,beats*.55,.025,'triangle');
+  if(scene==='victory'&&step%4===0){tone(root+19,next,beats*3,.07,'triangle');tone(root+24,next,beats*3,.05,'triangle');}
   step++;next+=beats;
  }
 }

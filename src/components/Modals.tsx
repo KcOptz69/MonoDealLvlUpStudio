@@ -1,3 +1,6 @@
+import {FieldView} from './FieldView';
+import {PlayerToken} from './PlayerToken';
+import '../victory.css';
 import { isCardInverted } from '../cardOrientation';
 import React, { useState, useEffect } from 'react';
 import {createPortal} from 'react-dom';
@@ -69,20 +72,26 @@ export const RulesModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
           <b>Luxury Tax:</b> every other player discards 5M per complete set they own, bank first, then
           properties. One successful Just Say No cancels the entire tax for everyone.<br />
           <b>Tough Luck:</b> target an opponent with at least one complete set, then take all cards of a
-          named category (Property, Action, Money) from their hand.
+          named category (Property, Action, Money) from their hand.<br />
+          <b>Go to Jail:</b> at the start of the target’s next turn, discard at least 10M from bank/field or skip that turn. Just Say No may block the original action.<br />
+          <b>Expansion Property:</b> 0M; join an existing color. The color is fixed while owned; choose an existing color again when ownership changes. If the receiver has no color, it waits in hand.<br />
+          <b>Community Chest:</b> free action; draw two, every other player draws one.<br />
+          <b>Chance:</b> free action; reveal three, keep one, discard the other two.<br />
+          <b>Empire Rent:</b> charge one player 1M per field property including specials. Double the Rent works; two doublers charge 4× for three actions.
         </p>
 
         <h3>Special properties · 3M each</h3>
         <p>
-          One of each of seven specials in the deck. All count as properties for theft, exchange,
+          One of each of eight specials in the deck. All count as properties for theft, exchange,
           returns and payments, but do not count as complete sets.<br />
           <b>Insurance Agency:</b> draw one card for each property taken or surrendered in payment to
           another player.<br />
-          <b>Investment Office:</b> draw three instead of two; empty hands still draw five.<br />
-          <b>Emergency Treasury:</b> at the start of your normal turn, an empty bank creates a new 5M
-          money card directly in your bank.<br />
+          <b>Investment Office:</b> draw three instead of two; empty hands draw five, or seven with Private Vault.<br />
+          <b>Private Vault:</b> nine-card end-turn limit; draw seven instead of five when starting empty-handed.<br />
+          <b>Free Parking:</b> once each normal turn, bank one legal card without spending an action.<br />
+          <b>Emergency Treasury:</b> at the start of every normal turn, add a new 3M money card directly to your bank.<br />
           <b>I Owe You (2 copies, 5M):</b> from your hand during a payment to a player, give this card to
-          their bank instead of the entire bill.
+          their bank instead of the entire bill. This cannot replace jail bail.
         </p>
       </div>
     </section>
@@ -152,54 +161,28 @@ export const SettingsModal: React.FC<{
   );
 };
 
-// 4. Winner Modal
+// 4. Winner celebration
 export const WinnerModal: React.FC<{
-  winner: number;
-  winnerName: string;
-  round: number;
-  logCount: number;
-  onMenu: () => void;
-}> = ({ winner, winnerName, round, logCount, onMenu }) => (
-  <div className="overlay">
-    <section className="modal small" role="dialog" aria-modal="true" aria-label="Empire secured">
-      <div className="modalhead">
-        <h2>Empire secured</h2>
-      </div>
-      <div className="rules">
-        <h2 style={{ color: '#f3c66d' }}>
-          {winner === 0 ? 'You win!' : `${winnerName} wins!`}
-        </h2>
-        <p>Three complete sets held through an entire rotation.</p>
-        <p>Round {round} · {logCount} recent events</p>
-        <button className="gold" onClick={onMenu}>
-          Back to menu
-        </button>
-      </div>
-    </section>
-  </div>
-);
+ winner:number;winnerName:string;winnerToken:number;sets:PropertyGroup[];round:number;logCount:number;onMenu:()=>void|Promise<void>;
+}> = ({winner,winnerName,winnerToken,sets,onMenu}) => {
+ const [leaving,setLeaving]=useState(false);
+ const [error,setError]=useState('');
+ const full=sets.filter(g=>g.cards.length===COLORS[g.color]?.size&&g.cards.some(c=>getCardDef(c).value>0));
+ const colors=[...new Map(full.map(g=>[g.color,g])).values()].slice(0,3);
+ return <div className="overlay victory-overlay"><section className="modal victory-dialog" role="dialog" aria-modal="true" aria-labelledby="victory-title">
+ <div className="victory-rays" aria-hidden="true"/>
+ <img className="victory-logo" src={STATIC_ART.logo} alt="Monopoly Deal Lvl. Up — made by Kaze"/>
+ <div className="victory-crown" aria-hidden="true">♛</div><h1 id="victory-title">VICTORY!</h1>
+ <div className="victory-identity"><PlayerToken index={winnerToken}/><div><small>WINNER</small><strong>{winnerName}</strong></div></div>
+ <p>Three complete sets. Defended for a full rotation.</p>
+ <div className="victory-sets">{colors.map(g=><div key={g.color} style={{'--set':COLORS[g.color]?.hex} as React.CSSProperties}>{g.color}<small>COMPLETE · DEFENDED</small></div>)}</div>
+ <button className="gold victory-menu" disabled={leaving} onClick={async()=>{setLeaving(true);setError('');try{await onMenu();}catch{setError('Could not return. Please try again.');setLeaving(false);}}}>{leaving?'Returning…':'Back to Menu'}</button>
+ {error&&<p role="alert">{error}</p>}
+ </section></div>;
+};
 
 // 5. Double Rent Prompt Modal
-export const DoubleRentModal: React.FC<{
-  onConfirm: (double: boolean) => void;
-}> = ({ onConfirm }) => (
-  <div className="overlay">
-    <section className="modal small compact-rent-dialog" role="dialog" aria-modal="true" aria-label="Double the Rent">
-      <div className="rent-double">
-        <img src={getCardArt('double_the_rent')} alt="Double the Rent" />
-        <div>
-          <h2>Double the Rent?</h2><p>Use one extra action to double this rent?</p>
-          <button className="gold" onClick={() => onConfirm(true)}>
-            Double rent · 2 actions
-          </button>
-          <button className="quiet" onClick={() => onConfirm(false)}>
-            Normal rent · 1 action
-          </button>
-        </div>
-      </div>
-    </section>
-  </div>
-);
+export const DoubleRentModal:React.FC<{onConfirm:(count:number)=>void;maxDoubles?:number}>=({onConfirm,maxDoubles=1})=><div className="overlay"><section className="modal small compact-rent-dialog" role="dialog" aria-modal="true" aria-label="Double the Rent"><div className="rent-double"><img src={getCardArt('double_the_rent')} alt="Double the Rent"/><div><h2>Increase this rent?</h2><p>Each Double the Rent costs one additional action.</p>{Array.from({length:maxDoubles},(_,i)=>i+1).map(n=><button className="gold" key={n} onClick={()=>onConfirm(n)}>{2**n}× rent · {n+1} actions</button>)}<button className="quiet" onClick={()=>onConfirm(0)}>Normal rent · 1 action</button></div></div></section></div>;
 
 // 6. End Turn Unused Actions Modal
 export const EndTurnModal: React.FC<{
@@ -300,7 +283,8 @@ export const PaymentModal: React.FC<{
   state: GameState;
   onPay: (selectedIds: string[]) => void;
   onOfferIOU?: (cardId: string) => void;
-}> = ({ pending, state, onPay, onOfferIOU }) => {
+  onSkipJail?:()=>void;
+}> = ({ pending, state, onPay, onOfferIOU,onSkipJail }) => {
   const e = pending.e;
   const player = state.players[0];
 
@@ -396,6 +380,7 @@ export const PaymentModal: React.FC<{
         <p>
           {e.key === 'compulsory_purchase'
             ? 'Properties only. You choose what to surrender.'
+            : e.key==='jail_bail'?'Discard at least 10M to take your turn. No I Owe You.'
             : e.key === 'luxury_tax'
             ? 'Pay your bank first, then properties. Payment goes to discard.'
             : 'Choose bank cards or properties. No change is given.'}
@@ -465,7 +450,7 @@ export const PaymentModal: React.FC<{
         </div>
 
         <div className="payment-modal-footer">
-          {e.key !== 'luxury_tax' && onOfferIOU && iouCards.length > 0 && (
+          {!['luxury_tax','jail_bail'].includes(e.key) && onOfferIOU && iouCards.length > 0 && (
             <button className="iou-pay" onClick={() => onOfferIOU(iouCards[0].id)}>
               <img src={getCardArt(iouCards[0])} alt="I Owe You" />
               <span>
@@ -477,12 +462,13 @@ export const PaymentModal: React.FC<{
           )}
 
           <div className="dock-buttons">
+            {e.key==='jail_bail'&&<button className="quiet" onClick={onSkipJail}>Skip turn instead</button>}
             <button className="quiet" onClick={handleSuggest}>
               Suggest
             </button>
             <button
               className="gold"
-              disabled={selectedTotal < Math.min(amountOwed, totalAssets)}
+              disabled={selectedTotal < (e.key==='jail_bail'?10:Math.min(amountOwed,totalAssets))}
               onClick={() => onPay(selectedIds)}
             >
               Pay selected
@@ -645,49 +631,4 @@ export const BankViewerModal: React.FC<{
 );
 
 // 12. Opponent Field Viewer Modal
-export const OpponentFieldViewerModal: React.FC<{
-  playerIndex: number;
-  state: GameState;
-  onClose: () => void;
-  onViewBank: (idx: number) => void;
-}> = ({ playerIndex, state, onClose, onViewBank }) => {
-  const p = state.players[playerIndex];
-  if (!p) return null;
-
-  const bankTotal = p.bank.reduce((sum, c) => sum + getCardDef(c).value, 0);
-
-  return (
-    <div className="overlay">
-      <section className="modal" role="dialog" aria-modal="true" aria-label={`${p.name}’s field`}>
-        <div className="modalhead">
-          <h2>{p.name}’s field</h2>
-          <button className="quiet" onClick={onClose} aria-label="Close">×</button>
-        </div>
-        <div className="row" style={{ marginBottom: '12px' }}>
-          <span className="badge gold">{bankTotal}M bank</span>
-          <span className="badge">{p.hand.length} hidden hand cards</span>
-          {p.defending && <span className="defense">DEFENDING</span>}
-        </div>
-        <div className="row">
-          {p.groups.map((g) => (
-            <div key={g.id} className="group" style={{ '--c': COLORS[g.color]?.hex } as React.CSSProperties}>
-              <div className="grouphead">
-                <span>{g.color}</span>
-              </div>
-              <div className="groupcards">
-                {g.cards.map((c) => (
-                  <div key={c.id} className="card" style={{ width: '60px' }}>
-                    <img className={isCardInverted(c,g.color)?'inverted':''} src={getCardArt(c)} alt={getCardDef(c).name} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-        <button className="quiet" style={{ marginTop: '15px' }} onClick={() => onViewBank(playerIndex)}>
-          View bank
-        </button>
-      </section>
-    </div>
-  );
-};
+export const OpponentFieldViewerModal:React.FC<{playerIndex:number;state:GameState;onClose:()=>void;onViewBank:(i:number)=>void}>=({playerIndex,state,onClose,onViewBank})=><FieldView state={state} index={playerIndex} onClose={onClose} onBank={onViewBank}/>;
