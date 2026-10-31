@@ -5,3 +5,10 @@
 .special-notice-slot{flex:none;min-height:0}.mobile-device .panel-hand .handwrap{container-type:size}.mobile-device .panel-hand .hand .card{height:min(220px,calc(100cqh - 10px));width:auto;min-width:0;aspect-ratio:5/7;flex:none}
 @keyframes passiveCentered{0%{opacity:0;scale:.9}10%,88%{opacity:1;scale:1}100%{opacity:0;scale:.98}}@media(prefers-reduced-motion:reduce){.turn-notice>section,.shared-board>.special-trigger-notice{animation:none}}
 @media(max-height:340px){.mobile-device .turn-notice>section{min-height:170px}.mobile-device .special-trigger-notice small{display:none}.mobile-device .special-trigger-notice strong{font-size:16px}.mobile-device .special-trigger-notice p{font-size:10px}}
+
+/* Failed defenses use the same three-second notice queue as turns. */
+.defense-failed-notice>section{background:linear-gradient(110deg,#45212bf7,#692e32f7);border-color:#f29a87;box-shadow:0 10px 50px #0007,0 0 38px #d54c392b}
+.defense-failed-notice h2{color:#ffd3c8}
+.defense-failed-notice .player-token{border-color:#f29a87;box-shadow:0 0 30px #ef765433}
+.defense-failed-notice small{color:#ffd8b9}
+.defense-failed-notice p{color:#f5d9d3}
