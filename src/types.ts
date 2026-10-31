@@ -25,6 +25,7 @@ export interface PropertyGroup {
 }
 
 export interface PlayerState {
+  tokenIndex?: number;
   name: string;
   hand: CardInstance[];
   bank: CardInstance[];
@@ -36,6 +37,8 @@ export interface PlayerState {
 }
 
 export interface GameEvent {
+  turnId?: number;
+  targetPlaySeq?: number;
   seq: number;
   type: 'draw' | 'bank' | 'property' | 'play' | 'charge' | 'transfer' | 'payment' | 'discard' | 'negate' | 'setup_turn';
   actor: number;
@@ -73,6 +76,7 @@ export interface PendingAction {
 }
 
 export interface GameState {
+  turnSerial?: number;
   version: number;
   players: PlayerState[];
   deck: CardInstance[];
@@ -96,6 +100,7 @@ export interface GameState {
 }
 
 export interface SeatInfo {
+  tokenIndex?: number;
   name: string;
   bot: boolean;
   ready: boolean;
@@ -104,7 +109,10 @@ export interface SeatInfo {
   status?: string;
 }
 
+export interface ChatMessage {id:number;name:string;text:string;time:number;senderSeat?:number;}
+
 export interface OnlineRoomView {
+  chat?: ChatMessage[];
   code: string;
   host: boolean;
   seat: number;

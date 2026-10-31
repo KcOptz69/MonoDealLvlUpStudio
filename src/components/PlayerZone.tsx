@@ -1,10 +1,14 @@
+import {PlayerToken} from './PlayerToken';
 import React from 'react';
-import { GameState, CardInstance, PropertyGroup } from '../types';
+import { GameState, CardInstance, PropertyGroup, ChatMessage } from '../types';
 import { getCardDef, COLORS } from '../engineBridge';
 import { getCardArt } from '../cardArt';
 
 interface PlayerZoneProps {
   state: GameState;
+  chatMessages?: ChatMessage[];
+  chatOwnSeat?: number;
+  onSendChat?: (text:string)=>Promise<void>;
   selectedCard: CardInstance | null;
   onSelectCard: (card: CardInstance, owner: number) => void;
   onPlaySelected: (cardId: string) => void;
@@ -70,6 +74,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
       <div className="center">
         <div className="property-area">
           <div className="sectionhead">
+            <span className="desktop-player-identity"><PlayerToken index={player?.tokenIndex??0}/><span title={player?.name}>{player?.name}</span></span>
             <strong>YOUR FIELD · {setsCount} / 3 SETS</strong>
             {player?.defending && <span className="defense">DEFENDING</span>}
           </div>

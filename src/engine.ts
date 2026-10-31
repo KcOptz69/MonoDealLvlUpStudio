@@ -10,7 +10,7 @@ export const COLORS: Record<string, { size: number; rent: number[]; hex: string 
   Green: { size: 3, rent: [2, 4, 7], hex: '#2dad70' },
   'Dark Blue': { size: 2, rent: [3, 8], hex: '#2656a7' },
   Railroad: { size: 4, rent: [1, 2, 3, 4], hex: '#46505a' },
-  Utility: { size: 2, rent: [1, 2], hex: '#8accc0' },
+  Utility: { size: 2, rent: [1, 2], hex: '#a66bdf' },
 };
 
 export const BOT_NAMES = [
@@ -32,6 +32,7 @@ export class Game {
       version: 1,
       players: Array.from({ length: n }, (_, i) => ({
         name: i === 0 ? 'You' : botNames[i - 1],
+        tokenIndex: i,
         hand: [],
         bank: [],
         groups: [],
@@ -84,7 +85,7 @@ export class Game {
 
   event(type: string, data = {}) {
     this.s.eventSeq = (this.s.eventSeq || 0) + 1;
-    (this.s.events || (this.s.events = [])).push({ seq: this.s.eventSeq, type, ...data });
+    (this.s.events || (this.s.events = [])).push({ seq: this.s.eventSeq, type, turnId: this.s.turnSerial || 0, ...data });
     this.s.events = this.s.events.slice(-120);
   }
 
@@ -144,6 +145,7 @@ export class Game {
       }
       return;
     }
+    this.s.turnSerial = (this.s.turnSerial || 0) + 1;
     if (p.defending && this.sets(i) >= 3) {
       this.s.winner = i;
       this.log(p.name + ' held three sets for a full rotation and wins!');
@@ -280,7 +282,9 @@ export class Game {
       const g = this.group(i, args.group);
       let r = this.rent(i, g);
       if (args.doubleId) {
-        this.s.discard.push(this.takeHand(i, args.doubleId));
+        const double = this.takeHand(i, args.doubleId);
+        this.s.discard.push(double);
+        this.event('play', {actor:i, card:{...double}, key:double.key});
         this.s.played++;
         r *= 2;
       }
@@ -431,7 +435,8 @@ export class Game {
       p.negated = !p.negated;
       p.responder = i === p.e.actor ? p.e.target : p.e.actor;
       this.log(this.p(i).name + ' played Just Say No.');
-      this.event('negate', { actor: i, card: { ...c }, blocked: p.negated });
+      const action = [...this.s.events].reverse().find(e => e.type === 'play' && e.actor === p.e.actor && e.card?.key === (p.e.cardKey || p.e.key));
+      this.event('negate', { actor: i, card: { ...c }, blocked: p.negated, targetPlaySeq: action?.seq });
       return;
     }
     this.s.pending = null;

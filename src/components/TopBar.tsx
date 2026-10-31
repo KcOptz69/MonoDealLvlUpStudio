@@ -54,7 +54,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         ⚙
       </button>
       <button className="quiet" onClick={onOpenMenu}>
-        Menu
+        Exit
       </button>
     </header>
   );

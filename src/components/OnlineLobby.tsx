@@ -1,7 +1,9 @@
+import {PlayerToken} from './PlayerToken';
 import React,{useState} from 'react';
 import {OnlineRoomView} from '../types';
 interface OnlineLobbyProps {
  roomView:OnlineRoomView|null;
+ playerName:string;
  onCreateRoom:(name:string)=>Promise<void>;
  onJoinRoom:(name:string,code:string)=>Promise<void>;
  onReconnectRoom:()=>Promise<void>;
@@ -13,8 +15,8 @@ interface OnlineLobbyProps {
  onLeaveRoom:()=>void;
  loading:boolean;
 }
-export const OnlineLobby:React.FC<OnlineLobbyProps>=({roomView,onCreateRoom,onJoinRoom,onReconnectRoom,hasLastSession,onToggleReady,onAddBot,onRemoveBot,onStartGame,onLeaveRoom,loading})=>{
- const [name,setName]=useState(()=>{try{return localStorage.getItem('kaze_online_name')||'Player';}catch{return 'Player';}});
+export const OnlineLobby:React.FC<OnlineLobbyProps>=({roomView,onCreateRoom,onJoinRoom,onReconnectRoom,hasLastSession,playerName,onToggleReady,onAddBot,onRemoveBot,onStartGame,onLeaveRoom,loading})=>{
+ const name=playerName;
  const [code,setCode]=useState(()=>new URLSearchParams(window.location.search).get('room')?.toUpperCase()||'');
  const [copied,setCopied]=useState(false);
  const joined=!!roomView&&!roomView.started;
@@ -27,7 +29,7 @@ export const OnlineLobby:React.FC<OnlineLobbyProps>=({roomView,onCreateRoom,onJo
   {!joined?<>
    <p className="home-intro">Play together on phones and PCs.</p>
    <div className="home-room-form">
-    <label>Your name<input maxLength={24} value={name} autoComplete="nickname" onChange={e=>{setName(e.target.value);try{localStorage.setItem('kaze_online_name',e.target.value);}catch{}}}/></label>
+
     <button className="gold" disabled={loading||!name.trim()} onClick={()=>onCreateRoom(name)}>Create room</button>
     <label>Room code<input maxLength={6} placeholder="ABC123" value={code} autoComplete="off" onChange={e=>setCode(e.target.value.toUpperCase())}/></label>
     <button className="gold" disabled={loading||!name.trim()||code.trim().length!==6} onClick={()=>onJoinRoom(name,code.trim())}>Join room</button>
@@ -38,10 +40,11 @@ export const OnlineLobby:React.FC<OnlineLobbyProps>=({roomView,onCreateRoom,onJo
   </>:<>
    <div className="home-room-header"><strong>ROOM {roomView!.code}</strong><button className="quiet" onClick={copy}>{copied?'✓ Link copied':'Copy invite link'}</button></div>
    <div className="home-slots">{roomView!.seats.map((seat,i)=><div className={'home-slot'+(!seat?' empty':'')} key={i}>
-    <span className="home-seat">{seat?.host?'♛':i+1}</span>
+    <span className="home-seat">{seat?<PlayerToken index={seat.tokenIndex??i}/>:i+1}</span>
     <div className="home-player"><strong>{seat?seat.name+(seat.host?' · Host':'')+(i===roomView!.seat?' · You':''):'Open slot'}</strong>{seat&&<small>{seat.bot?'Bot · Relaxed':seat.connected?'Connected':'Reconnecting'}</small>}</div>
     {seat?<><span className={seat.ready?'home-ready':'home-not-ready'}>{seat.ready?'● Ready':'● Not ready'}</span>{roomView!.host&&seat.bot&&<button className="quiet" disabled={loading} onClick={()=>onRemoveBot(i)}>Remove</button>}</>:roomView!.host&&<button className="quiet" disabled={loading} onClick={()=>onAddBot(i)}>Add bot</button>}
    </div>)}</div>
+
    <div className="home-room-buttons"><button className="gold" disabled={loading} onClick={()=>onToggleReady(!ready)}>{ready?'Unready':'Ready'}</button>{roomView!.host?<button className="gold" disabled={loading||!canStart} onClick={onStartGame}>Start game</button>:<span>Waiting for host</span>}<button className="quiet" disabled={loading} onClick={onLeaveRoom}>Leave lobby</button></div>
    <p className="home-hint">All players must be ready before the host can start.</p>
   </>}

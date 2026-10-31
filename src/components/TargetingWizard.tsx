@@ -1,4 +1,8 @@
+import {PlayerToken} from './PlayerToken';
 import React, { useState } from 'react';
+import '../wildcard.css';
+import '../debt-target.css';
+import '../selection-prompts.css';
 import { CardInstance, GameState } from '../types';
 import { getCardDef, COLORS } from '../engineBridge';
 import { getCardArt } from '../cardArt';
@@ -167,45 +171,48 @@ export const TargetingWizard: React.FC<TargetingWizardProps> = ({
     onConfirm(args);
   };
 
+  if (card.key === 'debt_collector') return (
+    <div className="overlay debt-target-overlay">
+      <section className="debt-target-dialog" role="dialog" aria-modal="true" aria-labelledby="debt-target-title">
+        <button className="debt-target-close quiet" onClick={onCancel} aria-label="Close">×</button>
+        <div className="debt-target-body">
+          <img className="debt-target-art" src={getCardArt(card)} alt={def.name}/>
+          <div className="debt-target-choices">
+            <h2 id="debt-target-title">Choose opponent</h2>
+            <p>Collect 5M from one player.</p>
+            <div className="debt-target-list">
+              {eligibleOpponents.map(({player,index})=>{
+                const bank=player.bank.reduce((sum,c)=>sum+getCardDef(c).value,0);
+                const properties=[...player.special,...player.groups.flatMap(g=>[...g.cards,...(g.house?[g.house]:[]),...(g.hotel?[g.hotel]:[])])].reduce((sum,c)=>sum+getCardDef(c).value,0);
+                const full=new Set(player.groups.filter(g=>g.cards.length===COLORS[g.color]?.size&&g.cards.some(c=>getCardDef(c).value>0)).map(g=>g.color)).size;
+                return <button key={index} type="button" className={'debt-target-choice'+(targetOpponent===index?' picked':'')} aria-pressed={targetOpponent===index} onClick={()=>setTargetOpponent(index)}>
+                  <PlayerToken index={player.tokenIndex ?? index}/><span className="debt-target-summary"><strong>{player.name}</strong><small>Bank {bank}M · Properties {properties}M</small><small>{full}/3 complete sets{player.defending?' · DEFENDING':''}{bank+properties===0?' · No assets':''}</small></span><span className="debt-target-tick" aria-hidden="true">{targetOpponent===index?'✓':''}</span>
+                </button>;
+              })}
+            </div>
+          </div>
+        </div>
+        <footer><button className="quiet" onClick={onCancel}>Cancel</button><button className="gold" disabled={!eligibleOpponents.some(o=>o.index===targetOpponent)} onClick={handleSubmit}>Collect 5M</button></footer>
+      </section>
+    </div>
+  );
+
+  if (def.type === 'wild') return <div className="overlay wildcard-overlay"><section className="wildcard-dialog" role="dialog" aria-modal="true" aria-label="Choose property color"><header><button onClick={onCancel} aria-label="Close">×</button></header><div className="wildcard-body"><img className="wildcard-card" src={getCardArt(card)} alt={def.name}/><div className="wildcard-choice-panel"><h2>Choose property color</h2><div className="wildcard-colors">{allowedColors.map(col=><button key={col} className={'wildcard-color'+(selectedColor===col?' picked':'')} aria-pressed={selectedColor===col} onClick={()=>setSelectedColor(col)}><span className="wildcard-swatch" style={{background:COLORS[col]?.hex}}/><span>{col}</span>{selectedColor===col&&<b>✓</b>}</button>)}</div></div></div><footer><button className="quiet" onClick={onCancel}>Cancel</button><button className="gold" disabled={!allowedColors.includes(selectedColor)} onClick={handleSubmit}>Play property</button></footer></section></div>;
+
   return (
     <div className="overlay">
-      <section className="modal" role="dialog" aria-modal="true" aria-label={def.name}>
-        <div className="modalhead">
-          <h2>{def.name}</h2>
-          <button className="quiet" onClick={onCancel} aria-label="Close">×</button>
-        </div>
+      <section className="modal selection-dialog" role="dialog" aria-modal="true" aria-label={def.name}>
+        <button className="quiet selection-close" onClick={onCancel} aria-label="Close">×</button>
 
         <div className="targeting-layout">
           <aside className="action-reference">
             <img src={getCardArt(card)} alt={def.name} />
-            <b>{def.name} · {def.value}M</b>
-            <p>{def.text}</p>
+
           </aside>
 
-          <div className="form">
-            {/* Color assignment for wildcards */}
-            {def.type === 'wild' && !card.locked && (
-              <fieldset className="target-field">
-                <legend>Assign color</legend>
-                <div className="target-options">
-                  {allowedColors.map((col) => (
-                    <button
-                      key={col}
-                      type="button"
-                      className={`target-option ${selectedColor === col ? 'picked' : ''}`}
-                      onClick={() => setSelectedColor(col)}
-                    >
-                      <span
-                        className="color-swatch"
-                        style={{ background: COLORS[col]?.hex || '#efbf5e' }}
-                      />
-                      <span>{col}</span>
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
-            )}
-
+          <div className="form selection-choices">
+            <h2>{def.name}</h2>
+            <p className="selection-instruction">{def.text}</p>
             {/* Target Opponent selection */}
             {([
               'deal_breaker',
@@ -226,11 +233,22 @@ export const TargetingWizard: React.FC<TargetingWizardProps> = ({
                       key={index}
                       type="button"
                       className={`target-option ${targetOpponent === index ? 'picked' : ''}`}
-                      onClick={() => setTargetOpponent(index)}
+                      aria-pressed={targetOpponent === index}
+                      onClick={() => {
+                        setTargetOpponent(index);
+                        const candidates=[...player.special,...player.groups.flatMap(g=>g.cards)].filter(c=>{
+                          const parent=player.groups.find(g=>g.cards.some(x=>x.id===c.id));
+                          if(['sly_deal','forced_deal'].includes(card.key))return !parent||parent.cards.length!==COLORS[parent.color]?.size;
+                          return card.key!=='forced_rezoning'||(getCardDef(c).type==='wild'&&!c.locked);
+                        });
+                        setTargetProperty(candidates[0]?.id||'');
+                        setRecolor(candidates[0]?getCardDef(candidates[0]).colors?.[0]||'Brown':'Brown');
+                        setDealBreakerGroup(player.groups.find(g=>g.cards.length===COLORS[g.color]?.size)?.id||'');
+                      }}
                     >
-                      <span className="avatar">{player.name[0]}</span>
+                      <PlayerToken index={player.tokenIndex ?? index}/>
                       <strong>{player.name}</strong>
-                      <small>{player.hand.length} cards · {player.groups.length} sets</small>
+                      <small>Bank {player.bank.reduce((sum,c)=>sum+getCardDef(c).value,0)}M · {new Set(player.groups.filter(g=>g.cards.length===COLORS[g.color]?.size&&g.cards.some(c=>getCardDef(c).value>0)).map(g=>g.color)).size}/3 complete sets{player.defending?' · DEFENDING':''}</small>
                     </button>
                   ))}
                 </div>
@@ -247,13 +265,14 @@ export const TargetingWizard: React.FC<TargetingWizardProps> = ({
                       key={g.id}
                       type="button"
                       className={`target-option ${selectedGroup === g.id ? 'picked' : ''}`}
+                      aria-pressed={selectedGroup === g.id}
                       onClick={() => setSelectedGroup(g.id)}
                     >
                       <span
                         className="color-swatch"
                         style={{ background: COLORS[g.color]?.hex || '#efbf5e' }}
                       />
-                      <span>{g.color} · {g.cards.length} cards</span>
+                      <span>{g.color} · {g.cards.length} cards</span><span className="selection-set-art">{g.cards.map(c=><img key={c.id} src={getCardArt(c)} alt={getCardDef(c).name}/>)}</span>
                     </button>
                   ))}
                 </div>
@@ -273,13 +292,14 @@ export const TargetingWizard: React.FC<TargetingWizardProps> = ({
                       key={g.id}
                       type="button"
                       className={`target-option ${dealBreakerGroup === g.id ? 'picked' : ''}`}
+                      aria-pressed={dealBreakerGroup === g.id}
                       onClick={() => setDealBreakerGroup(g.id)}
                     >
                       <span
                         className="color-swatch"
                         style={{ background: COLORS[g.color]?.hex || '#efbf5e' }}
                       />
-                      <span>{g.color} ({g.cards.length} properties)</span>
+                      <span>{g.color} ({g.cards.length} properties)</span><span className="selection-set-art">{g.cards.map(c=><img key={c.id} src={getCardArt(c)} alt={getCardDef(c).name}/>)}</span>
                     </button>
                   ))}
                 </div>
@@ -301,6 +321,7 @@ export const TargetingWizard: React.FC<TargetingWizardProps> = ({
                         key={c.id}
                         type="button"
                         className={`target-option ${targetProperty === c.id ? 'picked' : ''}`}
+                      aria-pressed={targetProperty === c.id}
                         onClick={() => setTargetProperty(c.id)}
                       >
                         <img className="target-card" src={getCardArt(c)} alt={cd.name} />
@@ -327,6 +348,7 @@ export const TargetingWizard: React.FC<TargetingWizardProps> = ({
                         key={c.id}
                         type="button"
                         className={`target-option ${ownProperty === c.id ? 'picked' : ''}`}
+                      aria-pressed={ownProperty === c.id}
                         onClick={() => setOwnProperty(c.id)}
                       >
                         <img className="target-card" src={getCardArt(c)} alt={cd.name} />
@@ -348,6 +370,7 @@ export const TargetingWizard: React.FC<TargetingWizardProps> = ({
                       key={col}
                       type="button"
                       className={`target-option ${recolor === col ? 'picked' : ''}`}
+                      aria-pressed={recolor === col}
                       onClick={() => setRecolor(col)}
                     >
                       <span
@@ -371,6 +394,7 @@ export const TargetingWizard: React.FC<TargetingWizardProps> = ({
                       key={cat}
                       type="button"
                       className={`target-option ${toughCategory === cat ? 'picked' : ''}`}
+                      aria-pressed={toughCategory === cat}
                       onClick={() => setToughCategory(cat)}
                     >
                       <strong>{cat.toUpperCase()}</strong>

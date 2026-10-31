@@ -17,6 +17,7 @@ export function useMobileLayout(){
 interface Artwork {src:string;alt:string;inverted:boolean}
 export function MobileTableOverlays({enabled,portrait}:{enabled:boolean;portrait:boolean}){
  const [artwork,setArtwork]=useState<Artwork|null>(null);
+ useEffect(()=>{const closeArtwork=()=>setArtwork(null);document.addEventListener('deal-close-artwork',closeArtwork);return()=>document.removeEventListener('deal-close-artwork',closeArtwork);},[]);
  const close=useRef<HTMLButtonElement>(null);
  useEffect(()=>{if(!enabled||portrait)setArtwork(null);},[enabled,portrait]);
  useEffect(()=>{
@@ -41,7 +42,11 @@ export function MobileTableOverlays({enabled,portrait}:{enabled:boolean;portrait
    },450);
   };
   const move=(event:PointerEvent)=>{if(event.pointerId===pointer&&Math.hypot(event.clientX-x,event.clientY-y)>10)cancel();};
-  const click=(event:MouseEvent)=>{if(held&&Date.now()<suppressUntil&&event.target instanceof Node&&held.contains(event.target)){event.preventDefault();event.stopImmediatePropagation();held=null;}};
+  const click=(event:MouseEvent)=>{
+   if(held&&Date.now()<suppressUntil&&event.target instanceof Node&&held.contains(event.target)){event.preventDefault();event.stopImmediatePropagation();held=null;return;}
+   // Taps still select hand/payment/target choices; field artwork opens only on hold.
+   if(event.target instanceof Element&&event.target.closest('.opponent .card,.groupcards .card,.turn-play-entry>button,.played-card-main,.played-extra,.activity-cards img')){event.preventDefault();event.stopImmediatePropagation();}
+  };
   const context=(event:Event)=>{if(findImage(event.target))event.preventDefault();};
   const scroll=()=>cancel();
   document.addEventListener('pointerdown',down,true);document.addEventListener('pointermove',move,true);

@@ -1,3 +1,4 @@
+import {PlayerToken} from './PlayerToken';
 import React from 'react';
 import { GameState, CardInstance, PropertyGroup } from '../types';
 import { getCardDef, COLORS } from '../engineBridge';
@@ -53,25 +54,24 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
           <section
             key={playerIndex}
             data-player={playerIndex}
-            className={`opponent ${isActive ? 'active' : ''}`}
+            className={`opponent ${isActive ? 'active' : ''} ${p.defending ? 'opponent-defending' : ''}`}
             aria-label={`${p.name}’s board`}
           >
             <div className="ophead">
               <button
                 type="button"
                 className="opponent-open"
+                title="View this player’s full field"
                 onClick={() => onViewPlayer(playerIndex)}
               >
-                <span className="avatar">{p.name[0]}</span>
+                <PlayerToken index={p.tokenIndex ?? playerIndex}/>
                 <strong>{p.name}</strong>
-                <span>
-                  {isSetup
-                    ? p.setupDone
-                      ? '✓ Ready'
-                      : `${3 - (p.setupPlayed || 0)} setup actions`
-                    : state.turn === playerIndex
-                    ? '● Playing'
-                    : 'View field ↗'}
+                <span className="opponent-desktop-state">
+                  {state.pending?.responder===playerIndex
+                    ? state.pending.kind==='payment'?'Paying':state.pending.kind==='counter'?'Responding':'Discarding'
+                    : isSetup ? p.setupDone?'✓ Ready':`${3-(p.setupPlayed||0)} setup actions`
+                    : p.defending?`Defending · ${remainingDefense(playerIndex)} turns`
+                    : state.turn===playerIndex?'● Playing':'Waiting'}
                 </span>
               </button>
               <button
@@ -86,6 +86,7 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
             <div className="opmeta">
               <span>▣ {p.hand.length} cards</span>
               <span>{setsCount} / 3 sets</span>
+              <span className={'opponent-mobile-status'+(p.defending?' defending-status':'')+(state.pending?.responder===playerIndex?' needs-response':'')}>{state.pending?.responder===playerIndex ? state.pending.kind==='payment'?'Paying':state.pending.kind==='counter'?'Responding':'Discarding' : isSetup ? p.setupDone?'Ready':`${3-(p.setupPlayed||0)} setup actions` : p.defending?`Defending · ${remainingDefense(playerIndex)} turns`:state.turn===playerIndex?'● Playing':'Waiting'}</span>
               {p.defending && (
                 <span className="defense">
                   DEFENDING · {remainingDefense(playerIndex)} turns to victory

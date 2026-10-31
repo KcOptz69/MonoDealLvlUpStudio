@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import '../turn-plays.css';
 import { GameState, CardInstance } from '../types';
 import { STATIC_ART, getCardArt } from '../cardArt';
 import { getCardDef } from '../engineBridge';
@@ -11,6 +12,7 @@ interface PlayedCardInfo {
   color?: string;
   target?: string | null;
   extra?: CardInstance | null;
+  preview?: boolean;
 }
 
 interface SharedBoardProps {
@@ -18,6 +20,21 @@ interface SharedBoardProps {
   boardPlay: PlayedCardInfo | null;
   onSelectCard: (card: CardInstance, owner?: number) => void;
   onBrowseDiscard: () => void;
+}
+
+function BankedStamp() {
+  return <span className="banked-card-stamp"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true"><path d="M1 5 8 1l7 4H1ZM2 7v6m4-6v6m4-6v6m4-6v6M1 15h14M1 13h14"/></svg>BANKED</span>;
+}
+function TurnPlayedCards({state,upcoming,onSelectCard}:{state:GameState;upcoming:PlayedCardInfo|null;onSelectCard:SharedBoardProps['onSelectCard']}) {
+  const plays=(state.events||[]).filter(e=>e.turnId===(state.turnSerial||0)&&e.card&&!e.passive&&['bank','property','play'].includes(e.type));
+  const preview=upcoming?.preview&&upcoming.card.key!=='just_say_no'&&!plays.some(e=>e.card?.id===upcoming.card.id)?upcoming:null;
+  const strip=useRef<HTMLDivElement>(null);
+  useEffect(()=>{if(strip.current)strip.current.scrollLeft=strip.current.scrollWidth;},[plays.at(-1)?.seq,preview?.card.id]);
+  if(!plays.length&&!preview)return <div className="turn-plays-empty"><strong>{state.players[state.turn]?.name === 'You' ? 'Your turn' : state.players[state.turn]?.name+"’s turn"}</strong><span>Cards played this turn appear here</span></div>;
+  return <div className="turn-play-strip" ref={strip}>{plays.map((e)=>{
+    const nope=(state.events||[]).filter(n=>n.type==='negate'&&n.targetPlaySeq===e.seq).at(-1);
+    return <article className="turn-play-entry" key={e.seq}><button title={getCardDef(e.card!).name} onClick={()=>onSelectCard(e.card!,e.actor)}><img src={getCardArt(e.card!,e.color)} alt={getCardDef(e.card!).name}/>{e.type==='bank'&&<BankedStamp/>}{nope&&<span className={'negated-card-stamp'+(!nope.blocked?' restored':'')}><b>{nope.blocked?'⊘ NOPED':'✓ RESTORED'}</b><small>by {state.players[nope.actor]?.name}</small></span>}</button></article>;
+  })}{preview&&<article className="turn-play-entry upcoming"><button onClick={()=>onSelectCard(preview.card,preview.owner)}><img src={getCardArt(preview.card,preview.color)} alt={getCardDef(preview.card).name}/>{preview.mode==='bank'&&<BankedStamp/>}</button></article>}</div>;
 }
 
 export const SharedBoard: React.FC<SharedBoardProps> = ({
@@ -38,7 +55,7 @@ export const SharedBoard: React.FC<SharedBoardProps> = ({
   // Latest payment/discard activities
   const recentPaymentEvents = (state.events || [])
     .filter((e) => ['payment', 'discard', 'transfer'].includes(e.type))
-    .slice(-4)
+    .slice(-1)
     .reverse();
 
   return (
@@ -46,12 +63,8 @@ export const SharedBoard: React.FC<SharedBoardProps> = ({
       {/* Draw and discard piles */}
       <section className="pile-panel" aria-label="Draw and discard piles">
         <div className="board-pile draw-zone">
-          <div className="deckpile card-back">
-            <img src={STATIC_ART.card_back} alt="Card back" />
-            <small>DRAW</small>
-            <b>{state.deck.length}</b>
-          </div>
-          <span>Draw pile</span>
+          <div className="pile-card-frame draw-card-back"><img src={STATIC_ART.card_back} alt="Card back" draggable={false}/></div>
+          <strong className="draw-pile-count">Draw · {state.deck.length}</strong>
         </div>
 
         <button
@@ -60,24 +73,16 @@ export const SharedBoard: React.FC<SharedBoardProps> = ({
           onClick={onBrowseDiscard}
           aria-label={`Browse discard pile, ${state.discard.length} cards`}
         >
-          {lastDiscard ? (
-            <img
-              src={getCardArt(lastDiscard)}
-              alt={`Top discard: ${getCardDef(lastDiscard).name}`}
-            />
-          ) : (
-            <div className="empty-pile">EMPTY</div>
-          )}
-          <strong>Discard · {state.discard.length}</strong>
-          <span>Click to browse</span>
+          <div className="pile-card-frame discard-card-face">{lastDiscard?<img src={getCardArt(lastDiscard)} alt={`Top discard: ${getCardDef(lastDiscard).name}`} draggable={false}/>:<div className="empty-discard">EMPTY</div>}</div>
+          <strong className="discard-pile-count">Discard · {state.discard.length}</strong>
         </button>
       </section>
 
       {/* Played card panel */}
       <section className="played-panel" aria-label="Played card">
-        <h3>Played card</h3>
+        <h3>{state.phase === 'setup' ? 'Played card' : `Cards this turn · ${state.players[state.turn]?.name}`}</h3>
         <div className="board-play" id="boardPlay" aria-live="polite">
-          {boardPlay ? (
+          {state.phase !== 'setup' ? <TurnPlayedCards state={state} upcoming={boardPlay} onSelectCard={onSelectCard}/> : boardPlay ? (
             <div className="played-content">
               <div className="table-play-cards">
                 <button
@@ -90,6 +95,7 @@ export const SharedBoard: React.FC<SharedBoardProps> = ({
                     src={getCardArt(boardPlay.card, boardPlay.color)}
                     alt={getCardDef(boardPlay.card).name}
                   />
+                  {boardPlay.mode==='bank'&&<BankedStamp/>}
                 </button>
                 {boardPlay.extra && (
                   <button
@@ -110,7 +116,7 @@ export const SharedBoard: React.FC<SharedBoardProps> = ({
                 <strong>
                   {boardPlay.actor}{' '}
                   {boardPlay.mode === 'bank'
-                    ? 'banked'
+                    ? ''
                     : boardPlay.mode === 'response'
                     ? 'responded with'
                     : 'played'}
@@ -120,7 +126,7 @@ export const SharedBoard: React.FC<SharedBoardProps> = ({
                   {boardPlay.target
                     ? `Target: ${boardPlay.target}`
                     : boardPlay.mode === 'bank'
-                    ? 'Into their bank'
+                    ? ''
                     : 'On the table'}
                 </span>
               </div>
@@ -136,7 +142,7 @@ export const SharedBoard: React.FC<SharedBoardProps> = ({
 
       {/* Payment Activity */}
       <aside className="board-side" id="boardSide" aria-live="polite">
-        <h3>Payment activity</h3>
+        <div className="payment-activity-heading"><h3>Payment activity</h3>{recentPaymentEvents[0]&&(()=>{const e=recentPaymentEvents[0];const actor=state.players[e.actor]?.name||'Player';const target=e.target==null?'discard':e.target===0?'you':state.players[e.target]?.name||'Player';const summary=`${actor} ${e.type==='discard'?'discarded':`→ ${target}`}${e.amount!==undefined?` · ${e.amount}M`:''}`;return <span title={summary}>{summary}</span>;})()}</div>
         <div className="activity-list">
           {recentPaymentEvents.length > 0 ? (
             recentPaymentEvents.map((e, idx) => {
@@ -154,7 +160,7 @@ export const SharedBoard: React.FC<SharedBoardProps> = ({
 
               return (
                 <article key={e.seq || idx} className="activity-item">
-                  <b>{title}</b>
+                  <b title={title}>{title}{e.amount !== undefined ? ` · ${e.amount}M` : ''}</b>
                   <small>
                     {actorName} → {targetName}
                     {e.amount !== undefined ? ` · ${e.amount}M` : ''}

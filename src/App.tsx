@@ -9,6 +9,7 @@ import { TopBar } from './components/TopBar';
 import { OpponentField } from './components/OpponentField';
 import { SharedBoard } from './components/SharedBoard';
 import { PlayerZone } from './components/PlayerZone';
+import { MobilePlayerPanels } from './components/MobilePlayerPanels';
 import { SidebarRail } from './components/SidebarRail';
 import { useMobileLayout, MobileTableOverlays } from './MobileTable';
 import { TargetingWizard } from './components/TargetingWizard';
@@ -32,6 +33,7 @@ type ViewMode = 'menu' | 'lobby' | 'game';
 
 export const App: React.FC = () => {
   const {mobile,portrait}=useMobileLayout();
+  const PlayerArea=mobile?MobilePlayerPanels:PlayerZone;
   const [view, setView] = useState<ViewMode>('menu');
   const [game, setGame] = useState<any>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -41,6 +43,12 @@ export const App: React.FC = () => {
   const [onlineView, setOnlineView] = useState<OnlineRoomView | null>(null);
   const [onlineLoading, setOnlineLoading] = useState<boolean>(false);
   const eventSourceRef = useRef<EventSource | null>(null);
+
+  const [playerName,setPlayerName]=useState(()=>{try{return localStorage.getItem('kaze_online_name')||'Player';}catch{return 'Player';}});
+  const [playerToken,setPlayerToken]=useState(()=>{try{const n=Number(localStorage.getItem('kaze_player_token')||0);return Number.isInteger(n)&&n>=0&&n<13?n:0;}catch{return 0;}});
+  const updateProfileName=(name:string)=>{setPlayerName(name);try{localStorage.setItem('kaze_online_name',name);}catch{}};
+  const profileQueue=useRef<Promise<void>>(Promise.resolve());
+  const changeProfileToken=(index:number)=>{setPlayerToken(index);try{localStorage.setItem('kaze_player_token',String(index));}catch{}};
 
   // Selected card & previews
   const [selectedCard, setSelectedCard] = useState<CardInstance | null>(null);
@@ -55,9 +63,11 @@ export const App: React.FC = () => {
     color?: string;
     target?: string | null;
     extra?: CardInstance | null;
+    preview?: boolean;
   } | null>(null);
 
   // Modals state
+  const [showExit, setShowExit] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [showAudit, setShowAudit] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -152,6 +162,8 @@ export const App: React.FC = () => {
     setOnlineView(null);
 
     const g = new Game(DECK, botCount + 1);
+    g.p(0).name=playerName.trim()||'Player';g.p(0).tokenIndex=playerToken;
+    g.s.log=g.s.log.map((text:string)=>text.replace(/\bYou\b/g,g.p(0).name));
     setGame(g);
     setSelectedCard(null);
     setBoardPlay(null);
@@ -191,7 +203,7 @@ export const App: React.FC = () => {
   const botTimerRef = useRef<any>(null);
 
   useEffect(() => {
-    if (view !== 'game' || !game || onlineSession || gameState?.winner !== null) {
+    if (view !== 'game' || showExit || !game || onlineSession || gameState?.winner !== null) {
       clearTimeout(botTimerRef.current);
       return;
     }
@@ -221,6 +233,7 @@ export const App: React.FC = () => {
           const card = g.p(actorIndex).hand.find((c: any) => c.id === plan.id);
           if (card) {
             setBoardPlay({
+              preview: true,
               owner: actorIndex,
               actor: g.p(actorIndex).name,
               card: { ...card },
@@ -242,6 +255,7 @@ export const App: React.FC = () => {
                 g.play(actorIndex, plan.id, plan.mode, plan.args);
                 playSound(plan.mode === 'bank' ? 'bank' : 'play');
               }
+              setBoardPlay(prev => prev?.preview ? {...prev, preview:false} : prev);
               refreshGameState(g);
               saveLocalGame(g);
             } catch (err: any) {
@@ -252,6 +266,7 @@ export const App: React.FC = () => {
           botTimerRef.current = setTimeout(() => {
             try {
               g.bot(actorIndex);
+              setBoardPlay(prev => prev?.preview ? {...prev, preview:false} : prev);
               refreshGameState(g);
               saveLocalGame(g);
             } catch (err: any) {
@@ -265,7 +280,7 @@ export const App: React.FC = () => {
     }, 1200);
 
     return () => clearTimeout(botTimerRef.current);
-  }, [view, game, gameState, onlineSession, refreshGameState, saveLocalGame]);
+  }, [view, showExit, game, gameState, onlineSession, refreshGameState, saveLocalGame]);
 
   // Online Room API calls
   const roomRequest = async (payload: any) => {
@@ -280,6 +295,22 @@ export const App: React.FC = () => {
     }
     return data;
   };
+
+  // Keep this browser's editable profile synchronized without requiring blur/Ready.
+  useEffect(()=>{
+    if(!onlineSession||onlineView?.started)return;
+    let cancelled=false;
+    const timer=setTimeout(()=>{
+      profileQueue.current=profileQueue.current.catch(()=>{}).then(async()=>{
+        if(cancelled)return;
+        try{
+          const next=await roomRequest({...onlineSession,cmd:'profile',data:{name:playerName.trim()||'Player',tokenIndex:playerToken}});
+          if(!cancelled)setOnlineView(prev=>!prev||next.revision>=prev.revision?next:prev);
+        }catch(err:any){if(!cancelled)showToast(err.message);}
+      });
+    },120);
+    return()=>{cancelled=true;clearTimeout(timer);};
+  },[playerName,playerToken,onlineSession,onlineView?.started]);
 
   const connectOnlineStream = (session: { code: string; token: string }) => {
     if (eventSourceRef.current) {
@@ -296,8 +327,10 @@ export const App: React.FC = () => {
         if (v.started && v.state) {
           setGameState(v.state);
           setView('game');
+          if (!v.reveal) setBoardPlay(prev => prev?.preview ? {...prev, preview:false} : prev);
           if (v.reveal?.card) {
             setBoardPlay({
+              preview: true,
               owner: v.reveal.actor,
               actor: v.state.players[v.reveal.actor]?.name || 'Player',
               card: v.reveal.card,
@@ -321,7 +354,7 @@ export const App: React.FC = () => {
   const handleCreateRoom = async (name: string) => {
     setOnlineLoading(true);
     try {
-      const res = await roomRequest({ cmd: 'create', name });
+      const res = await roomRequest({ cmd: 'create', name, tokenIndex:playerToken });
       const session = { code: res.code, token: res.token };
       setOnlineSession(session);
       try {
@@ -339,7 +372,7 @@ export const App: React.FC = () => {
   const handleJoinRoom = async (name: string, code: string) => {
     setOnlineLoading(true);
     try {
-      const res = await roomRequest({ cmd: 'join', name, code });
+      const res = await roomRequest({ cmd: 'join', name, code, tokenIndex:playerToken });
       const session = { code: res.code, token: res.token };
       setOnlineSession(session);
       try {
@@ -400,6 +433,8 @@ export const App: React.FC = () => {
   const handleStartOnlineGame = async () => {
     if (!onlineSession) return;
     try {
+      await profileQueue.current;
+      await roomRequest({...onlineSession,cmd:'profile',data:{name:playerName.trim()||'Player',tokenIndex:playerToken}});
       await roomRequest({ ...onlineSession, cmd: 'start' });
     } catch (err: any) {
       showToast(err.message);
@@ -415,6 +450,47 @@ export const App: React.FC = () => {
     eventSourceRef.current?.close(); eventSourceRef.current=null;
     setOnlineSession(null); setOnlineView(null); setGameState(null); setView('lobby');
   };
+
+  useEffect(()=>{const closeInspections=()=>{setBankViewerData(null);setShowDiscardBrowser(false);setOpponentViewerIdx(null);};document.addEventListener('deal-close-artwork',closeInspections);return()=>document.removeEventListener('deal-close-artwork',closeInspections);},[]);
+
+  const handleExitGame = async (save: boolean) => {
+    try {
+      if (onlineSession) {
+        // Online matches keep their reserved seat so accidental exits can reconnect.
+        localStorage.setItem('kaze_online_session', JSON.stringify(onlineSession));
+        await handleLeaveRoom();
+      } else {
+        if (save && game) localStorage.setItem('kaze_deal_save', JSON.stringify(game.s));
+        else localStorage.removeItem('kaze_deal_save');
+        clearTimeout(botTimerRef.current);
+        setGame(null);
+        setGameState(null);
+        setBoardPlay(null);
+        setView('menu');
+      }
+      setShowExit(false);
+    } catch {
+      showToast('Could not update your saved game. Please try again.');
+    }
+  };
+
+  useEffect(() => {
+    if (!showExit) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const dialog = document.querySelector<HTMLElement>('.exit-game-dialog');
+    const buttons = Array.from(dialog?.querySelectorAll<HTMLButtonElement>('button') || []);
+    buttons.at(-1)?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if(e.key === 'Escape'){e.preventDefault();setShowExit(false);}
+      if(e.key === 'Tab' && buttons.length){
+        const first=buttons[0],last=buttons[buttons.length-1];
+        if(e.shiftKey && document.activeElement===first){e.preventDefault();last.focus();}
+        else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first.focus();}
+      }
+    };
+    document.addEventListener('keydown',onKey);
+    return () => {document.removeEventListener('keydown',onKey);previous?.focus();};
+  },[showExit]);
 
   // Remote action runner for online game
   const remoteAction = async (method: string, args: any[]) => {
@@ -766,6 +842,7 @@ export const App: React.FC = () => {
       {/* One main menu contains local controls and the online lobby. */}
       {(view === 'menu' || view === 'lobby') && (
         <MainMenu
+          playerName={playerName} playerToken={playerToken} onNameChange={updateProfileName} onTokenChange={changeProfileToken} profileBusy={onlineLoading}
           onStartLocal={handleStartLocal}
           onResume={handleResume}
           hasResume={hasResume}
@@ -775,11 +852,13 @@ export const App: React.FC = () => {
           inRoom={!!onlineSession}
           onlineContent={
 <OnlineLobby
+          playerName={playerName.trim()||'Player'}
           roomView={onlineView}
           onCreateRoom={handleCreateRoom}
           onJoinRoom={handleJoinRoom}
           onReconnectRoom={handleReconnectRoom}
           hasLastSession={hasLastOnlineSession}
+
           onToggleReady={handleToggleReady}
           onAddBot={handleAddBot}
           onRemoveBot={handleRemoveBot}
@@ -799,12 +878,12 @@ export const App: React.FC = () => {
             isOnline={!!onlineSession}
             onOpenRules={() => setShowRules(true)}
             onOpenSettings={() => setShowSettings(true)}
-            onOpenMenu={() => onlineSession ? handleLeaveRoom() : setView('lobby')}
+            onOpenMenu={() => setShowExit(true)}
           />
 
           <div className="game">
             <main className="table">
-      {view==='game' && onlineView && <div className="online-player-status" role="status" style={{display:'flex',gap:16,flexWrap:'wrap',padding:'6px 12px',background:'#133c3e',color:'#fff'}}>{onlineView.seats.filter(Boolean).map((seat,i)=><span key={i}>{seat!.name}: {!seat!.connected?'Disconnected · seat reserved':seat!.status || 'Waiting'}</span>)}<button className="quiet" onClick={handleLeaveRoom}>Exit · keep seat</button></div>}
+
               {/* Opponents fields */}
               <OpponentField
                 state={gameState}
@@ -840,9 +919,12 @@ export const App: React.FC = () => {
               />
 
               {/* Player zone: your field, bank, hand & turn controls */}
-              <PlayerZone
+              <PlayerArea
                 state={gameState}
                 selectedCard={selectedCard}
+                chatOwnSeat={onlineView?.seat}
+                chatMessages={onlineSession ? onlineView?.chat || [] : undefined}
+                onSendChat={onlineSession ? async(text)=>{await roomRequest({...onlineSession,cmd:'chat',data:{text}});} : undefined}
                 onSelectCard={(c) => {
                   setSelectedCard(c);
                   setSelectedOwner(0);
@@ -873,7 +955,10 @@ export const App: React.FC = () => {
             {!mobile && <SidebarRail
               selectedCard={selectedCard}
               selectedOwner={selectedOwner}
+              chatOwnSeat={onlineView?.seat}
               state={gameState}
+              chatMessages={onlineSession ? onlineView?.chat || [] : undefined}
+              onSendChat={onlineSession ? async(text)=>{await roomRequest({...onlineSession,cmd:'chat',data:{text}});} : undefined}
             />}
           </div>
         </div>
@@ -972,6 +1057,7 @@ export const App: React.FC = () => {
         gameState.pending.responder === 0 &&
         gameState.pending.kind === 'payment' && (
           <PaymentModal
+            key={`${gameState.turnSerial || 0}:${gameState.pending.e.actor}:${gameState.pending.e.target}:${gameState.pending.e.key}:${gameState.events.filter(e=>e.type==='charge').at(-1)?.seq || 0}`}
             pending={gameState.pending}
             state={gameState}
             onPay={handlePay}
@@ -993,6 +1079,8 @@ export const App: React.FC = () => {
             onDiscard={handleDiscard}
           />
         )}
+
+      {showExit && <div className="overlay exit-game-overlay"><section className="modal exit-game-dialog" role="dialog" aria-modal="true" aria-labelledby="exit-game-title"><h2 id="exit-game-title">Exit game?</h2><p>{onlineSession ? 'Your online seat stays reserved for reconnection. The match continues while you are away.' : 'Save your progress to continue this game later, or exit without keeping this game.'}</p><div className="exit-game-options"><button className="gold" onClick={()=>handleExitGame(true)}>Save and exit</button><button className="quiet" onClick={()=>handleExitGame(false)}>Just exit</button><button className="quiet" onClick={()=>setShowExit(false)}>Cancel</button></div></section></div>}
 
       {/* Winner Celebration Modal */}
       {gameState && gameState.winner !== null && (

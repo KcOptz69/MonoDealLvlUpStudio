@@ -45,8 +45,8 @@ export default defineConfig({
             try {
               const d = JSON.parse(body || '{}');
               let v;
-              if (d.cmd === 'create') v = rooms.create(d.name);
-              else if (d.cmd === 'join') v = rooms.join(d.code, d.name);
+              if (d.cmd === 'create') v = rooms.create(d.name,d.tokenIndex);
+              else if (d.cmd === 'join') v = rooms.join(d.code, d.name, d.tokenIndex);
               else if (d.cmd === 'state') {
                 const { r, seat } = rooms.get(d.code, d.token);
                 v = rooms.view(r, seat);

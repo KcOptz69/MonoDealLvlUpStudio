@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import {createPortal} from 'react-dom';
+import '../payment-layout.css';
+import '../selection-prompts.css';
 import { CardInstance, GameState, PropertyGroup } from '../types';
 import { getCardDef, COLORS, DECK } from '../engineBridge';
 import { getCardArt, STATIC_ART } from '../cardArt';
@@ -180,14 +183,11 @@ export const DoubleRentModal: React.FC<{
   onConfirm: (double: boolean) => void;
 }> = ({ onConfirm }) => (
   <div className="overlay">
-    <section className="modal small" role="dialog" aria-modal="true" aria-label="Double the Rent">
-      <div className="modalhead">
-        <h2>Double the Rent?</h2>
-      </div>
+    <section className="modal small compact-rent-dialog" role="dialog" aria-modal="true" aria-label="Double the Rent">
       <div className="rent-double">
         <img src={getCardArt('double_the_rent')} alt="Double the Rent" />
         <div>
-          <p>Use one extra action to double this rent?</p>
+          <h2>Double the Rent?</h2><p>Use one extra action to double this rent?</p>
           <button className="gold" onClick={() => onConfirm(true)}>
             Double rent · 2 actions
           </button>
@@ -328,6 +328,7 @@ export const PaymentModal: React.FC<{
   }
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [minimized, setMinimized] = useState(false);
 
   const toggleItem = (id: string) => {
     setSelectedIds((prev) =>
@@ -367,6 +368,7 @@ export const PaymentModal: React.FC<{
     setSelectedIds(picks);
   };
 
+  items.sort((a,b)=>a.value-b.value);
   const banks = items.filter((x) => x.zone === 'bank');
   const props = items.filter((x) => x.zone !== 'bank');
 
@@ -378,11 +380,14 @@ export const PaymentModal: React.FC<{
     propGroups[col].push(p);
   }
 
+  if (minimized) return createPortal(<button type="button" className="payment-restore-tab" onClick={()=>{document.dispatchEvent(new Event('deal-close-artwork'));setMinimized(false);}} aria-label={`Restore payment selection, ${selectedTotal}M selected of ${amountOwed}M owed`}><span>↗ Resume payment · {amountOwed}M</span><small>{selectedTotal}M selected</small></button>,document.body);
+
   return (
     <div className="overlay">
       <section className="modal payment-modal" role="dialog" aria-modal="true" aria-label="Choose payment">
         <div className="modalhead">
           <h2>Choose payment · {amountOwed}M</h2>
+          <button type="button" className="quiet payment-minimize" onClick={()=>setMinimized(true)} aria-label="Minimize payment to inspect board">− Minimize</button>
         </div>
 
         <p>
@@ -503,7 +508,7 @@ export const DiscardModal: React.FC<{
 
   return (
     <div className="overlay">
-      <section className="modal" role="dialog" aria-modal="true" aria-label="Discard cards">
+      <section className="modal compact-discard-dialog" role="dialog" aria-modal="true" aria-label="Discard cards">
         <div className="modalhead">
           <h2>Discard {excess} card{excess === 1 ? '' : 's'}</h2>
         </div>
@@ -512,6 +517,7 @@ export const DiscardModal: React.FC<{
           {selectedIds.length} / {excess} cards selected
         </div>
 
+        <div className="discard-selection-layout"><img className="discard-selection-art" src={getCardArt(hand.find(c=>selectedIds.includes(c.id))||hand[0])} alt="Selected card artwork"/>
         <div className="choices">
           {hand.map((c) => {
             const def = getCardDef(c);
@@ -530,7 +536,7 @@ export const DiscardModal: React.FC<{
           })}
         </div>
 
-        <div className="modalfooter">
+        </div><div className="modalfooter">
           <button
             className="gold"
             disabled={selectedIds.length !== excess}
