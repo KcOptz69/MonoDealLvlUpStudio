@@ -1,3 +1,5 @@
+import {TargetFeedback} from './components/TargetFeedback';
+import {ParallelBotTimers,parallelBotActors,parallelBotContext} from './parallelBots';
 import {setupView} from './setupPrivacy';
 import timing from '../timing.json';
 import {SpecialTriggerNotices} from './components/SpecialTriggerNotices';
@@ -198,26 +200,25 @@ export const App: React.FC = () => {
 
   // Bot AI scheduler for local game
   const botTimerRef = useRef<any>(null);
+  const parallelBots=useRef(new ParallelBotTimers());
+  useEffect(()=>()=>parallelBots.current.clear(),[]);
 
   useEffect(() => {
     if (view !== 'game' || showExit || !game || onlineSession || gameState?.winner !== null) {
       clearTimeout(botTimerRef.current);
+      parallelBots.current.clear();
       return;
     }
 
     const g = game;
     let actorIndex = -1;
 
-    if (g.isSetup()) {
-      const bots = g.s.players
-        .map((p: any, j: number) => (j > 0 && !p.setupDone ? j : null))
-        .filter((j: any) => j !== null);
-      if (bots.length > 0) {
-        actorIndex = bots[0];
-      }
-    } else {
-      actorIndex = g.s.pending ? (g.s.pending.responders||g.s.pending.payments?.map((e:any)=>e.target)||[g.s.pending.responder]).find((i:number)=>i>0)??0 : g.s.turn;
-    }
+    parallelBots.current.sync(parallelBotActors(g,i=>i>0),parallelBotContext(g),()=>timing.botThinkMinMs+timing.botRevealMs+Math.floor(Math.random()*(timing.botThinkMaxMs-timing.botThinkMinMs+1)),actor=>{
+      if(!parallelBotActors(g,i=>i>0).includes(actor))return;
+      try{g.bot(actor);refreshGameState(g);saveLocalGame(g);}catch(err){console.error(err);}
+    });
+    if(g.isSetup()||g.s.pending?.kind==='payment')return;
+    actorIndex=g.s.pending?(g.s.pending.responders||[g.s.pending.responder]).find((i:number)=>i>0)??0:g.s.turn;
 
     // Only bot plays if actor is not human (0)
     if (actorIndex <= 0) return;
@@ -331,6 +332,7 @@ export const App: React.FC = () => {
               owner: v.reveal.actor,
               actor: v.state.players[v.reveal.actor]?.name || 'Player',
               card: v.reveal.card,
+              target:Number.isInteger(v.reveal.target)?v.state.players[v.reveal.target!]?.name:null,
               mode: v.reveal.mode,
               color: v.reveal.color,
             });
@@ -854,7 +856,7 @@ export const App: React.FC = () => {
       {/* Active Game Table View */}
       {view === 'game' && gameState && (
         <div className="app">
-          <TurnNotices state={gameState}/><SpecialTriggerNotices state={gameState}/><GameFeedback key={onlineSession?.code||'local'} state={gameState} onMoving={setMovingEvents}/>
+          <TurnNotices state={gameState}/><SpecialTriggerNotices state={gameState}/><TargetFeedback key={onlineSession?.code||'local-target'} state={gameState}/><GameFeedback key={onlineSession?.code||'local'} state={gameState} onMoving={setMovingEvents}/>
           <TopBar
             state={gameState}
             isOnline={!!onlineSession}

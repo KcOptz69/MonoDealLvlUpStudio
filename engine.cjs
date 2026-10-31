@@ -358,7 +358,9 @@ class Game {
             actor: i,
             card: { ...c },
             color: args.color || c.locked,
-            key: c.key
+            key: c.key,
+            target: mode === 'play' && Number.isInteger(args.target) ? args.target : undefined,
+            targetAll: mode === 'play' && ((d.type === 'rent' && !d.any) || ['its_my_birthday', 'luxury_tax'].includes(c.key))
         });
         if (mode === 'bank') {
             this.p(i).bank.push(c);

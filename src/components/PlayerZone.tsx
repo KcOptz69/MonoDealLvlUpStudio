@@ -1,3 +1,4 @@
+import {SetRentBadge} from './SetRentBadge';
 import { isCardInverted } from '../cardOrientation';
 import {PlayerToken} from './PlayerToken';
 import React from 'react';
@@ -113,8 +114,9 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
                       >
                         <div className="grouphead">
                           <span>{g.color}</span>
-                          <span>
-                            {isFull ? 'FULL SET' : `${g.cards.length} / ${colInfo.size}`}
+                          <span className="set-summary">
+                            <span>{isFull ? 'FULL SET' : `${g.cards.length} / ${colInfo.size}`}</span>
+                            <SetRentBadge group={g} owner={player}/>
                           </span>
                         </div>
                         <div className="groupcards">
@@ -146,10 +148,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
                           })}
                         </div>
                         <div className="grouprent">
-                          <b>
-                            Rent {('rent' in colInfo ? colInfo.rent?.[Math.min(g.cards.length, colInfo.size) - 1] : 0) || 0}
-                            M
-                          </b>
+
                           <span>
                             {g.house && <span className="building">House </span>}
                             {g.hotel && <span className="building">Hotel</span>}

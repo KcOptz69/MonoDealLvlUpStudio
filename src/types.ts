@@ -43,6 +43,7 @@ export interface PlayerState {
 }
 
 export interface GameEvent {
+  targetAll?:boolean;
   setup?:boolean;
   turnId?: number;
   targetPlaySeq?: number;
@@ -137,6 +138,7 @@ export interface OnlineRoomView {
   state?: GameState;
   offset?: number;
   reveal?: {
+    target?:number;
     actor: number;
     card: CardInstance;
     mode: string;

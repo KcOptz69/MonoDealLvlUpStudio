@@ -38,6 +38,16 @@ function TurnPlayedCards({state,upcoming,onSelectCard}:{state:GameState;upcoming
   })}{preview&&<article className="turn-play-entry upcoming"><button onClick={()=>onSelectCard(preview.card,preview.owner)}><img src={getCardArt(preview.card,preview.color)} alt={getCardDef(preview.card).name}/>{preview.mode==='bank'&&<BankedStamp/>}</button></article>}</div>;
 }
 
+function TargetActivity({state,upcoming}:{state:GameState;upcoming:PlayedCardInfo|null}){
+ if(state.phase==='setup')return null;
+ const upcomingDef=upcoming?.preview&&upcoming.mode!=='bank'?getCardDef(upcoming.card):null;
+ const allUpcoming=upcomingDef&&((upcomingDef.type==='rent'&&!upcomingDef.any)||['its_my_birthday','luxury_tax'].includes(upcoming!.card.key));
+ const event=(state.events||[]).filter(e=>e.turnId===(state.turnSerial||0)&&e.type==='play'&&(e.targetAll||Number.isInteger(e.target))).at(-1);
+ const text=upcoming?.preview&&(upcoming.target||allUpcoming)?`${upcoming.actor} → ${allUpcoming?'All opponents':upcoming.target}`:event?`${state.players[event.actor]?.name} → ${event.targetAll?'All opponents':state.players[event.target!]?.name}`:null;
+ if(!text)return null;
+ return <div className="target-activity-label" role="status" aria-label={'Target: '+text}>{text}</div>;
+}
+
 export const SharedBoard: React.FC<SharedBoardProps> = ({
   state,
   boardPlay,
@@ -82,6 +92,7 @@ export const SharedBoard: React.FC<SharedBoardProps> = ({
       {/* Played card panel */}
       <section className="played-panel" aria-label="Played card">
         <h3>{state.phase === 'setup' ? 'Played card' : `Cards this turn · ${state.players[state.turn]?.name}`}</h3>
+        <TargetActivity state={state} upcoming={boardPlay}/>
         <div className="board-play" id="boardPlay" aria-live="polite">
           {state.phase!=='setup'?<TurnPlayedCards state={state} upcoming={boardPlay} onSelectCard={onSelectCard}/>:<div className="table-play-empty">SIMULTANEOUS SETUP<span>Cards stay hidden until everyone is ready</span></div>}
 

@@ -1,0 +1,18 @@
+.target-feedback-layer{position:fixed;z-index:35;pointer-events:none;overflow:hidden;isolation:isolate}
+.target-feedback-layer svg{display:block;overflow:hidden}
+.target-beam{fill:none;stroke:#f3d17f;stroke-width:2.5;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 0 4px #efcc79);animation:targetBeam 1.2s ease-out both}
+.target-return{stroke:#9ce5df;filter:drop-shadow(0 0 4px #6bceca)}
+.target-spark{fill:#ffe9b1;filter:drop-shadow(0 0 5px #efd283);animation:targetSpark 1.2s both}
+.target-return-spark{fill:#b8ffef}
+.target-origin-ring{fill:none;stroke:#efd08b;stroke-width:2;transform-box:fill-box;transform-origin:center;animation:targetOrigin 1.2s ease-out both}
+.target-field-ring{fill:none;stroke:#ff8e7a;stroke-width:2;filter:drop-shadow(0 0 6px #fc6555);animation:targetField 1.2s ease-out both}
+.target-shard{fill:#f4d48d;animation:targetShatter .4s .7s ease-out both;transform-box:fill-box;transform-origin:center}
+.target-blocked .target-field-ring{stroke:#f2c982;filter:drop-shadow(0 0 6px #e9bb62)}
+body:has(.mobile-player-overlay) .target-feedback-layer,body:has(.mobile-card-view) .target-feedback-layer{visibility:hidden}
+@keyframes targetBeam{0%{stroke-dashoffset:1;opacity:1}58%{stroke-dashoffset:0;opacity:1}100%{stroke-dashoffset:0;opacity:0}}
+@keyframes targetSpark{0%,58%{opacity:1}65%,100%{opacity:0}}
+@keyframes targetOrigin{0%{opacity:1;transform:scale(.9)}70%{opacity:.6;transform:scale(1.4)}100%{opacity:0;transform:scale(1.6)}}
+@keyframes targetField{0%,55%{opacity:0}60%,80%{opacity:1}100%{opacity:0}}
+@keyframes targetShatter{0%{opacity:1;transform:translate(0,0)}100%{opacity:0;transform:translate(var(--shard-x),var(--shard-y)) rotate(80deg)}}
+@media(prefers-reduced-motion:reduce){.target-feedback-layer *{animation:none!important}.target-beam{stroke-dashoffset:0;opacity:.55}.target-spark,.target-shard{display:none}.target-origin-ring,.target-field-ring{opacity:.8}}
+.reduce .target-feedback-layer *{animation:none!important}.reduce .target-beam{stroke-dashoffset:0;opacity:.55}.reduce .target-spark,.reduce .target-shard{display:none}

@@ -1,3 +1,4 @@
+import {SetRentBadge} from './SetRentBadge';
 import '../opponent-cards.css';
 import { isCardInverted } from '../cardOrientation';
 import {PlayerToken} from './PlayerToken';
@@ -89,7 +90,7 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
             </div>
 
             <div className="opmeta">
-              <span>▣ {p.hand.length} cards</span>
+              <span className="opponent-hand-count"><span className="card-stack-icon" aria-hidden="true"><img src={STATIC_ART.card_back} alt=""/></span>{p.hand.length} cards</span>
               <span>{setsCount} / 3 sets</span>
               <span className={'opponent-mobile-status'+(p.defending?' defending-status':'')+(state.pending?.responder===playerIndex?' needs-response':'')}>{p.forfeited?'In lobby':state.pending?.responders?.includes(playerIndex)||state.pending?.payments?.some(e=>e.target===playerIndex)||state.pending?.responder===playerIndex ? state.pending.kind==='payment'?'Paying':state.pending.kind==='counter'?'Responding':'Discarding' : isSetup ? p.setupDone?'Ready':`${3-(p.setupPlayed||0)} setup actions` : p.defending?`Defending · ${remainingDefense(playerIndex)} turns`:state.turn===playerIndex?'● Playing':'Waiting'}</span>
               {p.defending && (
@@ -117,8 +118,9 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
                       >
                         <div className="grouphead">
                           <span>{g.color}</span>
-                          <span>
-                            {isFull ? 'FULL SET' : `${g.cards.length} / ${colInfo.size}`}
+                          <span className="set-summary">
+                            <span>{isFull ? 'FULL SET' : `${g.cards.length} / ${colInfo.size}`}</span>
+                            <SetRentBadge group={g} owner={p}/>
                           </span>
                         </div>
                         <div className="groupcards">
