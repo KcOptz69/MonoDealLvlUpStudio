@@ -1,10 +1,22 @@
-import {animationCards,activeMotionEvents} from './feedbackPrivacy';
 import React,{useCallback,useEffect,useLayoutEffect,useRef,useState}from'react';
 import{createPortal}from'react-dom';
 import{GameState,GameEvent,CardInstance}from'./types';
 import{getCardArt}from'./cardArt';
 import{playSound}from'./audio';
 import './game-feedback.css';
+// Every draw flies face down. Reveal the recipient's cards only after landing.
+function animationCards(event:GameEvent):CardInstance[]{
+ const cards=(event.cards||[event.card!]).filter(Boolean);
+ if(event.type==='draw')return cards.map((_,i)=>({id:`concealed-${event.seq}-${i}`,key:'card_back'}));
+ return cards.filter(c=>c.key!=='hidden');
+}
+
+// Payers animate independently to the same recipient; one long payment never holds the others.
+function activeMotionEvents(queue:GameEvent[]):GameEvent[]{
+ const first=queue[0];if(!first)return [];
+ return first.type==='payment'?queue.filter(e=>e.type==='payment'&&e.target===first.target&&e.turnId===first.turnId):[first];
+}
+
 interface Flight{key:string;card:CardInstance;from:{x:number;y:number};to:{x:number;y:number};delay:number}
 function spot(player:number|null|undefined,bank=false){const element=player==null?document.querySelector('.discard-zone'):player===0?document.querySelector(bank?'.player-zone .bank-field':'.player-zone .property-area')||document.querySelector('.mobile-player-dock'):document.querySelector(`[data-player="${player}"]`);const r=element?.getBoundingClientRect();return r?{x:r.x+r.width/2,y:r.y+r.height/2}:{x:window.innerWidth/2,y:window.innerHeight/2};}
 function MotionFlight({event,onDone}:{event:GameEvent;onDone:(seq:number)=>void}){

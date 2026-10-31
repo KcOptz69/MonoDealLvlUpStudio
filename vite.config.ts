@@ -1,16 +1,26 @@
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const { Rooms } = require('./rooms.js');
 
 export default defineConfig({
-  // Hooks, JSX runtime, portals and renderer must share one local React package.
+  // Rebuild the dependency cache once for this runtime repair. Keep all React imports local.
+  cacheDir:'node_modules/.vite-monodeal-stable',
   resolve:{dedupe:['react','react-dom']},
-  optimizeDeps:{force:true,entries:['index.html'],include:['react','react-dom','react-dom/client','react/jsx-runtime','react/jsx-dev-runtime']},
+  optimizeDeps:{entries:['index.html'],include:['react','react-dom','react-dom/client','react/jsx-runtime','react/jsx-dev-runtime']},
   plugins: [
-    react(),
+    {
+      name:'studio-complete-reloads',
+      // Studio applies multi-file patches one file at a time. Refresh the entire graph
+      // rather than retaining components imported from an earlier React dependency graph.
+      handleHotUpdate(context){
+        if(/\.(?:[cm]?[jt]sx?|json)$/.test(context.file)){
+          context.server.ws.send({type:'full-reload',path:'*'});
+          return [];
+        }
+      },
+    },
     {
       name: 'monopoly-deal-api',
       configureServer(server) {

@@ -715,7 +715,7 @@
     "type": "special",
     "value": 3,
     "copies": 1,
-    "text": "At the start of each turn, add a 3M money card to your bank."
+    "text": "At the start of your turn, if your bank is below 20M, add a 3M money card to your bank."
   },
   {
     "key": "go_to_jail",

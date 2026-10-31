@@ -158,7 +158,7 @@ export class Game {
   startTurn(i:number){
     const p=this.p(i);
     if (p.defending && this.sets(i) >= 3) {this.s.winner=i;this.log(p.name+' held three sets for a full rotation and wins!');return;}
-    if(this.has(i,'emergency_treasury')){
+    if(this.has(i,'emergency_treasury')&&p.bank.reduce((sum:number,c:any)=>sum+this.d(c).value,0)<20){
       const c={id:'mint'+this.s.nextId++,key:'money_3m',generated:true};p.bank.push(c);this.s.minted=(this.s.minted||0)+1;
       this.event('bank',{actor:i,card:{...c},passive:true});this.log(p.name+' gained 3M with Emergency Treasury.');this.trigger(i,'emergency_treasury','+3M added to bank',3);
     }

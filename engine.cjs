@@ -160,7 +160,7 @@ class Game {
             this.log(p.name + ' held three sets for a full rotation and wins!');
             return;
         }
-        if (this.has(i, 'emergency_treasury')) {
+        if (this.has(i, 'emergency_treasury') && p.bank.reduce((sum, c) => sum + this.d(c).value, 0) < 20) {
             const c = { id: 'mint' + this.s.nextId++, key: 'money_3m', generated: true };
             p.bank.push(c);
             this.s.minted = (this.s.minted || 0) + 1;
