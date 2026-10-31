@@ -71,7 +71,7 @@ export const STATIC_ART: Record<string,string> = {
   "insurance_agency": "/artwork/insurance_agency.webp",
   "logo": "/artwork/logo.png",
   "card_back": "/artwork/card_back.webp",
-  "i_owe_you": "/artwork/i_owe_you.png",
+  "i_owe_you": "/artwork/i_owe_you.webp",
   "emergency_treasury": "/artwork/emergency_treasury.webp",
   "go_to_jail": "/artwork/go_to_jail.webp",
   "expansion_property": "/artwork/expansion_property.webp",

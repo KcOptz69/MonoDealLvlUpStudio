@@ -5,5 +5,11 @@
   "botRevealMs": 1800,
   "fastBotThinkMinMs": 500,
   "fastBotThinkMaxMs": 1500,
-  "fastBotRevealMs": 500
+  "fastBotRevealMs": 500,
+  "cardMotionMs": 1800,
+  "cardMotionTailMs": 100,
+  "cardStaggerMs": 220,
+  "fastCardMotionMs": 650,
+  "fastCardStaggerMs": 80,
+  "fastCardBatchMaxMs": 1100
 }

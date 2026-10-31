@@ -14,6 +14,12 @@ const assert=require('node:assert/strict');const React=require('react');const{re
  const {DonationModal,DonationHandPicker}=await server.ssrLoadModule('/src/components/DonationModal.tsx');
  const noop=()=>{};let count=0;
  const mount=(Component,props)=>{assert(renderToString(React.createElement(Component,props)));count++;};
+ const rulesHtml=renderToString(React.createElement(modals.RulesModal,{onClose:noop}));
+ assert.equal((rulesHtml.match(/role="tab"/g)||[]).length,3);
+ for(const phrase of ['Quick Start','Payments &amp; Reactions','Extra Rules','Set up together','Tied leaders share the win.'])assert(rulesHtml.includes(phrase),phrase);
+ assert(!rulesHtml.includes('Expansion Property'));
+ for(const match of rulesHtml.matchAll(/src="(\/artwork\/[^"?]+)"/g))assert(require('node:fs').existsSync(require('node:path').join(__dirname,'public',match[1])),match[1]);
+ count++;
  global.window={location:{search:'',origin:'http://localhost'}};
  try{mount(App,{});}finally{delete global.window;}
  mount(modals.WinnerModal,{winner:0,winnerName:'Player',winnerToken:0,sets:[],round:1,logCount:0,onMenu:noop});

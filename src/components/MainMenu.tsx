@@ -23,7 +23,7 @@ export const MainMenu:React.FC<MainMenuProps>=({playerName,playerToken,onNameCha
  const [botCount,setBotCount]=useState(2);
  const [tokenPicker,setTokenPicker]=useState(false);
  return <main className="home-menu">
-  <header className="home-header"><img src={STATIC_ART.logo} alt="Monopoly Deal Lvl. Up — made by Kaze"/><button className="quiet home-gear" aria-label="Settings" onClick={onOpenSettings}>⚙</button></header>
+  <header className="home-header"><img src={STATIC_ART.logo} alt="Monopoly Deal Lvl. Up — made by Kaze"/></header>
   <div className="home-columns">
    <nav className="home-actions" aria-label="Main menu">
     <div className="home-player-profile"><button type="button" className="profile-token-button" aria-label="Change your token" onClick={()=>setTokenPicker(true)} disabled={profileBusy}><PlayerToken index={playerToken}/></button><label>Your name<input aria-label="Your player name" maxLength={24} value={playerName} onChange={e=>onNameChange(e.target.value)} placeholder="Your name" autoComplete="nickname"/></label></div>
@@ -39,6 +39,5 @@ export const MainMenu:React.FC<MainMenuProps>=({playerName,playerToken,onNameCha
    <section className="home-online" aria-label="Online lobby">{onlineContent}</section>
   </div>
   {tokenPicker&&<div className="overlay profile-token-overlay" onKeyDown={e=>{if(e.key==='Escape')setTokenPicker(false);}}><section className="modal profile-token-dialog" role="dialog" aria-modal="true" aria-label="Choose your token"><div className="modalhead"><h2>Choose your token</h2><button className="quiet" aria-label="Close token selection" onClick={()=>setTokenPicker(false)}>×</button></div><div className="profile-token-options">{TOKENS.map((t,i)=><button type="button" aria-label={t.name} aria-pressed={playerToken===i} className={playerToken===i?'picked':''} key={i} disabled={profileBusy} onClick={()=>{onTokenChange(i);setTokenPicker(false);}}><PlayerToken index={i}/></button>)}</div></section></div>}
-  <footer className="home-footer">made by Kaze · Defend three complete sets · 4–5 players: two opponents’ turns.</footer>
  </main>;
 };

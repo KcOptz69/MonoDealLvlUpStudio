@@ -10,5 +10,5 @@ export function animationCards(event:GameEvent):CardInstance[]{
 // Payers animate independently to the same recipient; one long payment never holds the others.
 export function activeMotionEvents(queue:GameEvent[]):GameEvent[]{
  const first=queue[0];if(!first)return [];
- return first.type==='payment'?queue.filter(e=>e.type==='payment'&&e.target===first.target&&e.turnId===first.turnId):[first];
+ const active:GameEvent[]=[];for(const event of queue){if(event.type!==first.type||event.turnId!==first.turnId||(first.type==='payment'&&event.target!==first.target))break;active.push(event);}return active;
 }

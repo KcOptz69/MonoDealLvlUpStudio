@@ -2,103 +2,58 @@ import {FieldView} from './FieldView';
 import {PlayerToken} from './PlayerToken';
 import '../victory.css';
 import { isCardInverted } from '../cardOrientation';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useRef } from 'react';
 import {createPortal} from 'react-dom';
 import '../payment-layout.css';
 import '../selection-prompts.css';
+import '../rules.css';
 import { CardInstance, GameState, PropertyGroup } from '../types';
 import { getCardDef, COLORS, DECK } from '../engineBridge';
 import { getCardArt, STATIC_ART } from '../cardArt';
 
 // 1. Rules Modal
-export const RulesModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
-  <div className="overlay">
-    <section className="modal" role="dialog" aria-modal="true" aria-label="How to play">
-      <div className="modalhead">
-        <h2>How to play · Lvl. Up rules</h2>
-        <button className="quiet" onClick={onClose} aria-label="Close">×</button>
-      </div>
-      <div className="rules">
-        <h3>Build, then defend</h3>
-        <p>
-          Finish your turn with three complete property sets of different colors. Every other player
-          gets a turn in 2–3-player games; hold your sets for that rotation to win before your next draw.
-          In 4–5-player games, hold them through two opponents’ completed turns instead. Dropping below three cancels your attempt.
-          During defense in 4–5-player games, anyone can donate hand cards to an opponent for free, even outside their turn.
-          If the optional round-10 limit is on, the game ends after everyone finishes round 10: bank plus field card values decide the winner. Hand cards do not count; ties share the win.
-          Special properties do not form winning sets.
-        </p>
-
-        <h3>Your turn</h3>
-        <p>
-          The starting player is chosen randomly for every new game. Start with seven cards. Everyone
-          starts together in a simultaneous setup phase with three actions each to bank money/actions or
-          place properties, including specials. Setup grants no extra draw, does not permit action
-          effects or unused-action draws, and always has three actions even with Corporate Headquarters.
-          Each player acts independently and presses Ready when finished. After everyone is ready,
-          normal play begins with the same randomly selected first player. Draw two at the start of
-          each turn, or five if your hand is empty (seven with Private Vault). Play up to three cards: bank money or actions,
-          place properties, or use actions. Corporate Headquarters allows four plays. End your turn
-          with seven cards at most, or nine with Private Vault. Rearranging properties is free on your
-          turn. New properties join an existing matching set with space. When ending early, you may draw
-          one card per unused action and end, continue playing, or pass without drawing.
-        </p>
-
-        <h3>Properties and rent</h3>
-        <p>
-          Brown / Dark Blue / Utility need two cards; Railroad needs four; other colors need three. Use
-          a matching Rent card to charge rent shown by your selected set. Two-color Rent targets every
-          opponent; Any Color Rent targets one. A House adds 3M rent and a Hotel adds a further 4M;
-          these need a complete color set, excluding Railroads and Utilities. The Hotel needs a House
-          first. Double the Rent costs a separate card play. Luxury District adds 1M after doubling;
-          Rent-Controlled Residence reduces the final bill by 2M, minimum zero.
-        </p>
-
-        <h3>Payments and responses</h3>
-        <p>
-          The debtor chooses which bank cards, properties or buildings to surrender. No change is
-          given. Pay all eligible assets if unable to cover the bill. Multicolor Wildcards have no
-          payment value and cannot be surrendered. No cards are paid from the hand. Just Say No can
-          block an action affecting you, and another Just Say No can counter that block. Responses do
-          not use turn plays. For all-target actions, all responses resolve before payments; a
-          successful block cancels the entire action for everyone. A banked action can only be money.
-        </p>
-
-        <h3>Custom actions</h3>
-        <p>
-          <b>Eviction Notice:</b> return an opponent property to their hand, including from a complete
-          set.<br />
-          <b>Forced Rezoning:</b> permanently lock an unlocked wildcard to an allowed color. The lock
-          survives ownership and hand changes.<br />
-          <b>Compulsory Purchase:</b> one opponent pays at least 5M in properties only, their choice.<br />
-          <b>Luxury Tax:</b> every other player discards 5M per complete set they own, bank first, then
-          properties. One successful Just Say No cancels the entire tax for everyone.<br />
-          <b>Tough Luck:</b> target an opponent with at least one complete set, then take all cards of a
-          named category (Property, Action, Money) from their hand.<br />
-          <b>Go to Jail:</b> at the start of the target’s next turn, discard at least 10M from bank/field or skip that turn. Just Say No may block the original action.<br />
-          <b>Expansion Property:</b> 0M; join an existing color. The color is fixed while owned; choose an existing color again when ownership changes. If the receiver has no color, it waits in hand.<br />
-          <b>Community Chest:</b> free action; draw two, every other player draws one.<br />
-          <b>Chance:</b> free action; reveal three, keep one, discard the other two.<br />
-          <b>Empire Rent:</b> charge one player 1M per field property including specials. Double the Rent works; two doublers charge 4× for three actions.
-        </p>
-
-        <h3>Special properties · 3M each</h3>
-        <p>
-          One of each of eight specials in the deck. All count as properties for theft, exchange,
-          returns and payments, but do not count as complete sets.<br />
-          <b>Insurance Agency:</b> draw one card for each property taken or surrendered in payment to
-          another player.<br />
-          <b>Investment Office:</b> draw three instead of two; empty hands draw five, or seven with Private Vault.<br />
-          <b>Private Vault:</b> nine-card end-turn limit; draw seven instead of five when starting empty-handed.<br />
-          <b>Free Parking:</b> once each normal turn, bank one legal card without spending an action.<br />
-          <b>Emergency Treasury:</b> at the start of every normal turn, add a new 3M money card directly to your bank.<br />
-          <b>I Owe You (2 copies, 5M):</b> from your hand during a payment to a player, give this card to
-          their bank instead of the entire bill. This cannot replace jail bail.
-        </p>
+export const RulesModal: React.FC<{ onClose: () => void }> = ({onClose}) => {
+  const [tab,setTab]=useState<'quick'|'payments'|'extra'>('quick');
+  const dialog=useRef<HTMLElement>(null);
+  const closeButton=useRef<HTMLButtonElement>(null);
+  useEffect(()=>{const previous=document.activeElement as HTMLElement|null;closeButton.current?.focus();return()=>{if(previous?.isConnected)previous.focus();};},[]);
+  const tabs=[{id:'quick',name:'Quick Start'},{id:'payments',name:'Payments & Reactions'},{id:'extra',name:'Extra Rules'}] as const;
+  const art=(key:string,alt:string)=> <img src={getCardArt(key)} alt={alt} loading="lazy" draggable={false}/>;
+  const keyDown=(event:React.KeyboardEvent)=>{
+    if(event.key==='Escape'){event.preventDefault();event.stopPropagation();onClose();}
+    if(event.key==='Tab'){
+      const buttons=Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not([disabled])')||[]).filter(button=>button.tabIndex>=0&&button.getClientRects().length>0);
+      const first=buttons[0],last=buttons.at(-1);
+      if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}
+      else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}
+    }
+  };
+  return <div className="overlay rules-overlay" onKeyDown={keyDown}>
+    <section ref={dialog} className="modal rules-dialog" role="dialog" aria-modal="true" aria-labelledby="rules-title">
+      <header className="rules-header"><div><span className="rules-eyebrow">MONOPOLY DEAL LVL. UP</span><h2 id="rules-title">How to play</h2></div><button ref={closeButton} className="quiet rules-close" onClick={onClose} aria-label="Close rules">×</button></header>
+      <nav className="rules-tabs" role="tablist" aria-label="Rules sections" onKeyDown={event=>{
+        const index=tabs.findIndex(item=>item.id===tab);let next=index;
+        if(event.key==='ArrowRight')next=(index+1)%tabs.length;else if(event.key==='ArrowLeft')next=(index+tabs.length-1)%tabs.length;else if(event.key==='Home')next=0;else if(event.key==='End')next=tabs.length-1;else return;
+        event.preventDefault();setTab(tabs[next].id);dialog.current?.querySelector<HTMLButtonElement>('#rules-tab-'+tabs[next].id)?.focus();
+      }}>{tabs.map(item=><button key={item.id} type="button" role="tab" id={'rules-tab-'+item.id} aria-controls={'rules-panel-'+item.id} aria-selected={tab===item.id} tabIndex={tab===item.id?0:-1} onClick={()=>setTab(item.id)}>{item.name}</button>)}</nav>
+      <div className="rules-body">
+        <div id="rules-panel-quick" role="tabpanel" aria-labelledby="rules-tab-quick" hidden={tab!=='quick'}>
+          <article className="rules-step"><figure className="rules-illustration"><div className="rules-hand-spread">{Array.from({length:7},(_,i)=><img key={i} src={STATIC_ART.card_back} alt={i===0?'Seven starting cards':''} draggable={false} style={{transform:`rotate(${(i-3)*4}deg) translateY(${Math.abs(i-3)*2}px)`}}/>)}</div><figcaption>7 CARDS · 3 ACTIONS</figcaption></figure><div className="rules-copy"><h3><span className="rules-step-number">1</span>Set up together</h3><p>Start with <strong>7 cards</strong>. Everyone gets <strong>3 actions</strong> to bank cards or place properties. Press <strong>Ready</strong> when finished.</p></div></article>
+          <article className="rules-step"><figure className="rules-illustration"><div className="rules-card-examples"><span>{art('money_5m','5M money card')}<small>Bank</small></span><span>{art('mediterranean_avenue','Mediterranean Avenue property')}<small>Property</small></span><span>{art('pass_go','Pass Go action card')}<small>Action</small></span></div></figure><div className="rules-copy"><h3><span className="rules-step-number">2</span>Take your turn</h3><p>Draw <strong>2 cards</strong>, or <strong>5 if your hand starts empty</strong>. Use up to <strong>3 actions</strong> to:</p><ul><li>Bank money or action cards.</li><li>Place properties.</li><li>Play action cards.</li></ul><p>When ending your turn, you may draw <strong>1 card per unused action</strong>. Finish with <strong>7 cards or fewer</strong>. Special cards can change these limits.</p></div></article>
+          <article className="rules-step"><figure className="rules-illustration"><div className="rules-complete-sets">{[{color:'Brown',keys:['mediterranean_avenue','baltic_avenue']},{color:'Dark Blue',keys:['park_place','boardwalk']},{color:'Utility',keys:['electric_company','water_works']}].map(set=><div key={set.color} className="rules-mini-set" style={{'--set-color':COLORS[set.color].hex} as React.CSSProperties} aria-label={'Complete '+set.color+' set'}><div>{set.keys.map(key=><img key={key} src={getCardArt(key)} alt={getCardDef(key).name} loading="lazy" draggable={false}/>)}</div><b aria-hidden="true">✓</b></div>)}</div><figcaption>3 COMPLETE SETS</figcaption></figure><div className="rules-copy"><h3><span className="rules-step-number">3</span>Build and defend</h3><p>Finish your turn with <strong>3 complete sets of different colors</strong>.</p><ul><li><strong>2–3 players:</strong> defend for one full rotation.</li><li><strong>4–5 players:</strong> defend through two opponents’ turns.</li></ul><p>Dropping below three complete sets cancels your defense.</p></div></article>
+        </div>
+        <div id="rules-panel-payments" role="tabpanel" aria-labelledby="rules-tab-payments" hidden={tab!=='payments'}>
+          <article className="rules-step"><figure className="rules-illustration"><div className="rules-card-examples rules-payment-art"><span>{art('money_5m','Money in your bank')}</span><span>{art('park_place','Property in your field')}</span><span>{art('i_owe_you','I Owe You payment replacement card')}</span></div></figure><div className="rules-copy"><h3>Pay from your bank or field.</h3><p>Overpayments receive no change. If you cannot cover the bill, pay all eligible assets. <strong>I Owe You</strong> can replace a payment.</p></div></article>
+          <article className="rules-step"><figure className="rules-illustration rules-no-art">{art('just_say_no','Just Say No reaction card')}<span className="rules-timer-badge">10s</span></figure><div className="rules-copy"><h3>Just Say No is free.</h3><p>Respond within <strong>10 seconds</strong> to block an action—or counter another No. Blocking an all-player action protects everyone.</p></div></article>
+        </div>
+        <div id="rules-panel-extra" role="tabpanel" aria-labelledby="rules-tab-extra" hidden={tab!=='extra'}>
+          <article className="rules-step"><figure className="rules-illustration"><div className="rules-gift-art"><PlayerToken index={0}/><span aria-hidden="true">→</span><img src={STATIC_ART.card_back} alt="A private hand card gift" draggable={false}/><span aria-hidden="true">→</span><PlayerToken index={1}/></div></figure><div className="rules-copy"><h3>Free donations <span className="rules-player-badge">4–5 players</span></h3><p>While anyone is defending, give hand cards to any opponent—even outside your turn.</p></div></article>
+          <article className="rules-step"><figure className="rules-illustration"><div className="rules-score-art">{art('money_10m','Bank card value')}<span className="rules-round-badge"><small>ROUND</small><b>10</b></span>{art('baltic_avenue','Field property value')}</div><figcaption>BANK + FIELD</figcaption></figure><div className="rules-copy"><h3>Optional round-10 limit</h3><p>After everyone finishes round 10, highest <strong>bank + field value</strong> wins. Hand cards do not count. Tied leaders share the win.</p></div></article>
+        </div>
       </div>
     </section>
-  </div>
-);
+  </div>;
+};
 
 // 2. Audit / Card Library Modal
 export const AuditModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (

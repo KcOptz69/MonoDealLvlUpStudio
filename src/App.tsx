@@ -1,6 +1,7 @@
+import {installFieldScrolling} from './fieldScrolling';
 import {DonationModal,DonationHandPicker} from './components/DonationModal';
 import {TargetFeedback} from './components/TargetFeedback';
-import {ParallelBotTimers,parallelBotActors,parallelBotContext} from './parallelBots';
+import {MotionClock,ParallelBotTimers,parallelBotActors,parallelBotContext} from './parallelBots';
 import {setupView} from './setupPrivacy';
 import timing from '../timing.json';
 import {SpecialTriggerNotices} from './components/SpecialTriggerNotices';
@@ -65,7 +66,8 @@ export const App: React.FC = () => {
   const changeProfileToken=(index:number)=>{setPlayerToken(index);try{localStorage.setItem('kaze_player_token',String(index));}catch{}};
 
   const [movingEvents,setMovingEvents]=useState<number[]>([]);
-  const motionClock=useRef({seq:0,until:0});
+  const motionClock=useRef(new MotionClock(timing));
+  useEffect(()=>installFieldScrolling(),[]);
   const [donationCard,setDonationCard]=useState<CardInstance|null>(null);
   const [donationPicker,setDonationPicker]=useState(false);
   const [roundLimit,setRoundLimit]=useState(false);
@@ -153,10 +155,7 @@ export const App: React.FC = () => {
   const refreshGameState = useCallback((g: any) => {
     if (!g) return;
     const s = { ...g.s };
-    if((s.eventSeq||0)<motionClock.current.seq)motionClock.current={seq:0,until:0};
-    const motion=(s.events||[]).filter((e:any)=>e.seq>motionClock.current.seq&&['transfer','payment','discard','donation'].includes(e.type));
-    motionClock.current.seq=s.eventSeq||0;
-    if(motion.length){const count=motion.reduce((n:number,e:any)=>n+(e.cards?.length||0),0);if(count)motionClock.current.until=Math.max(Date.now(),motionClock.current.until)+1900+Math.max(0,count-1)*220;}
+    motionClock.current.observe(s);
     // clone to force React update
     setGameState(setupView(JSON.parse(JSON.stringify(s))));
 
@@ -285,7 +284,7 @@ export const App: React.FC = () => {
       } catch (err: any) {
         console.error(err);
       }
-    }, Math.max(thinkMs(),motionClock.current.until-Date.now()));
+    }, Math.max(thinkMs(),motionClock.current.until-Date.now()-revealMs));
 
     return () => clearTimeout(botTimerRef.current);
   }, [view, showExit, game, gameState, onlineSession, refreshGameState, saveLocalGame]);

@@ -25,3 +25,29 @@ export function parallelBotContext(game:any):string{
   const pending=game.s.pending;
   return pending?.kind==='payment'?`payment:${game.s.turnSerial}:${pending.e?.actor}:${pending.e?.key}:${game.s.events?.filter((e:any)=>e.type==='charge').at(-1)?.seq??0}`:'none';
 }
+
+// The frontend and room server use the same presentation clock. Consecutive
+// matching motions overlap; a different motion group starts after the prior one.
+export class MotionClock {
+  seq=0;
+  until=0;
+  private group='';
+  constructor(private timing:Record<string,number>){}
+  observe(state:any,now=Date.now()){
+    if((state.eventSeq||0)<this.seq){this.seq=0;this.until=0;this.group='';}
+    const fast=!!state.fastBots;
+    const motion=fast?(this.timing.fastCardMotionMs??650):(this.timing.cardMotionMs??1800);
+    const tail=this.timing.cardMotionTailMs??100,stagger=fast?(this.timing.fastCardStaggerMs??80):(this.timing.cardStaggerMs??220);
+    for(const e of state.events||[]){
+      if(e.seq<=this.seq||e.setup||state.phase==='setup'||!['play','draw','bank','property','payment','transfer','discard','donation'].includes(e.type))continue;
+      const count=e.cards?.length||(e.card?1:0);if(!count)continue;
+      const span=motion+Math.max(0,count-1)*stagger;
+      const duration=(fast?Math.min(span,this.timing.fastCardBatchMaxMs??1100):span)+tail;
+      const group=`${e.type}:${e.turnId??0}:${e.type==='payment'?e.target:''}`;
+      if(group===this.group)this.until=Math.max(this.until,now+duration);
+      else{this.until=Math.max(now,this.until)+duration;this.group=group;}
+    }
+    this.seq=state.eventSeq||0;
+    return this.until;
+  }
+}

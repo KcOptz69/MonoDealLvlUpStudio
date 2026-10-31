@@ -1,0 +1,22 @@
+const assert=require('node:assert/strict'),fs=require('fs'),ts=require('typescript'),vm=require('vm');
+const sandbox={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/fieldScrolling.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,sandbox);
+const {edgeScrollVelocity,installFieldScrolling}=sandbox.exports;
+assert(edgeScrollVelocity(1,0,300)<0);assert(edgeScrollVelocity(299,0,300)>0);assert.equal(edgeScrollVelocity(150,0,300),0);
+const listeners=new Map(),frames=new Map();let frameId=0,mobile=false,transfer=false;
+const field={isConnected:true,scrollLeft:100,scrollWidth:1000,clientWidth:300,parentElement:null,getBoundingClientRect:()=>({left:0,right:300,top:0,bottom:150}),querySelectorAll:()=>[],closest:()=>null};
+const card={closest(selector){if(selector==='.specialgroup')return null;if(selector==='.mobile-player-overlay.transfer-enabled')return transfer?{}:null;if(selector==='.player-zone .groups')return field;return this;}};
+const target={closest:()=>field};
+const win={requestAnimationFrame:fn=>{frames.set(++frameId,fn);return frameId;},cancelAnimationFrame:id=>frames.delete(id),addEventListener(){},removeEventListener(){}};
+const doc={defaultView:win,documentElement:{classList:{contains:()=>mobile}},addEventListener:(name,fn)=>listeners.set(name,fn),removeEventListener:name=>listeners.delete(name),elementFromPoint:()=>null};
+const dispose=installFieldScrolling(doc);
+let prevented=false;
+listeners.get('wheel')({target,deltaX:0,deltaY:60,deltaMode:0,preventDefault(){prevented=true;}});assert.equal(field.scrollLeft,160);assert(prevented);
+listeners.get('wheel')({target,deltaX:0,deltaY:60,deltaMode:0,ctrlKey:true,preventDefault(){throw Error('zoom blocked')}});assert.equal(field.scrollLeft,160);
+mobile=true;listeners.get('wheel')({target,deltaX:0,deltaY:60,deltaMode:0,preventDefault(){throw Error('touch layout intercepted')}});assert.equal(field.scrollLeft,160);mobile=false;
+function step(time){const[id,fn]=frames.entries().next().value;frames.delete(id);fn(time);}
+listeners.get('dragstart')({target:card,clientX:299,clientY:75});step(16);const first=field.scrollLeft;step(32);assert(field.scrollLeft>first,'stationary pointer continues scrolling');
+listeners.get('dragover')({target,clientX:1,clientY:75,preventDefault(){}});const before=field.scrollLeft;step(48);assert(field.scrollLeft<before);
+listeners.get('drop')();assert.equal(frames.size,0);
+transfer=true;listeners.get('pointerdown')({target:card,clientX:270,clientY:75,pointerId:7,isPrimary:true,button:0});assert.equal(frames.size,0);listeners.get('pointermove')({clientX:299,clientY:75,pointerId:7});assert.equal(frames.size,1);step(64);listeners.get('pointercancel')();assert.equal(frames.size,0);
+dispose();assert.equal(listeners.size,0);
+console.log('PASS horizontal wheel scrolling, zoom/mobile exceptions, continuous edge scrolling, touch transfer activation and cleanup');
