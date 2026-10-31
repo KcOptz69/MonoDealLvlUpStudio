@@ -1,0 +1,26 @@
+'use strict';
+const assert=require('node:assert/strict');const React=require('react');const{renderToString}=require('react-dom/server');const{Game}=require('./engine.cjs');const deck=require('./deck.json');
+(async()=>{assert.equal(require('react/package.json').version,require('react-dom/package.json').version);const{createServer}=await import('vite');const server=await createServer({root:__dirname,server:{middlewareMode:true},logLevel:'error'});try{
+ assert(server.config.resolve.dedupe.includes('react'));assert(server.config.resolve.dedupe.includes('react-dom'));
+ const g=new Game(deck,3);g.s.phase='play';g.s.turn=0;g.s.pending=null;
+ const modals=await server.ssrLoadModule('/src/components/Modals.tsx');
+ const{TargetingWizard}=await server.ssrLoadModule('/src/components/TargetingWizard.tsx');
+ const{BoardTarget}=await server.ssrLoadModule('/src/components/BoardTarget.tsx');
+ const{FieldView}=await server.ssrLoadModule('/src/components/FieldView.tsx');
+ const{PlayerZone}=await server.ssrLoadModule('/src/components/PlayerZone.tsx');
+ const{OpponentField}=await server.ssrLoadModule('/src/components/OpponentField.tsx');
+ const{SharedBoard}=await server.ssrLoadModule('/src/components/SharedBoard.tsx');
+ const noop=()=>{};let count=0;
+ const mount=(Component,props)=>{assert(renderToString(React.createElement(Component,props)));count++;};
+ mount(modals.WinnerModal,{winner:0,winnerName:'Player',winnerToken:0,sets:[],round:1,logCount:0,onMenu:noop});
+ mount(modals.SettingsModal,{musicEnabled:true,soundEnabled:true,reducedMotion:false,onApply:noop,onClose:noop});
+ mount(TargetingWizard,{card:{id:'wild',key:'multicolor_wildcard'},state:g.s,onConfirm:noop,onCancel:noop});
+ mount(BoardTarget,{card:{id:'debt',key:'debt_collector'},state:g.s,onConfirm:noop,onCancel:noop});
+ mount(FieldView,{state:g.s,index:1,onClose:noop,onBank:noop});
+ mount(PlayerZone,{state:g.s,selectedCard:null,onSelectCard:noop,onPlaySelected:noop,onBankSelected:noop,onEndTurn:noop,onViewBank:noop,onRearrange:noop});
+ mount(OpponentField,{state:g.s,onSelectCard:noop,onViewBank:noop,onViewPlayer:noop});
+ mount(SharedBoard,{state:g.s,boardPlay:null,onSelectCard:noop,onBrowseDiscard:noop});
+ g.s.pending={kind:'chance',responder:0,cards:[{id:'public',key:'pass_go'}],e:{actor:0,target:0,key:'chance'}};
+ mount(SharedBoard,{state:g.s,boardPlay:null,onSelectCard:noop,onBrowseDiscard:noop});
+ console.log(`PASS matching React/renderer; singleton Vite resolution; ${count} component renders including hook-based dialogs and Chance board`);
+}finally{await server.close();}})().catch(e=>{console.error(e);process.exitCode=1});

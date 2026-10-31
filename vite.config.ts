@@ -6,6 +6,9 @@ const require = createRequire(import.meta.url);
 const { Rooms } = require('./rooms.js');
 
 export default defineConfig({
+  // Hooks, JSX runtime, portals and renderer must share one local React package.
+  resolve:{dedupe:['react','react-dom']},
+  optimizeDeps:{force:true,entries:['index.html'],include:['react','react-dom','react-dom/client','react/jsx-runtime','react/jsx-dev-runtime']},
   plugins: [
     react(),
     {
