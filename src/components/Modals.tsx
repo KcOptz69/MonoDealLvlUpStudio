@@ -1,10 +1,11 @@
+import { isCardInverted } from '../cardOrientation';
 import React, { useState, useEffect } from 'react';
 import {createPortal} from 'react-dom';
 import '../payment-layout.css';
 import '../selection-prompts.css';
 import { CardInstance, GameState, PropertyGroup } from '../types';
 import { getCardDef, COLORS, DECK } from '../engineBridge';
-import { getCardArt, STATIC_ART, isCardInverted } from '../cardArt';
+import { getCardArt, STATIC_ART } from '../cardArt';
 
 // 1. Rules Modal
 export const RulesModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (

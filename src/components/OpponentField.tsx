@@ -1,8 +1,9 @@
+import { isCardInverted } from '../cardOrientation';
 import {PlayerToken} from './PlayerToken';
 import React from 'react';
 import { GameState, CardInstance, PropertyGroup } from '../types';
 import { getCardDef, COLORS } from '../engineBridge';
-import { getCardArt, isCardInverted } from '../cardArt';
+import { getCardArt } from '../cardArt';
 
 interface OpponentFieldProps {
   state: GameState;
