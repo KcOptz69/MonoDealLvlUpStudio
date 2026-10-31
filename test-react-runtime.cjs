@@ -10,8 +10,11 @@ const assert=require('node:assert/strict');const React=require('react');const{re
  const{PlayerZone}=await server.ssrLoadModule('/src/components/PlayerZone.tsx');
  const{OpponentField}=await server.ssrLoadModule('/src/components/OpponentField.tsx');
  const{SharedBoard}=await server.ssrLoadModule('/src/components/SharedBoard.tsx');
+ const {App}=await server.ssrLoadModule('/src/App.tsx');
  const noop=()=>{};let count=0;
  const mount=(Component,props)=>{assert(renderToString(React.createElement(Component,props)));count++;};
+ global.window={location:{search:'',origin:'http://localhost'}};
+ try{mount(App,{});}finally{delete global.window;}
  mount(modals.WinnerModal,{winner:0,winnerName:'Player',winnerToken:0,sets:[],round:1,logCount:0,onMenu:noop});
  mount(modals.SettingsModal,{musicEnabled:true,soundEnabled:true,reducedMotion:false,onApply:noop,onClose:noop});
  mount(TargetingWizard,{card:{id:'wild',key:'multicolor_wildcard'},state:g.s,onConfirm:noop,onCancel:noop});

@@ -6,7 +6,7 @@ import {getCardArt} from '../cardArt';
 import {isCardInverted} from '../cardOrientation';
 import {PlayerToken} from './PlayerToken';
 import '../field-view.css';
-export const fullSet=(g:PropertyGroup)=>g.cards.length===COLORS[g.color]?.size&&g.cards.some(c=>getCardDef(c).value>0);
+import {fullSet} from '../boardSelection';
 export function FieldContents({state,index,onBank,onPick,selected,eligible,onGroup,selectedGroup}:{state:GameState;index:number;onBank?:(i:number)=>void;onPick?:(c:CardInstance)=>void;selected?:string;selectedGroup?:string;eligible?:(c:CardInstance)=>boolean;onGroup?:(g:PropertyGroup)=>void}){
  const p=state.players[index];const [art,setArt]=useState<{card:CardInstance;color?:string}|null>(null);const timer=useRef<ReturnType<typeof setTimeout>|null>(null);const held=useRef(false);const origin=useRef({x:0,y:0});
  const cancel=()=>clearTimeout(timer.current);

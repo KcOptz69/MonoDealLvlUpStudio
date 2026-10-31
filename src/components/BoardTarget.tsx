@@ -2,9 +2,10 @@ import React,{useEffect,useState} from 'react';
 import {CardInstance,GameState,PropertyGroup} from '../types';
 import {getCardArt} from '../cardArt';
 import {getCardDef} from '../engineBridge';
-import {FieldContents,fullSet} from './FieldView';
+import {FieldContents} from './FieldView';
+import {fullSet} from '../boardSelection';
 import '../board-target.css';
-export const usesBoardTarget=(c:CardInstance)=>getCardDef(c).type==='rent'||['sly_deal','forced_deal','eviction_notice','forced_rezoning','deal_breaker','debt_collector','compulsory_purchase','tough_luck','go_to_jail'].includes(c.key);
+import {usesBoardTarget} from '../boardSelection';
 export function BoardTarget({card,state,onConfirm,onCancel}:{card:CardInstance;state:GameState;onConfirm:(args:any)=>void;onCancel:()=>void}){
  const def=getCardDef(card),rent=def.type==='rent',single=(!rent||def.any),needsProperty=['sly_deal','forced_deal','eviction_notice','forced_rezoning'].includes(card.key);
  const [target,setTarget]=useState<number|null>(null),[property,setProperty]=useState(''),[own,setOwn]=useState(''),[group,setGroup]=useState(''),[color,setColor]=useState(''),[inspect,setInspect]=useState<number|null>(null),[category,setCategory]=useState(''),[categoryOpen,setCategoryOpen]=useState(false);
