@@ -16,6 +16,7 @@ interface PlayerZoneProps {
   onPlaySelected: (cardId: string) => void;
   onBankSelected: (cardId: string) => void;
   onEndTurn: () => void;
+  onDonateCard?:(card:CardInstance)=>void;
   onViewBank: (playerIndex: number) => void;
   onRearrange: () => void;
   onDropPropertyToGroup?: (cardId: string, groupColor: string, groupId?: string) => void;
@@ -28,6 +29,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
   onPlaySelected,
   onBankSelected,
   onEndTurn,
+  onDonateCard,
   onViewBank,
   onRearrange,
   onDropPropertyToGroup,
@@ -289,6 +291,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
                     Bank {freeBank?'(FREE)':selectedDef.value+'M'}
                   </button>
                 )}
+                {onDonateCard&&state.players.length>=4&&state.players.length<=5&&state.winner===null&&state.phase!=='setup'&&state.players.some(p=>p.defending&&!p.forfeited)&&<button type="button" className="quiet donate-hand-button" onClick={()=>onDonateCard(selectedCard)}>Donate (FREE)</button>}
               </>
             ) : (
               <span className="hand-action-hint">

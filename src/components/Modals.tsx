@@ -22,20 +22,22 @@ export const RulesModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
         <h3>Build, then defend</h3>
         <p>
           Finish your turn with three complete property sets of different colors. Every other player
-          gets a turn. If you maintain at least three complete colors throughout that rotation, you
-          win at the start of your next turn, before drawing. Dropping below three cancels your attempt.
+          gets a turn in 2–3-player games; hold your sets for that rotation to win before your next draw.
+          In 4–5-player games, hold them through two opponents’ completed turns instead. Dropping below three cancels your attempt.
+          During defense in 4–5-player games, anyone can donate hand cards to an opponent for free, even outside their turn.
+          If the optional round-10 limit is on, the game ends after everyone finishes round 10: bank plus field card values decide the winner. Hand cards do not count; ties share the win.
           Special properties do not form winning sets.
         </p>
 
         <h3>Your turn</h3>
         <p>
-          The starting player is chosen randomly for every new game. Start with five cards. Everyone
+          The starting player is chosen randomly for every new game. Start with seven cards. Everyone
           starts together in a simultaneous setup phase with three actions each to bank money/actions or
           place properties, including specials. Setup grants no extra draw, does not permit action
           effects or unused-action draws, and always has three actions even with Corporate Headquarters.
           Each player acts independently and presses Ready when finished. After everyone is ready,
           normal play begins with the same randomly selected first player. Draw two at the start of
-          each turn, or five if your hand is empty. Play up to three cards: bank money or actions,
+          each turn, or five if your hand is empty (seven with Private Vault). Play up to three cards: bank money or actions,
           place properties, or use actions. Corporate Headquarters allows four plays. End your turn
           with seven cards at most, or nine with Private Vault. Rearranging properties is free on your
           turn. New properties join an existing matching set with space. When ending early, you may draw
@@ -129,12 +131,15 @@ export const SettingsModal: React.FC<{
   musicEnabled: boolean;
   soundEnabled: boolean;
   reducedMotion: boolean;
-  onApply: (sound: boolean, reduced: boolean, music: boolean) => void;
+  fastBots?:boolean;
+  canSetBotPace?:boolean;
+  onApply: (sound: boolean, reduced: boolean, music: boolean, fast:boolean) => void;
   onClose: () => void;
-}> = ({ musicEnabled, soundEnabled, reducedMotion, onApply, onClose }) => {
+}> = ({ musicEnabled, soundEnabled, reducedMotion, fastBots=false,canSetBotPace=true,onApply, onClose }) => {
   const [music, setMusic] = useState(musicEnabled);
   const [sound, setSound] = useState(soundEnabled);
   const [motion, setMotion] = useState(reducedMotion);
+  const [fast,setFast]=useState(fastBots);
 
   return (
     <div className="overlay">
@@ -144,7 +149,7 @@ export const SettingsModal: React.FC<{
           <button className="quiet" onClick={onClose} aria-label="Close">×</button>
         </div>
         <div className="form">
-          <p>Bot pace: Relaxed · 3–5 seconds per play</p>
+          <label className="setting-row"><span>Fast bot pace<small>{fast?'1–2 seconds per action':'Relaxed · 3–5 seconds per action'}{!canSetBotPace?' · Host controls this':''}</small></span><span className="setting-switch"><span>{fast?'On':'Off'}</span><input type="checkbox" role="switch" checked={fast} disabled={!canSetBotPace} onChange={e=>setFast(e.target.checked)}/></span></label>
           <label className="setting-row"><span>Music</span><span className="setting-switch"><span>{music?'On':'Off'}</span><input type="checkbox" role="switch" checked={music} onChange={e=>setMusic(e.target.checked)}/></span></label>
           <label className="setting-row"><span>Sound effects</span><span className="setting-switch"><span>{sound?'On':'Off'}</span><input type="checkbox" role="switch" checked={sound} onChange={e=>setSound(e.target.checked)}/></span></label>
           <label className="setting-row"><span>Reduce motion</span><span className="setting-switch"><span>{motion?'On':'Off'}</span><input type="checkbox" role="switch" checked={motion} onChange={e=>setMotion(e.target.checked)}/></span></label>
@@ -152,7 +157,7 @@ export const SettingsModal: React.FC<{
             Games save automatically on this browser when local storage is available. No account or
             internet connection is required.
           </small>
-          <button className="gold" onClick={() => onApply(sound, motion, music)}>
+          <button className="gold" onClick={() => onApply(sound, motion, music,fast)}>
             Done
           </button>
         </div>
@@ -163,8 +168,8 @@ export const SettingsModal: React.FC<{
 
 // 4. Winner celebration
 export const WinnerModal: React.FC<{
- winner:number;winnerName:string;winnerToken:number;sets:PropertyGroup[];round:number;logCount:number;onMenu:()=>void|Promise<void>;
-}> = ({winner,winnerName,winnerToken,sets,onMenu}) => {
+ winner:number;winnerName:string;winnerToken:number;sets:PropertyGroup[];round:number;logCount:number;endReason?:string;shortDefense?:boolean;scoreResults?:{name:string;token:number;bank:number;field:number;total:number;winner:boolean}[];onMenu:()=>void|Promise<void>;
+}> = ({winner,winnerName,winnerToken,sets,onMenu,endReason,shortDefense=false,scoreResults=[]}) => {
  const [leaving,setLeaving]=useState(false);
  const [error,setError]=useState('');
  const full=sets.filter(g=>g.cards.length===COLORS[g.color]?.size&&g.cards.some(c=>getCardDef(c).value>0));
@@ -172,10 +177,8 @@ export const WinnerModal: React.FC<{
  return <div className="overlay victory-overlay"><section className="modal victory-dialog" role="dialog" aria-modal="true" aria-labelledby="victory-title">
  <div className="victory-rays" aria-hidden="true"/>
  <img className="victory-logo" src={STATIC_ART.logo} alt="Monopoly Deal Lvl. Up — made by Kaze"/>
- <div className="victory-crown" aria-hidden="true">♛</div><h1 id="victory-title">VICTORY!</h1>
- <div className="victory-identity"><PlayerToken index={winnerToken}/><div><small>WINNER</small><strong>{winnerName}</strong></div></div>
- <p>Three complete sets. Defended for a full rotation.</p>
- <div className="victory-sets">{colors.map(g=><div key={g.color} style={{'--set':COLORS[g.color]?.hex} as React.CSSProperties}>{g.color}<small>COMPLETE · DEFENDED</small></div>)}</div>
+ <div className="victory-crown" aria-hidden="true">♛</div><h1 id="victory-title">{scoreResults.filter(r=>r.winner).length>1?'SHARED VICTORY!':'VICTORY!'}</h1>
+ {endReason==='round-limit'?<><div className="score-winners">{scoreResults.filter(r=>r.winner).map((row,i)=><div className="victory-identity" key={i}><PlayerToken index={row.token}/><strong>{row.name}</strong></div>)}</div><p>Round 10 complete · Highest bank + field value wins</p><table className="victory-scores"><thead><tr><th>Player</th><th>Bank</th><th>Field</th><th>Total</th></tr></thead><tbody>{[...scoreResults].sort((a,b)=>b.total-a.total).map((row,i)=><tr key={i} className={row.winner?'score-winner':''}><td>{row.name}</td><td>{row.bank}M</td><td>{row.field}M</td><td>{row.total}M</td></tr>)}</tbody></table></>:<><div className="victory-identity"><PlayerToken index={winnerToken}/><div><small>WINNER</small><strong>{winnerName}</strong></div></div><p>{shortDefense?'Three complete sets. Defended through two opponents’ turns.':'Three complete sets. Defended for a full rotation.'}</p><div className="victory-sets">{colors.map(g=><div key={g.color} style={{'--set':COLORS[g.color]?.hex} as React.CSSProperties}>{g.color}<small>COMPLETE · DEFENDED</small></div>)}</div></>}
  <button className="gold victory-menu" disabled={leaving} onClick={async()=>{setLeaving(true);setError('');try{await onMenu();}catch{setError('Could not return. Please try again.');setLeaving(false);}}}>{leaving?'Returning…':'Back to Menu'}</button>
  {error&&<p role="alert">{error}</p>}
  </section></div>;

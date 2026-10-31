@@ -34,18 +34,8 @@ function TurnPlayedCards({state,upcoming,onSelectCard}:{state:GameState;upcoming
   if(!plays.length&&!preview)return <div className="turn-plays-empty"><strong>{state.players[state.turn]?.name === 'You' ? 'Your turn' : state.players[state.turn]?.name+"’s turn"}</strong><span>Cards played this turn appear here</span></div>;
   return <div className="turn-play-strip" ref={strip}>{plays.map((e)=>{
     const nope=(state.events||[]).filter(n=>n.type==='negate'&&n.targetPlaySeq===e.seq).at(-1);
-    return <article className="turn-play-entry" key={e.seq}><button title={getCardDef(e.card!).name} onClick={()=>onSelectCard(e.card!,e.actor)}><img src={getCardArt(e.card!,e.color)} alt={getCardDef(e.card!).name}/>{e.type==='bank'&&<BankedStamp/>}{nope&&<span className={'negated-card-stamp'+(!nope.blocked?' restored':'')}><b>{nope.blocked?'⊘ NOPED':'✓ RESTORED'}</b><small>by {state.players[nope.actor]?.name}</small></span>}</button></article>;
-  })}{preview&&<article className="turn-play-entry upcoming"><button onClick={()=>onSelectCard(preview.card,preview.owner)}><img src={getCardArt(preview.card,preview.color)} alt={getCardDef(preview.card).name}/>{preview.mode==='bank'&&<BankedStamp/>}</button></article>}</div>;
-}
-
-function TargetActivity({state,upcoming}:{state:GameState;upcoming:PlayedCardInfo|null}){
- if(state.phase==='setup')return null;
- const upcomingDef=upcoming?.preview&&upcoming.mode!=='bank'?getCardDef(upcoming.card):null;
- const allUpcoming=upcomingDef&&((upcomingDef.type==='rent'&&!upcomingDef.any)||['its_my_birthday','luxury_tax'].includes(upcoming!.card.key));
- const event=(state.events||[]).filter(e=>e.turnId===(state.turnSerial||0)&&e.type==='play'&&(e.targetAll||Number.isInteger(e.target))).at(-1);
- const text=upcoming?.preview&&(upcoming.target||allUpcoming)?`${upcoming.actor} → ${allUpcoming?'All opponents':upcoming.target}`:event?`${state.players[event.actor]?.name} → ${event.targetAll?'All opponents':state.players[event.target!]?.name}`:null;
- if(!text)return null;
- return <div className="target-activity-label" role="status" aria-label={'Target: '+text}>{text}</div>;
+    return <article className="turn-play-entry" key={e.seq}><button title={getCardDef(e.card!).name} onClick={()=>onSelectCard(e.card!,e.actor)}><img src={getCardArt(e.card!,e.color)} alt={getCardDef(e.card!).name}/>{e.type==='bank'&&<BankedStamp/>}{e.type==='play'&&(e.targetAll||Number.isInteger(e.target))&&<span className="card-target-badge" title={e.targetAll?'All opponents':state.players[e.target!]?.name}>→ {e.targetAll?'All opponents':state.players[e.target!]?.name}</span>}{nope&&<span className={'negated-card-stamp'+(!nope.blocked?' restored':'')}><b>{nope.blocked?'⊘ NOPED':'✓ RESTORED'}</b><small>by {state.players[nope.actor]?.name}</small></span>}</button></article>;
+  })}{preview&&<article className="turn-play-entry upcoming"><button onClick={()=>onSelectCard(preview.card,preview.owner)}><img src={getCardArt(preview.card,preview.color)} alt={getCardDef(preview.card).name}/>{preview.mode==='bank'&&<BankedStamp/>}{preview.mode!=='bank'&&(()=>{const def=getCardDef(preview.card);const all=(def.type==='rent'&&!def.any)||['its_my_birthday','luxury_tax'].includes(preview.card.key);return (all||preview.target)&&<span className="card-target-badge" title={all?'All opponents':preview.target||''}>→ {all?'All opponents':preview.target}</span>;})()}</button></article>}</div>;
 }
 
 export const SharedBoard: React.FC<SharedBoardProps> = ({
@@ -65,7 +55,7 @@ export const SharedBoard: React.FC<SharedBoardProps> = ({
 
   // Latest payment/discard activities
   const recentPaymentEvents = (state.events || [])
-    .filter((e) => ['payment', 'discard', 'transfer'].includes(e.type))
+    .filter((e) => ['payment', 'discard', 'transfer','donation'].includes(e.type))
     .slice(-1)
     .reverse();
 
@@ -92,7 +82,6 @@ export const SharedBoard: React.FC<SharedBoardProps> = ({
       {/* Played card panel */}
       <section className="played-panel" aria-label="Played card">
         <h3>{state.phase === 'setup' ? 'Played card' : `Cards this turn · ${state.players[state.turn]?.name}`}</h3>
-        <TargetActivity state={state} upcoming={boardPlay}/>
         <div className="board-play" id="boardPlay" aria-live="polite">
           {state.phase!=='setup'?<TurnPlayedCards state={state} upcoming={boardPlay} onSelectCard={onSelectCard}/>:<div className="table-play-empty">SIMULTANEOUS SETUP<span>Cards stay hidden until everyone is ready</span></div>}
 

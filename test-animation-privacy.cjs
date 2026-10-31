@@ -10,3 +10,8 @@ const events=[{seq:20,type:'payment',actor:1,target:0,turnId:4},{seq:21,type:'pa
 assert.deepEqual(Array.from(sandbox.exports.activeMotionEvents(events),e=>e.seq),[20,21]);
 assert.deepEqual(Array.from(sandbox.exports.activeMotionEvents([events[3],...events]),e=>e.seq),[23]);
 console.log('PASS payments to the same recipient animate together; other transfers and draws retain ordering');
+
+assert.equal(animationCards({type:'donation',actor:1,target:2,seq:40,cards:privateCards})[0].key,'card_back');
+assert.equal(animationCards({type:'donation',actor:0,target:2,seq:41,cards:privateCards})[0].key,'deal_breaker');
+assert.equal(animationCards({type:'donation',actor:1,target:0,seq:42,cards:privateCards})[0].key,'deal_breaker');
+console.log('PASS only donation sender and recipient can see the transferred artwork');

@@ -7,7 +7,7 @@ import './game-feedback.css';
 // Every draw flies face down. Reveal the recipient's cards only after landing.
 function animationCards(event:GameEvent):CardInstance[]{
  const cards=(event.cards||[event.card!]).filter(Boolean);
- if(event.type==='draw')return cards.map((_,i)=>({id:`concealed-${event.seq}-${i}`,key:'card_back'}));
+ if(event.type==='draw'||(event.type==='donation'&&event.actor!==0&&event.target!==0))return cards.map((_,i)=>({id:`concealed-${event.seq}-${i}`,key:'card_back'}));
  return cards.filter(c=>c.key!=='hidden');
 }
 
@@ -22,11 +22,12 @@ function spot(player:number|null|undefined,bank=false){const element=player==nul
 function MotionFlight({event,onDone}:{event:GameEvent;onDone:(seq:number)=>void}){
  const [flights]=useState<Flight[]>(()=>{
   const cards=animationCards(event);
-  const source=event.type==='draw'?document.querySelector('.draw-zone'):event.actor===0&&['bank','property','play'].includes(event.type)?document.querySelector('.hand')||document.querySelector('.mobile-player-dock'):null;
+  const source=event.type==='draw'?document.querySelector('.draw-zone'):event.actor===0&&['bank','property','play','donation'].includes(event.type)?document.querySelector('.hand')||document.querySelector('.mobile-player-dock'):null;
   const sr=source?.getBoundingClientRect();const from=sr?{x:sr.x+sr.width/2,y:sr.y+sr.height/2}:spot(event.actor,event.type==='payment');
   const target=['bank','property','draw'].includes(event.type)?event.actor:event.target;
   const played=event.type==='play'?document.querySelector('.played-panel')?.getBoundingClientRect():null;
-  const to=played?{x:played.x+played.width/2,y:played.y+played.height/2}:event.type==='discard'?spot(null):spot(target,event.type==='bank'||event.type==='payment');
+  const hand=event.type==='donation'&&target===0?(document.querySelector('.hand')||document.querySelector('.mobile-player-dock'))?.getBoundingClientRect():null;
+  const to=hand?{x:hand.x+hand.width/2,y:hand.y+hand.height/2}:played?{x:played.x+played.width/2,y:played.y+played.height/2}:event.type==='discard'?spot(null):spot(target,event.type==='bank'||event.type==='payment');
   return cards.map((card,i)=>({key:`${event.seq}-${card.id}-${i}`,card,from,to,delay:i*220}));
  });
  useLayoutEffect(()=>{const timer=setTimeout(()=>onDone(event.seq),flights.length?1900+Math.max(0,flights.length-1)*220:0);return()=>clearTimeout(timer);},[event.seq,onDone]);
@@ -35,7 +36,7 @@ function MotionFlight({event,onDone}:{event:GameEvent;onDone:(seq:number)=>void}
 export function GameFeedback({state,onMoving}:{state:GameState;onMoving:(seqs:number[])=>void}){
  const last=useRef<number|null>(null);const [queue,setQueue]=useState<GameEvent[]>([]);
  const finish=useCallback((seq:number)=>setQueue(q=>q.filter(e=>e.seq!==seq)),[]);
- useLayoutEffect(()=>{const seq=state.eventSeq||0;if(last.current===null||seq<last.current){last.current=seq;return;}const fresh=(state.events||[]).filter(e=>e.seq>last.current!);last.current=seq;for(const e of fresh){const sound=e.type==='negate'?'negate':e.type==='charge'?'charge':e.type==='payment'||e.type==='transfer'?'payment':e.type==='property'?'property':e.type==='bank'?'bank':e.type==='draw'?'draw':e.type==='play'?'play':null;if(sound)playSound(sound);}const motion=fresh.filter(e=>state.phase!=='setup'&&!e.setup&&['payment','transfer','bank','property','discard','draw','play'].includes(e.type)&&(e.cards?.length||e.card));if(motion.length)setQueue(q=>[...q,...motion]);},[state.eventSeq]);
+ useLayoutEffect(()=>{const seq=state.eventSeq||0;if(last.current===null||seq<last.current){last.current=seq;return;}const fresh=(state.events||[]).filter(e=>e.seq>last.current!);last.current=seq;for(const e of fresh){const sound=e.type==='negate'?'negate':e.type==='charge'?'charge':e.type==='payment'||e.type==='transfer'||e.type==='donation'?'payment':e.type==='property'?'property':e.type==='bank'?'bank':e.type==='draw'?'draw':e.type==='play'?'play':null;if(sound)playSound(sound);}const motion=fresh.filter(e=>state.phase!=='setup'&&!e.setup&&['payment','transfer','bank','property','discard','draw','play','donation'].includes(e.type)&&(e.cards?.length||e.card));if(motion.length)setQueue(q=>[...q,...motion]);},[state.eventSeq]);
  useEffect(()=>{onMoving(queue.map(e=>e.seq));},[queue]);
  const active=activeMotionEvents(queue);
  const concealed=Array.from(new Set(queue.flatMap(e=>(e.cards||[e.card!]).filter(Boolean).map(c=>c.id))));

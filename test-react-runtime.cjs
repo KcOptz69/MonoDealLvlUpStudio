@@ -11,6 +11,7 @@ const assert=require('node:assert/strict');const React=require('react');const{re
  const{OpponentField}=await server.ssrLoadModule('/src/components/OpponentField.tsx');
  const{SharedBoard}=await server.ssrLoadModule('/src/components/SharedBoard.tsx');
  const {App}=await server.ssrLoadModule('/src/App.tsx');
+ const {DonationModal,DonationHandPicker}=await server.ssrLoadModule('/src/components/DonationModal.tsx');
  const noop=()=>{};let count=0;
  const mount=(Component,props)=>{assert(renderToString(React.createElement(Component,props)));count++;};
  global.window={location:{search:'',origin:'http://localhost'}};
@@ -25,5 +26,11 @@ const assert=require('node:assert/strict');const React=require('react');const{re
  mount(SharedBoard,{state:g.s,boardPlay:null,onSelectCard:noop,onBrowseDiscard:noop});
  g.s.pending={kind:'chance',responder:0,cards:[{id:'public',key:'pass_go'}],e:{actor:0,target:0,key:'chance'}};
  mount(SharedBoard,{state:g.s,boardPlay:null,onSelectCard:noop,onBrowseDiscard:noop});
+ mount(DonationModal,{card:g.s.players[0].hand[0],state:g.s,onDonate:noop,onClose:noop});
+ mount(DonationHandPicker,{state:g.s,onPick:noop,onClose:noop});
+ const scoreHtml=renderToString(React.createElement(modals.WinnerModal,{winner:0,winnerName:'Player',winnerToken:0,sets:[],round:10,logCount:0,onMenu:noop,endReason:'round-limit',scoreResults:[{name:'Player',token:0,bank:5,field:5,total:10,winner:true},{name:'Dian Bot',token:1,bank:0,field:10,total:10,winner:true}]}));
+ assert(scoreHtml.includes('SHARED VICTORY'));assert(scoreHtml.includes('Bank'));assert(scoreHtml.includes('Field'));count++;
+ g.s.pending=null;g.s.events.push({seq:900,turnId:g.s.turnSerial||0,type:'play',actor:1,targetAll:true,card:{id:'badge',key:'its_my_birthday'}});
+ const boardHtml=renderToString(React.createElement(SharedBoard,{state:g.s,boardPlay:null,onSelectCard:noop,onBrowseDiscard:noop}));assert(boardHtml.includes('card-target-badge'));assert(!boardHtml.includes('target-activity-label'));
  console.log(`PASS matching React/renderer; singleton Vite resolution; ${count} component renders including hook-based dialogs and Chance board`);
 }finally{await server.close();}})().catch(e=>{console.error(e);process.exitCode=1});

@@ -24,7 +24,9 @@ export const TargetingWizard: React.FC<TargetingWizardProps> = ({
   const me = state.players[0];
 
   // Candidates for color
-  const allowedColors = card.locked ? [card.locked] : card.key==='expansion_property' ? [...new Set(me.groups.map(g=>g.color))] : def.colors || [];
+  const expansionFixed=card.locked||(card.expansionOwner===0?card.expansionColor:undefined);
+  const expansionColors=[...new Set(me.groups.filter(g=>g.cards.length<COLORS[g.color]?.size&&g.cards.some(c=>c.key!=='expansion_property')&&(!expansionFixed||g.color===expansionFixed)).map(g=>g.color))];
+  const allowedColors = card.key==='expansion_property'?expansionColors:card.locked?[card.locked]:def.colors||[];
   const [selectedColor, setSelectedColor] = useState<string>(allowedColors[0] || 'Brown');
 
   // Candidate opponents
@@ -198,7 +200,7 @@ export const TargetingWizard: React.FC<TargetingWizardProps> = ({
     </div>
   );
 
-  if (def.type === 'wild') return <div className="overlay wildcard-overlay"><section className="wildcard-dialog" role="dialog" aria-modal="true" aria-label="Choose property color"><header><button onClick={onCancel} aria-label="Close">×</button></header><div className="wildcard-body"><img className="wildcard-card" src={getCardArt(card)} alt={def.name}/><div className="wildcard-choice-panel"><h2>Choose property color</h2>{!allowedColors.length&&<p>Place a color property on your field first.</p>}<div className="wildcard-colors">{allowedColors.map(col=><button key={col} className={'wildcard-color'+(selectedColor===col?' picked':'')} aria-pressed={selectedColor===col} onClick={()=>setSelectedColor(col)}><span className="wildcard-swatch" style={{background:COLORS[col]?.hex}}/><span>{col}</span>{selectedColor===col&&<b>✓</b>}</button>)}</div></div></div><footer><button className="quiet" onClick={onCancel}>Cancel</button><button className="gold" disabled={!allowedColors.includes(selectedColor)} onClick={handleSubmit}>Play property</button></footer></section></div>;
+  if (def.type === 'wild') return <div className="overlay wildcard-overlay"><section className="wildcard-dialog" role="dialog" aria-modal="true" aria-label="Choose property color"><header><button onClick={onCancel} aria-label="Close">×</button></header><div className="wildcard-body"><img className="wildcard-card" src={getCardArt(card)} alt={def.name}/><div className="wildcard-choice-panel"><h2>Choose property color</h2>{!allowedColors.length&&<p>You need an existing matching-color set with space for another card.</p>}<div className="wildcard-colors">{allowedColors.map(col=><button key={col} className={'wildcard-color'+(selectedColor===col?' picked':'')} aria-pressed={selectedColor===col} onClick={()=>setSelectedColor(col)}><span className="wildcard-swatch" style={{background:COLORS[col]?.hex}}/><span>{col}</span>{selectedColor===col&&<b>✓</b>}</button>)}</div></div></div><footer><button className="quiet" onClick={onCancel}>Cancel</button><button className="gold" disabled={!allowedColors.includes(selectedColor)} onClick={handleSubmit}>Play property</button></footer></section></div>;
 
   return (
     <div className="overlay">

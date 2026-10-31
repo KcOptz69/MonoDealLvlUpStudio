@@ -37,6 +37,7 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
   };
 
   const remainingDefense = (i: number) => {
+    if(state.players[i].defenseRemaining!=null)return state.players[i].defenseRemaining;
     return (
       (i - state.turn + state.players.length) % state.players.length || state.players.length
     );

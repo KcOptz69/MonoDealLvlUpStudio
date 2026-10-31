@@ -1,3 +1,4 @@
+import {DonationModal,DonationHandPicker} from './components/DonationModal';
 import {TargetFeedback} from './components/TargetFeedback';
 import {ParallelBotTimers,parallelBotActors,parallelBotContext} from './parallelBots';
 import {setupView} from './setupPrivacy';
@@ -64,6 +65,11 @@ export const App: React.FC = () => {
   const changeProfileToken=(index:number)=>{setPlayerToken(index);try{localStorage.setItem('kaze_player_token',String(index));}catch{}};
 
   const [movingEvents,setMovingEvents]=useState<number[]>([]);
+  const motionClock=useRef({seq:0,until:0});
+  const [donationCard,setDonationCard]=useState<CardInstance|null>(null);
+  const [donationPicker,setDonationPicker]=useState(false);
+  const [roundLimit,setRoundLimit]=useState(false);
+  const [fastBots,setFastBots]=useState(()=>{try{return localStorage.getItem('deal_fast_bots')==='true';}catch{return false;}});
   // Selected card & previews
   const [selectedCard, setSelectedCard] = useState<CardInstance | null>(null);
   const [selectedOwner, setSelectedOwner] = useState<number>(0);
@@ -147,6 +153,10 @@ export const App: React.FC = () => {
   const refreshGameState = useCallback((g: any) => {
     if (!g) return;
     const s = { ...g.s };
+    if((s.eventSeq||0)<motionClock.current.seq)motionClock.current={seq:0,until:0};
+    const motion=(s.events||[]).filter((e:any)=>e.seq>motionClock.current.seq&&['transfer','payment','discard','donation'].includes(e.type));
+    motionClock.current.seq=s.eventSeq||0;
+    if(motion.length){const count=motion.reduce((n:number,e:any)=>n+(e.cards?.length||0),0);if(count)motionClock.current.until=Math.max(Date.now(),motionClock.current.until)+1900+Math.max(0,count-1)*220;}
     // clone to force React update
     setGameState(setupView(JSON.parse(JSON.stringify(s))));
 
@@ -161,7 +171,7 @@ export const App: React.FC = () => {
     setOnlineSession(null);
     setOnlineView(null);
 
-    const g = new Game(DECK, botCount + 1);
+    const g = new Game(DECK, botCount + 1,Math.random,{roundLimit:roundLimit?10:null,fastBots});
     g.p(0).name=playerName.trim()||'Player';g.p(0).tokenIndex=playerToken;
     g.s.log=g.s.log.map((text:string)=>text.replace(/\bYou\b/g,g.p(0).name));
     setGame(g);
@@ -211,9 +221,12 @@ export const App: React.FC = () => {
     }
 
     const g = game;
+    const fast=!!g.s.fastBots;
+    const revealMs=fast?timing.fastBotRevealMs:timing.botRevealMs;
+    const thinkMs=()=>{const min=fast?timing.fastBotThinkMinMs:timing.botThinkMinMs,max=fast?timing.fastBotThinkMaxMs:timing.botThinkMaxMs;return min+Math.floor(Math.random()*(max-min+1));};
     let actorIndex = -1;
 
-    parallelBots.current.sync(parallelBotActors(g,i=>i>0),parallelBotContext(g),()=>timing.botThinkMinMs+timing.botRevealMs+Math.floor(Math.random()*(timing.botThinkMaxMs-timing.botThinkMinMs+1)),actor=>{
+    parallelBots.current.sync(parallelBotActors(g,i=>i>0),parallelBotContext(g)+':'+fast,()=>thinkMs()+revealMs,actor=>{
       if(!parallelBotActors(g,i=>i>0).includes(actor))return;
       try{g.bot(actor);refreshGameState(g);saveLocalGame(g);}catch(err){console.error(err);}
     });
@@ -256,7 +269,7 @@ export const App: React.FC = () => {
             } catch (err: any) {
               console.error(err);
             }
-          }, timing.botRevealMs);
+          }, revealMs);
         } else {
           botTimerRef.current = setTimeout(() => {
             try {
@@ -267,12 +280,12 @@ export const App: React.FC = () => {
             } catch (err: any) {
               console.error(err);
             }
-          }, timing.botRevealMs);
+          }, revealMs);
         }
       } catch (err: any) {
         console.error(err);
       }
-    }, timing.botThinkMinMs+Math.floor(Math.random()*(timing.botThinkMaxMs-timing.botThinkMinMs+1)));
+    }, Math.max(thinkMs(),motionClock.current.until-Date.now()));
 
     return () => clearTimeout(botTimerRef.current);
   }, [view, showExit, game, gameState, onlineSession, refreshGameState, saveLocalGame]);
@@ -359,6 +372,7 @@ export const App: React.FC = () => {
       try {
         localStorage.setItem('kaze_online_session', JSON.stringify(session));
       } catch {}
+      await roomRequest({...session,cmd:'options',data:{roundLimit:roundLimit?10:null,fastBots}});
       connectOnlineStream(session);
       setView('lobby');
     } catch (err: any) {
@@ -786,7 +800,10 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleApplySettings = (newSound: boolean, newReduced: boolean, newMusic: boolean) => {
+  const handleApplySettings = async(newSound: boolean, newReduced: boolean, newMusic: boolean,newFast:boolean) => {
+    if(onlineSession&&onlineView?.host){try{const v=await roomRequest({...onlineSession,cmd:'options',data:{fastBots:newFast}});setOnlineView(v);if(v.state)setGameState(v.state);}catch(err:any){showToast(err.message);return;}}
+    setFastBots(newFast);try{localStorage.setItem('deal_fast_bots',String(newFast));}catch{}
+    if(!onlineSession&&game){game.s.fastBots=newFast;parallelBots.current.clear();refreshGameState(game);saveLocalGame(game);}
     setMusicOn(newMusic);
     setMusicEnabled(newMusic);
     setSound(newSound);
@@ -810,8 +827,12 @@ export const App: React.FC = () => {
   const defendingMusic = view==='game' && gameState?.winner===null && gameState?.players.some(p=>p.defending);
   useEffect(() => { setMusicScene(view==='game' ? (gameState?.winner!=null?'victory':defendingMusic?'defending':'game') : 'menu'); }, [view,defendingMusic,gameState?.winner]);
 
+  const canDonate=!!gameState&&gameState.phase!=='setup'&&gameState.winner===null&&gameState.players.length>=4&&gameState.players.length<=5&&!gameState.players[0].forfeited&&gameState.players.some(p=>p.defending&&!p.forfeited);
+  useEffect(()=>{if(!canDonate){setDonationCard(null);setDonationPicker(false);}},[canDonate]);
   return (
     <>
+      {view==='game'&&canDonate&&gameState?.pending&&!donationCard&&!donationPicker&&gameState.players[0].hand.length>0&&<button className="quiet donation-shortcut" onClick={()=>setDonationPicker(true)}>Donate (FREE)</button>}
+      {view==='game'&&canDonate&&donationPicker&&gameState&&<DonationHandPicker state={gameState} onClose={()=>setDonationPicker(false)} onPick={card=>{setDonationPicker(false);setDonationCard(card);}}/>}
       <MobileTableOverlays enabled={mobile} portrait={portrait}/>
 
 
@@ -827,6 +848,8 @@ export const App: React.FC = () => {
         <MainMenu
           playerName={playerName} playerToken={playerToken} onNameChange={updateProfileName} onTokenChange={changeProfileToken} profileBusy={onlineLoading}
           onStartLocal={handleStartLocal}
+          roundLimit={roundLimit}
+          onRoundLimitChange={setRoundLimit}
           onResume={handleResume}
           hasResume={hasResume}
           onOpenRules={() => setShowRules(true)}
@@ -846,6 +869,7 @@ export const App: React.FC = () => {
           onAddBot={handleAddBot}
           onRemoveBot={handleRemoveBot}
           onStartGame={handleStartOnlineGame}
+          onOptionsChange={async(options)=>{if(!onlineSession)return;try{const v=await roomRequest({...onlineSession,cmd:'options',data:options});setOnlineView(v);}catch(err:any){showToast(err.message);}}}
           onLeaveRoom={handleLeaveRoom}
           loading={onlineLoading}
         />
@@ -893,7 +917,7 @@ export const App: React.FC = () => {
 
               {/* Center shared board (draw, discard, played card, payment activity) */}
               <SharedBoard
-                state={{...gameState,events:gameState.events.filter(e=>!movingEvents.includes(e.seq)||!['payment','transfer','discard'].includes(e.type))}}
+                state={{...gameState,events:gameState.events.filter(e=>!movingEvents.includes(e.seq)||!['payment','transfer','discard','donation'].includes(e.type))}}
                 boardPlay={boardPlay}
                 onSelectCard={(c, owner = 0) => {
                   setSelectedCard(c);
@@ -914,6 +938,7 @@ export const App: React.FC = () => {
                   setSelectedOwner(0);
                 }}
                 onPlaySelected={handlePlayCard}
+                onDonateCard={setDonationCard}
                 onBankSelected={handleBankCard}
                 onEndTurn={handleEndTurn}
                 onViewBank={(idx) => {
@@ -948,6 +973,15 @@ export const App: React.FC = () => {
         </div>
       )}
 
+      {canDonate&&donationCard&&gameState&&gameState.winner===null&&gameState.players[0].hand.some(c=>c.id===donationCard.id)&&(
+        <DonationModal card={donationCard} state={gameState} onClose={()=>setDonationCard(null)} onDonate={async(target)=>{
+          try{
+            if(onlineSession)await roomRequest({...onlineSession,cmd:'action',data:{method:'donate',args:[donationCard.id,target]}});
+            else{game.donate(0,donationCard.id,target);refreshGameState(game);saveLocalGame(game);}
+            setSelectedCard(null);setDonationCard(null);
+          }catch(err:any){showToast(err.message);}
+        }}/>
+      )}
       {/* Modals & Dialogs */}
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
       {showAudit && <AuditModal onClose={() => setShowAudit(false)} />}
@@ -956,6 +990,8 @@ export const App: React.FC = () => {
           musicEnabled={musicOn}
           soundEnabled={sound}
           reducedMotion={reducedMotion}
+          fastBots={onlineSession?!!onlineView?.options?.fastBots:gameState?.fastBots??fastBots}
+          canSetBotPace={!onlineSession||!!onlineView?.host}
           onApply={handleApplySettings}
           onClose={() => setShowSettings(false)}
         />
@@ -1051,7 +1087,7 @@ export const App: React.FC = () => {
         )}
 
       {gameState?.pending?.responder===0&&['jail','chance','expansion'].includes(gameState.pending.kind)&&<div className="overlay"><section className="modal new-rule-choice" role="dialog" aria-modal="true" aria-label="Resolve card effect">
-        {gameState.pending.kind==='jail'?<><img className="jail-choice-art" src="/ui/jail.png" alt="In Jail"/><h2>Pay bail or skip your turn</h2><p>Discard at least 10M from your bank and/or field to take this turn.</p><button className="gold" onClick={()=>runChoice('jail',[true])}>Pay 10M bail</button><button className="quiet" onClick={()=>runChoice('jail',[false])}>Skip this turn</button></>:gameState.pending.kind==='chance'?<><h2>Chance · keep one card</h2><div className="chance-options">{gameState.pending.cards?.map(c=><button key={c.id} onClick={()=>runChoice('choose',[c.id])}><img src={getCardArt(c)} alt={getCardDef(c).name}/></button>)}</div></>:<><h2>Expansion Property · choose an existing color</h2>{gameState.pending.colors?.map(color=><button className="quiet" key={color} onClick={()=>runChoice('choose',[color])}>{color}</button>)}</>}
+        {gameState.pending.kind==='jail'?<><img className="jail-choice-art" src="/ui/jail.png" alt="In Jail"/><h2>Pay bail or skip your turn</h2><p>Discard at least 10M from your bank and/or field to take this turn.</p><button className="gold" onClick={()=>runChoice('jail',[true])}>Pay 10M bail</button><button className="quiet" onClick={()=>runChoice('jail',[false])}>Skip this turn</button></>:gameState.pending.kind==='chance'?<><h2>Chance · keep one card</h2><div className="chance-options">{gameState.pending.cards?.map(c=><button key={c.id} onClick={()=>runChoice('choose',[c.id])}><img src={getCardArt(c)} alt={getCardDef(c).name}/></button>)}</div></>:<><h2>Expansion Property · join an existing set</h2>{gameState.pending.colors?.map(color=><button className="quiet" key={color} onClick={()=>runChoice('choose',[color])}>{color}</button>)}</>}
       </section></div>}
       {/* Hand Limit Discard Modal */}
       {gameState?.pending &&
@@ -1077,6 +1113,9 @@ export const App: React.FC = () => {
           winnerName={gameState.players[gameState.winner]?.name || 'Player'}
           winnerToken={gameState.players[gameState.winner]?.tokenIndex??0}
           sets={gameState.players[gameState.winner]?.groups??[]}
+          endReason={gameState.endReason}
+          shortDefense={gameState.players.length>=4}
+          scoreResults={gameState.scoreResults?.map(row=>({...row,name:gameState.players[row.player]?.name||'Player',token:gameState.players[row.player]?.tokenIndex??row.player,winner:!!gameState.winners?.includes(row.player)}))}
           round={gameState.round}
           logCount={gameState.log.length}
           onMenu={async()=>{if(onlineSession){if(onlineView?.host){await roomRequest({...onlineSession,cmd:'stop'});setGameState(null);setGame(null);setView('lobby');}else await handleLeaveRoom();}else await handleExitGame(false);}}

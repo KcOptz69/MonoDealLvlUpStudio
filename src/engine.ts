@@ -23,13 +23,16 @@ export class Game {
   random: () => number;
   s: any;
 
-  constructor(defs: any[], n = 3, random = Math.random) {
+  constructor(defs: any[], n = 3, random = Math.random, options:{roundLimit?:number|null;fastBots?:boolean}={}) {
     this.defs = defs;
     this.random = random;
     const botNames = [...BOT_NAMES];
     this.shuffle(botNames);
     this.s = {
       version: 1,
+      roundLimit:options.roundLimit===10?10:null,
+      fastBots:!!options.fastBots,
+      roundCompleted:[],
       players: Array.from({ length: n }, (_, i) => ({
         name: i === 0 ? 'You' : botNames[i - 1],
         tokenIndex: i,
@@ -62,7 +65,7 @@ export class Game {
       }
     }
     this.shuffle(this.s.deck);
-    for (let i = 0; i < n; i++) this.draw(i, 5);
+    for (let i = 0; i < n; i++) this.draw(i, 7);
     this.s.turn = Math.floor(this.random() * n);
     this.s.startPlayer = this.s.turn;
     this.log('First player (random): ' + this.p(this.s.turn).name + '.');
@@ -126,9 +129,27 @@ export class Game {
   sets(i: number) { return new Set(this.p(i).groups.filter((g: any) => this.full(g)).map((g: any) => g.color)).size; }
 
   check() {
+    for(let i=0;i<this.s.players.length;i++){
+      const p=this.p(i),supported=new Set(p.groups.filter((g:any)=>g.cards.some((c:any)=>c.key!=='expansion_property')).map((g:any)=>g.color));
+      const lost:any[]=[];
+      for(const group of p.groups){
+        if(!supported.has(group.color)){
+          const unsupported=group.cards.filter((c:any)=>c.key==='expansion_property');lost.push(...unsupported);
+          group.cards=group.cards.filter((c:any)=>c.key!=='expansion_property');
+          if(unsupported.length&&!this.full(group))for(const key of ['house','hotel'])if(group[key]){p.hand.push(group[key]);delete group[key];}
+        }
+      }
+      if(lost.length){
+        p.groups=p.groups.filter((g:any)=>g.cards.length);this.s.discard.push(...lost);
+        this.event('discard',{actor:i,cards:lost.map(c=>({...c})),message:'Expansion Property lost its matching-color support'});
+        this.log(p.name+' discarded '+lost.length+' unsupported Expansion '+(lost.length===1?'Property.':'Properties.'));
+        this.insurance(i,lost.length,!this.isSetup()&&this.has(i,'insurance_agency'));
+      }
+    }
     for (let i = 0; i < this.s.players.length; i++) {
       if (this.sets(i) < 3 && this.p(i).defending) {
         this.p(i).defending = false;
+        this.p(i).defenseRemaining=null;
         this.log(this.p(i).name + ' lost their defending status.');
       }
     }
@@ -157,7 +178,7 @@ export class Game {
 
   startTurn(i:number){
     const p=this.p(i);
-    if (p.defending && this.sets(i) >= 3) {this.s.winner=i;this.log(p.name+' held three sets for a full rotation and wins!');return;}
+    if (p.defending && this.sets(i) >= 3 && p.defenseRemaining==null) {this.s.winner=i;this.log(p.name+' held three sets for a full rotation and wins!');return;}
     if(this.has(i,'emergency_treasury')&&p.bank.reduce((sum:number,c:any)=>sum+this.d(c).value,0)<20){
       const c={id:'mint'+this.s.nextId++,key:'money_3m',generated:true};p.bank.push(c);this.s.minted=(this.s.minted||0)+1;
       this.event('bank',{actor:i,card:{...c},passive:true});this.log(p.name+' gained 3M with Emergency Treasury.');this.trigger(i,'emergency_treasury','+3M added to bank',3);
@@ -185,7 +206,7 @@ export class Game {
       this.p(i).hand.push(c);this.s.discard.push(...cards.filter((x:any)=>x!==c));this.event('discard',{actor:i,cards:cards.filter((x:any)=>x!==c)});this.log(this.p(i).name+' kept '+this.d(c).name+' from Chance.');this.s.pending=null;this.nextEffect();return;
     }
     if(p.kind==='expansion'){
-      if(!p.colors.includes(value))throw Error('Choose an existing color.');const c=this.removeProp(i,p.card.id,false);c.expansionColor=value;c.expansionOwner=i;this.place(i,c,value);this.clean(i);this.s.pending=null;this.nextEffect();return;
+      if(!p.colors.includes(value)||!this.expansionGroups(i,p.card.id).some((g:any)=>g.color===value))throw Error('Choose an existing matching-color set with space.');const c=this.removeProp(i,p.card.id,false);c.expansionColor=value;c.expansionOwner=i;this.place(i,c,value);this.clean(i);this.s.pending=null;this.nextEffect();return;
     }
     throw Error('Invalid choice.');
   }
@@ -235,6 +256,10 @@ export class Game {
     return f.card;
   }
 
+  expansionGroups(i:number,excludeId?:string){
+    return this.p(i).groups.filter((g:any)=>{const cards=g.cards.filter((c:any)=>c.id!==excludeId);return cards.length<COLORS[g.color].size&&cards.some((c:any)=>c.key!=='expansion_property');});
+  }
+
   place(i: number, c: any, color?: string, gid?: string) {
     const d = this.d(c);
     if (d.type === 'special') {
@@ -245,8 +270,8 @@ export class Game {
       const owned=c.expansionOwner===i;
       if(owned)color=c.locked||c.expansionColor;
       else{
-        const colors=[...new Set(this.p(i).groups.filter((g:any)=>g.cards.length).map((g:any)=>g.color))];
-        if(!colors.length){delete c.expansionOwner;delete c.expansionColor;this.p(i).hand.push(c);this.log('Expansion Property needs an existing color and returned to hand.');return;}
+        const colors=[...new Set(this.expansionGroups(i).map((g:any)=>g.color))];
+        if(!colors.length){delete c.expansionOwner;delete c.expansionColor;this.p(i).hand.push(c);this.log('Expansion Property needs an existing set with space and returned to hand.');return;}
         const incoming=c.expansionOwner!==undefined;
         color=c.locked|| (color&&colors.includes(color)?color:colors[0] as string);
         if(c.locked&&!colors.includes(c.locked)){this.p(i).hand.push(c);return;}
@@ -256,6 +281,7 @@ export class Game {
     }
     color = c.locked || color || this.p(i).groups.find((g: any) => d.colors.includes(g.color) && g.cards.length < COLORS[g.color].size)?.color || d.colors[0];
     if (!d.colors.includes(color)) throw Error('That color is not allowed.');
+    if(c.key==='expansion_property'&&!gid){const existing=this.expansionGroups(i).find((g:any)=>g.color===color);if(existing)gid=existing.id;}
     let g = gid ? this.group(i, gid) : null;
     if (!g && gid !== '') g = this.p(i).groups.find((g: any) => g.color === color && g.cards.length < COLORS[color].size);
     if (g && (g.color !== color || g.cards.length >= COLORS[color].size)) throw Error('Choose a matching set with space.');
@@ -397,7 +423,7 @@ export class Game {
     }
     if (['property', 'wild'].includes(d.type)) {
       const color = c.locked || (c.expansionOwner===i?c.expansionColor:undefined) || a.color || d.colors[0];
-      if(c.key==='expansion_property'&&!this.p(i).groups.some((g:any)=>g.color===color&&g.cards.length))throw Error('Expansion Property must join a color already on your field.');
+      if(c.key==='expansion_property'&&!this.expansionGroups(i).some((g:any)=>g.color===color&&(!a.group||g.id===a.group)))throw Error('Expansion Property must join an existing matching-color set with space.');
       if (!d.colors.includes(color)) throw Error('Invalid property color');
       if (a.group) {
         const g = this.group(i, a.group);
@@ -451,7 +477,7 @@ export class Game {
 
   nextEffect() {
     const choices=this.s.expansionChoices;
-    while(choices?.length){const choice=choices.shift();if(this.find(choice.player,choice.card.id)){this.s.pending={kind:'expansion',responder:choice.player,...choice,e:{actor:choice.player,target:choice.player,key:'expansion_property'}};return;}}
+    while(choices?.length){const choice=choices.shift();if(this.find(choice.player,choice.card.id)){this.s.pending={kind:'expansion',responder:choice.player,...choice,colors:[...new Set(this.expansionGroups(choice.player,choice.card.id).map((g:any)=>g.color))],e:{actor:choice.player,target:choice.player,key:'expansion_property'}};return;}}
 
     if (!this.s.queue.length) {
       this.s.pending = null;
@@ -584,10 +610,11 @@ export class Game {
         if (own) {
           const ca = f.group?.color;
           const cb = own.group?.color;
-          const a = this.removeProp(t, e.property);
-          const b = this.removeProp(i, e.own);
+          const a = this.removeProp(t, e.property,false);
+          const b = this.removeProp(i, e.own,false);
           this.place(i, a, ca);
           this.place(t, b, cb);
+          this.clean(i);this.clean(t);
           this.event('transfer', { actor: t, target: i, cards: [{ ...a }] });
           this.event('transfer', { actor: i, target: t, cards: [{ ...b }] });
           this.insurance(t, 1, ins);
@@ -601,7 +628,7 @@ export class Game {
         p.groups = p.groups.filter((x: any) => x !== g);
         g.id = 'g' + this.s.nextId++;
         this.p(i).groups.push(g);
-        for(const c of g.cards)if(c.key==='expansion_property'){c.expansionOwner=i;c.expansionColor=g.color;const colors=[...new Set(this.p(i).groups.map((g:any)=>g.color))];if(!c.locked)(this.s.expansionChoices||(this.s.expansionChoices=[])).push({player:i,card:{...c},colors});}
+        for(const c of g.cards)if(c.key==='expansion_property'){c.expansionOwner=i;c.expansionColor=g.color;const colors=[...new Set(this.expansionGroups(i,c.id).map((g:any)=>g.color))];if(!c.locked)(this.s.expansionChoices||(this.s.expansionChoices=[])).push({player:i,card:{...c},colors});}
         this.event('transfer', {
           actor: t,
           target: i,
@@ -703,10 +730,27 @@ export class Game {
     this.log(this.p(i).name + ' offered I Owe You instead of paying.');
   }
 
+  donate(i:number,id:string,target:number){
+    if(this.s.winner!==null||this.isSetup()||this.s.players.length<4||this.s.players.length>5||!this.s.players.some((p:any)=>p.defending&&!p.forfeited))throw Error('Free donations are available only during defense in a 4–5-player game.');
+    if(!Number.isInteger(target)||target<0||target>=this.s.players.length||target===i||this.p(target).forfeited||this.p(i).forfeited)throw Error('Choose another active player.');
+    const card=this.takeHand(i,id);this.p(target).hand.push(card);
+    this.event('donation',{actor:i,target,cards:[{...card}],destination:'hand'});
+    this.log(this.p(i).name+' donated a card to '+this.p(target).name+'.');
+  }
+
   assetValue(i: number) {
     return this.p(i).bank.reduce((n: number, c: any) => n + this.d(c).value, 0) +
       this.allProps(i).reduce((n: number, c: any) => n + this.d(c).value, 0) +
       this.p(i).groups.reduce((n: number, g: any) => n + (g.house ? 3 : 0) + (g.hotel ? 4 : 0), 0);
+  }
+
+  finishByScore(){
+    const active=this.s.players.map((p:any,i:number)=>!p.forfeited?i:-1).filter((i:number)=>i>=0);
+    this.s.scoreResults=active.map((i:number)=>{const bank=this.p(i).bank.reduce((n:number,c:any)=>n+this.d(c).value,0);const total=this.assetValue(i);return{player:i,bank,field:total-bank,total};});
+    const best=Math.max(...this.s.scoreResults.map((r:any)=>r.total));
+    this.s.winners=this.s.scoreResults.filter((r:any)=>r.total===best).map((r:any)=>r.player);
+    this.s.winner=this.s.winners[0]??null;this.s.endReason='round-limit';this.s.pending=null;
+    this.log('Round 10 complete · '+this.s.winners.map((i:number)=>this.p(i).name).join(' & ')+' won with '+best+'M in bank and field.');
   }
 
   propertyUtility(i: number, c: any, color?: string) {
@@ -777,7 +821,8 @@ export class Game {
     if (gid === f.group.id) throw Error('Already in that set');
     const target = gid ? this.group(i, gid) : null;
     if (gid && (!target || target.color !== color || target.cards.length >= COLORS[color].size)) throw Error('Target set unavailable');
-    const c = this.removeProp(i, id);
+    if(f.card.key==='expansion_property'&&(!target||!this.expansionGroups(i,id).includes(target)))throw Error('Expansion Property must connect to an existing set with space.');
+    const c = this.removeProp(i, id,false);
     this.place(i, c, color, gid || '');
     this.clean(i);
     this.log(this.p(i).name + ' rearranged a property.');
@@ -840,15 +885,32 @@ export class Game {
       }
       return;
     }
+    this.check();
+    // Existing defenders count this opponent's completed turn. A new defense starts afterward.
+    for(let j=0;j<this.s.players.length;j++){
+      const defender=this.p(j);
+      if(j!==i&&!this.p(i).forfeited&&defender.defending&&defender.defenseRemaining!=null&&this.sets(j)>=3){
+        defender.defenseRemaining=Math.max(0,defender.defenseRemaining-1);
+        if(defender.defenseRemaining===0){this.s.winner=j;this.s.endReason='defense';this.log(defender.name+' defended three sets through two opponents’ turns and wins!');return;}
+      }
+    }
     if (this.sets(i) >= 3 && !this.p(i).defending) {
       this.p(i).defending = true;
-      this.log(this.p(i).name + ' is defending three sets!');
+      this.p(i).defenseRemaining=this.s.players.length>=4?2:null;
+      this.log(this.p(i).name + (this.s.players.length>=4?' is defending three sets for two opponents’ turns!':' is defending three sets!'));
     }
     const active=this.s.players.map((p:any,j:number)=>!p.forfeited?j:-1).filter((j:number)=>j>=0);
     if(active.length<=1){this.s.winner=active[0]??null;return;}
+    // The completed-player list remains valid if the original starting player forfeits.
+    if(!this.s.roundCompleted){this.s.roundCompleted=[];let j=this.s.startPlayer??0;for(let guard=0;j!==i&&guard<this.s.players.length;guard++,j=(j+1)%this.s.players.length)this.s.roundCompleted.push(j);}
+    if(!this.s.roundCompleted.includes(i))this.s.roundCompleted.push(i);
+    const roundDone=active.every((j:number)=>this.s.roundCompleted.includes(j));
+    if(roundDone){
+      if(this.s.roundLimit===10&&this.s.round>=10){this.finishByScore();return;}
+      this.s.round++;this.s.roundCompleted=[];
+    }
     this.s.turn = (i + 1) % this.s.players.length;
     while(this.p(this.s.turn).forfeited)this.s.turn=(this.s.turn+1)%this.s.players.length;
-    if (this.s.turn === (this.s.startPlayer ?? 0)) this.s.round++;
     this.begin();
   }
 
@@ -868,9 +930,9 @@ export class Game {
         continue;
       }
       if (['property', 'wild'].includes(d.type)) {
-        for (const color of c.locked ? [c.locked] : d.colors) {
-          if(c.key==='expansion_property'&&!p.groups.some((g:any)=>g.color===color&&g.cards.length))continue;
-          const gs = p.groups.filter((g: any) => g.color === color && g.cards.length < COLORS[color].size);
+        for (const color of (c.locked||(c.expansionOwner===i&&c.expansionColor)) ? [c.locked||c.expansionColor] : d.colors) {
+          if(c.key==='expansion_property'&&!this.expansionGroups(i).some((g:any)=>g.color===color))continue;
+          const gs = p.groups.filter((g: any) => g.color === color && g.cards.length < COLORS[color].size&&(c.key!=='expansion_property'||this.expansionGroups(i).includes(g)));
           for (const g of gs) push(c, { color, group: g.id }, 5 + g.cards.length * 2 + (g.cards.length === COLORS[color].size - 1 ? 9 : 0));
           push(c, { color }, 4 + (COLORS[color].size === 2 ? 1 : 0));
         }

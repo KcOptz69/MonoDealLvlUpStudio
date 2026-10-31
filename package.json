@@ -8,7 +8,7 @@
     "build": "node build.cjs",
     "check": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "test": "node test.js && node test-online.js && node test-startup.cjs && node test-artwork.cjs && node test-lobby-reconnect.cjs && node test-regressions.cjs && node test-new-cards.cjs && node test-animation-privacy.cjs && node test-simultaneous.cjs && node test-targeting.cjs",
+    "test": "node test.js && node test-online.js && node test-startup.cjs && node test-artwork.cjs && node test-lobby-reconnect.cjs && node test-regressions.cjs && node test-new-cards.cjs && node test-animation-privacy.cjs && node test-simultaneous.cjs && node test-targeting.cjs && node test-quick-matches.cjs && node test-pacing.cjs && node test-expansion-support.cjs",
     "test:dev": "node test-react-dev.cjs"
   },
   "engines": {

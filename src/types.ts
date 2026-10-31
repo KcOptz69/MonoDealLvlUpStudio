@@ -27,6 +27,7 @@ export interface PropertyGroup {
 }
 
 export interface PlayerState {
+  defenseRemaining?:number|null;
   setupHidden?:boolean;
   jailed?:boolean;
   freeBankUsed?:boolean;
@@ -48,7 +49,7 @@ export interface GameEvent {
   turnId?: number;
   targetPlaySeq?: number;
   seq: number;
-  type: 'draw' | 'bank' | 'property' | 'play' | 'charge' | 'transfer' | 'payment' | 'discard' | 'negate' | 'setup_turn' | 'reveal' | 'special_trigger';
+  type: 'donation' | 'draw' | 'bank' | 'property' | 'play' | 'charge' | 'transfer' | 'payment' | 'discard' | 'negate' | 'setup_turn' | 'reveal' | 'special_trigger';
   actor: number;
   target?: number | null;
   card?: CardInstance;
@@ -91,6 +92,12 @@ export interface PendingAction {
 }
 
 export interface GameState {
+  roundLimit?:number|null;
+  fastBots?:boolean;
+  roundCompleted?:number[];
+  winners?:number[];
+  endReason?:'round-limit'|'defense';
+  scoreResults?:{player:number;bank:number;field:number;total:number}[];
   turnSerial?: number;
   version: number;
   players: PlayerState[];
@@ -127,6 +134,7 @@ export interface SeatInfo {
 export interface ChatMessage {id:number;name:string;text:string;time:number;senderSeat?:number;}
 
 export interface OnlineRoomView {
+  options?:{roundLimit:number|null;fastBots:boolean};
   matchActive?:boolean;
   chat?: ChatMessage[];
   code: string;

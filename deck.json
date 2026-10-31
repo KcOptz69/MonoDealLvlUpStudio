@@ -743,7 +743,7 @@
       "Railroad",
       "Utility"
     ],
-    "text": "Join a color already on your field. Color is fixed until ownership changes. Cannot be banked or paid."
+    "text": "Join an existing color set with space. Its color locks while you own it; a new owner chooses an existing set. Discard if no non-Expansion property of its color remains."
   },
   {
     "key": "free_parking",
