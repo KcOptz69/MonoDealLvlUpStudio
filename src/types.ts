@@ -27,6 +27,7 @@ export interface PropertyGroup {
 }
 
 export interface PlayerState {
+  setupHidden?:boolean;
   jailed?:boolean;
   freeBankUsed?:boolean;
   forfeited?:boolean;
@@ -42,6 +43,7 @@ export interface PlayerState {
 }
 
 export interface GameEvent {
+  setup?:boolean;
   turnId?: number;
   targetPlaySeq?: number;
   seq: number;

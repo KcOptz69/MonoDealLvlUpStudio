@@ -84,7 +84,7 @@ class Game {
     }
     event(type, data = {}) {
         this.s.eventSeq = (this.s.eventSeq || 0) + 1;
-        (this.s.events || (this.s.events = [])).push({ seq: this.s.eventSeq, type, turnId: this.s.turnSerial || 0, ...data });
+        (this.s.events || (this.s.events = [])).push({ seq: this.s.eventSeq, type, setup: this.isSetup(), turnId: this.s.turnSerial || 0, ...data });
         this.s.events = this.s.events.slice(-120);
     }
     d(c) { return this.defs.find(d => d.key === c.key); }

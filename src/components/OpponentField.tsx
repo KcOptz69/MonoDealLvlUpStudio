@@ -1,8 +1,10 @@
+import '../opponent-cards.css';
 import { isCardInverted } from '../cardOrientation';
 import {PlayerToken} from './PlayerToken';
 import React from 'react';
 import { GameState, CardInstance, PropertyGroup } from '../types';
 import { getCardDef, COLORS } from '../engineBridge';
+import {STATIC_ART} from '../cardArt';
 import { getCardArt } from '../cardArt';
 
 interface OpponentFieldProps {
@@ -47,6 +49,8 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
     <div className="opponents">
       {state.players.slice(1).map((p, idx) => {
         const playerIndex = idx + 1;
+        if(isSetup)return <section className="opponent setup-concealed" key={playerIndex} data-player={playerIndex} aria-label={p.name+' setup field'}><div className="ophead"><PlayerToken index={p.tokenIndex??playerIndex}/><strong>{p.name}</strong></div><small>{p.setupDone?'Ready':'Setting up'} · {p.setupPlayed||0}/3 actions</small><div className="setup-cardbacks">{Array.from({length:p.setupPlayed||0},(_,i)=><img key={i} src={STATIC_ART.card_back} alt="Hidden setup card"/>)}</div><small>Revealed when everyone is ready</small></section>;
+
         const isActive = isSetup ? !p.setupDone : state.turn === playerIndex;
         const setsCount = calculateSets(p.groups);
         const bankTotal = getBankTotal(p.bank);

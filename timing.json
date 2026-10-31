@@ -1,0 +1,6 @@
+{
+  "noticeDurationMs": 3000,
+  "botThinkMinMs": 3200,
+  "botThinkMaxMs": 5200,
+  "botRevealMs": 1800
+}

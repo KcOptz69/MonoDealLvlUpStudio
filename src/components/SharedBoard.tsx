@@ -83,61 +83,8 @@ export const SharedBoard: React.FC<SharedBoardProps> = ({
       <section className="played-panel" aria-label="Played card">
         <h3>{state.phase === 'setup' ? 'Played card' : `Cards this turn · ${state.players[state.turn]?.name}`}</h3>
         <div className="board-play" id="boardPlay" aria-live="polite">
-          {state.phase !== 'setup' ? <TurnPlayedCards state={state} upcoming={boardPlay} onSelectCard={onSelectCard}/> : boardPlay ? (
-            <div className="played-content">
-              <div className="table-play-cards">
-                <button
-                  type="button"
-                  className="played-card-main"
-                  onClick={() => onSelectCard(boardPlay.card, boardPlay.owner)}
-                  aria-label={`Preview last played card: ${getCardDef(boardPlay.card).name}`}
-                >
-                  <img
-                    src={getCardArt(boardPlay.card, boardPlay.color)}
-                    alt={getCardDef(boardPlay.card).name}
-                  />
-                  {boardPlay.mode==='bank'&&<BankedStamp/>}
-                </button>
-                {boardPlay.extra && (
-                  <button
-                    type="button"
-                    className="played-extra"
-                    onClick={() => onSelectCard(boardPlay.extra!, boardPlay.owner)}
-                    aria-label="Preview Double the Rent"
-                  >
-                    <img
-                      src={getCardArt(boardPlay.extra)}
-                      alt="Double the Rent"
-                    />
-                  </button>
-                )}
-              </div>
-              <div className="table-play-info">
-                <small>LAST PLAY</small>
-                <strong>
-                  {boardPlay.actor}{' '}
-                  {boardPlay.mode === 'bank'
-                    ? ''
-                    : boardPlay.mode === 'response'
-                    ? 'responded with'
-                    : 'played'}
-                </strong>
-                <b>{getCardDef(boardPlay.card).name}</b>
-                <span>
-                  {boardPlay.target
-                    ? `Target: ${boardPlay.target}`
-                    : boardPlay.mode === 'bank'
-                    ? ''
-                    : 'On the table'}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <div className="table-play-empty">
-              PLAY AREA
-              <span>Played cards appear here</span>
-            </div>
-          )}
+          {state.phase!=='setup'?<TurnPlayedCards state={state} upcoming={boardPlay} onSelectCard={onSelectCard}/>:<div className="table-play-empty">SIMULTANEOUS SETUP<span>Cards stay hidden until everyone is ready</span></div>}
+
         </div>
       </section>
 

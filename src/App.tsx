@@ -1,3 +1,5 @@
+import {setupView} from './setupPrivacy';
+import timing from '../timing.json';
 import {SpecialTriggerNotices} from './components/SpecialTriggerNotices';
 import {getCardArt} from './cardArt';
 import {BoardTarget,usesBoardTarget} from './components/BoardTarget';
@@ -142,7 +144,7 @@ export const App: React.FC = () => {
     if (!g) return;
     const s = { ...g.s };
     // clone to force React update
-    setGameState(JSON.parse(JSON.stringify(s)));
+    setGameState(setupView(JSON.parse(JSON.stringify(s))));
 
   }, []);
 
@@ -251,7 +253,7 @@ export const App: React.FC = () => {
             } catch (err: any) {
               console.error(err);
             }
-          }, 1800);
+          }, timing.botRevealMs);
         } else {
           botTimerRef.current = setTimeout(() => {
             try {
@@ -262,12 +264,12 @@ export const App: React.FC = () => {
             } catch (err: any) {
               console.error(err);
             }
-          }, 1800);
+          }, timing.botRevealMs);
         }
       } catch (err: any) {
         console.error(err);
       }
-    }, 1200);
+    }, timing.botThinkMinMs+Math.floor(Math.random()*(timing.botThinkMaxMs-timing.botThinkMinMs+1)));
 
     return () => clearTimeout(botTimerRef.current);
   }, [view, showExit, game, gameState, onlineSession, refreshGameState, saveLocalGame]);
