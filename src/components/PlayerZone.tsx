@@ -2,7 +2,7 @@ import {PlayerToken} from './PlayerToken';
 import React from 'react';
 import { GameState, CardInstance, PropertyGroup, ChatMessage } from '../types';
 import { getCardDef, COLORS } from '../engineBridge';
-import { getCardArt } from '../cardArt';
+import { getCardArt, isCardInverted } from '../cardArt';
 
 interface PlayerZoneProps {
   state: GameState;
@@ -130,7 +130,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
                                 title={`${def.name} — ${def.value}M`}
                               >
                                 <img
-                                  className={c.locked && c.locked !== g.color ? 'inverted' : ''}
+                                  className={isCardInverted(c,g.color) ? 'inverted' : ''}
                                   src={artUrl}
                                   alt={def.name}
                                   draggable={false}

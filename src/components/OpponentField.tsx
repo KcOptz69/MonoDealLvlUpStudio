@@ -2,7 +2,7 @@ import {PlayerToken} from './PlayerToken';
 import React from 'react';
 import { GameState, CardInstance, PropertyGroup } from '../types';
 import { getCardDef, COLORS } from '../engineBridge';
-import { getCardArt } from '../cardArt';
+import { getCardArt, isCardInverted } from '../cardArt';
 
 interface OpponentFieldProps {
   state: GameState;
@@ -67,7 +67,7 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
                 <PlayerToken index={p.tokenIndex ?? playerIndex}/>
                 <strong>{p.name}</strong>
                 <span className="opponent-desktop-state">
-                  {state.pending?.responder===playerIndex
+                  {p.forfeited?'In lobby':state.pending?.responders?.includes(playerIndex)||state.pending?.payments?.some(e=>e.target===playerIndex)||state.pending?.responder===playerIndex
                     ? state.pending.kind==='payment'?'Paying':state.pending.kind==='counter'?'Responding':'Discarding'
                     : isSetup ? p.setupDone?'✓ Ready':`${3-(p.setupPlayed||0)} setup actions`
                     : p.defending?`Defending · ${remainingDefense(playerIndex)} turns`
@@ -86,7 +86,7 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
             <div className="opmeta">
               <span>▣ {p.hand.length} cards</span>
               <span>{setsCount} / 3 sets</span>
-              <span className={'opponent-mobile-status'+(p.defending?' defending-status':'')+(state.pending?.responder===playerIndex?' needs-response':'')}>{state.pending?.responder===playerIndex ? state.pending.kind==='payment'?'Paying':state.pending.kind==='counter'?'Responding':'Discarding' : isSetup ? p.setupDone?'Ready':`${3-(p.setupPlayed||0)} setup actions` : p.defending?`Defending · ${remainingDefense(playerIndex)} turns`:state.turn===playerIndex?'● Playing':'Waiting'}</span>
+              <span className={'opponent-mobile-status'+(p.defending?' defending-status':'')+(state.pending?.responder===playerIndex?' needs-response':'')}>{p.forfeited?'In lobby':state.pending?.responders?.includes(playerIndex)||state.pending?.payments?.some(e=>e.target===playerIndex)||state.pending?.responder===playerIndex ? state.pending.kind==='payment'?'Paying':state.pending.kind==='counter'?'Responding':'Discarding' : isSetup ? p.setupDone?'Ready':`${3-(p.setupPlayed||0)} setup actions` : p.defending?`Defending · ${remainingDefense(playerIndex)} turns`:state.turn===playerIndex?'● Playing':'Waiting'}</span>
               {p.defending && (
                 <span className="defense">
                   DEFENDING · {remainingDefense(playerIndex)} turns to victory
@@ -129,7 +129,7 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
                                 title={`${def.name} — ${def.value}M`}
                               >
                                 <img
-                                  className={c.locked && c.locked !== g.color ? 'inverted' : ''}
+                                  className={isCardInverted(c,g.color) ? 'inverted' : ''}
                                   src={artUrl}
                                   alt={def.name}
                                   draggable={false}

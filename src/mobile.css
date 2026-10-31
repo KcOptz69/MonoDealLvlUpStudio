@@ -52,3 +52,27 @@
 .mobile-device .opponent-field>.group{height:calc(100cqh - 14px)}.mobile-device .opponent .card{height:calc(100cqh - 37px);width:calc((100cqh - 37px)*2/3);margin-right:calc((100cqh - 37px)*-.22)}.mobile-device .opponent .card:last-child{margin-right:0}
 /* Compact opponent identity and stats, preserving the field's vertical space. */
 .mobile-device .opponent{gap:2px;padding:3px 4px}.mobile-device .ophead{flex:0 0 19px;height:19px;min-height:19px;gap:3px}.mobile-device .opponent-open{font-size:10px;gap:4px;min-height:0;height:19px;padding:0}.mobile-device .opponent-open .player-token{width:19px;height:19px}.mobile-device .opponent-open .player-token svg{width:16px;height:16px}.mobile-device .ophead button.compactbtn{min-height:19px;height:19px;padding:1px 4px;font-size:8px;line-height:13px}.mobile-device .opmeta{flex:0 0 10px;height:10px;min-height:10px;line-height:10px;font-size:7px;gap:3px}.mobile-device .opponent-mobile-status{font-size:7px;line-height:10px}
+
+/* Optional properties-only strip above the mobile hand. */
+.mobile-device .hand-field-toggle{display:flex;align-items:center;gap:7px;margin-right:auto;font-size:11px;color:#f4ecd4;cursor:pointer;white-space:nowrap;position:relative;min-height:32px}
+.mobile-device .hand-field-toggle input{position:absolute;opacity:0;width:36px;height:24px;margin:0;cursor:pointer}
+.mobile-device .hand-field-switch{width:34px;height:20px;flex:none;border-radius:12px;background:#527170;border:1px solid #91a9a0;position:relative;transition:background .16s}
+.mobile-device .hand-field-switch:after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff3da;transition:transform .16s}
+.mobile-device .hand-field-toggle input:checked+.hand-field-switch{background:#b68e39}.mobile-device .hand-field-toggle input:checked+.hand-field-switch:after{transform:translateX(14px)}
+.mobile-device .hand-field-toggle input:focus-visible+.hand-field-switch{outline:2px solid #ffe3a0;outline-offset:3px}
+.mobile-device .panel-hand.hand-field-visible .player-zone{display:flex;flex-direction:column;gap:4px}
+.mobile-device .panel-hand.hand-field-visible .player-zone>.center{display:block;flex:0 0 clamp(85px,29dvh,140px);height:clamp(85px,29dvh,140px);min-height:0;width:100%;overflow:hidden}
+.mobile-device .panel-hand.hand-field-visible .property-area,.mobile-device .panel-hand.hand-field-visible .field-body{height:100%;min-height:0;box-sizing:border-box}
+.mobile-device .panel-hand.hand-field-visible .property-area>.sectionhead,.mobile-device .panel-hand.hand-field-visible .bank-field,.mobile-device .panel-hand.hand-field-visible .new-set-drop{display:none}
+.mobile-device .panel-hand.hand-field-visible .field-body{display:block}
+.mobile-device .panel-hand.hand-field-visible .groups{display:flex;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;height:100%;gap:7px;padding:3px;box-sizing:border-box;align-items:stretch;touch-action:pan-x}
+.mobile-device .panel-hand.hand-field-visible .group{flex:0 0 auto;min-width:65px;padding:3px;display:flex;flex-direction:column;gap:2px}
+.mobile-device .panel-hand.hand-field-visible .grouphead{font-size:8px;line-height:12px;gap:6px;padding:0 2px;margin:0}
+.mobile-device .panel-hand.hand-field-visible .groupcards{display:flex;flex:1;min-height:0;gap:0;align-items:stretch}
+.mobile-device .panel-hand.hand-field-visible .groupcards .card{height:calc(clamp(85px,29dvh,140px) - 33px);width:auto;min-width:0;aspect-ratio:5/7;margin-right:-15px;padding:0;flex:none}
+.mobile-device .panel-hand.hand-field-visible .groupcards .card:last-child{margin-right:0}
+.mobile-device .panel-hand.hand-field-visible .groupcards img{width:100%;height:100%;object-fit:contain}
+.mobile-device .panel-hand.hand-field-visible .grouprent{display:none}
+.mobile-device .panel-hand.hand-field-visible .handtray{flex:1;height:auto;min-height:0}
+.mobile-device .panel-hand.hand-field-visible .handwrap{container-type:size}
+.mobile-device .panel-hand.hand-field-visible .hand .card{height:min(220px,calc(100cqh - 10px));width:auto;min-width:0;aspect-ratio:5/7;flex:none}

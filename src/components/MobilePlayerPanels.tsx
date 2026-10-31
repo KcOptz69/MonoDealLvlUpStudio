@@ -6,6 +6,7 @@ import {COLORS,getCardDef} from '../engineBridge';
 type Props=React.ComponentProps<typeof PlayerZone>;
 export const MobilePlayerPanels:React.FC<Props>=(props)=>{
  const [panel,setPanel]=useState<'hand'|'field'|'chat'|null>(null);
+ const [showHandField,setShowHandField]=useState(false);
  const close=useRef<HTMLButtonElement>(null);
  const [lastReadId,setLastReadId]=useState(0);
  const [draft,setDraft]=useState('');const [localMessages,setLocalMessages]=useState<import('../types').ChatMessage[]>([]);const [sending,setSending]=useState(false);const [chatError,setChatError]=useState('');const messages=props.chatMessages??localMessages;const messageList=useRef<HTMLDivElement>(null);
@@ -31,9 +32,9 @@ export const MobilePlayerPanels:React.FC<Props>=(props)=>{
    <div className={'pips'+(!myTurn?' waiting':'')} role="img" aria-label={`${remaining} of ${limit} actions remaining`}>{Array.from({length:limit},(_,i)=><span key={i} className={'pip'+(myTurn&&i>=remaining?' used':'')}/>)}</div>
    <button className={'gold'+(myTurn&&remaining===0?' end-ready':'')} disabled={!myTurn||!!state.pending} onClick={()=>{setPanel(null);props.onEndTurn();}}>{setup?(player.setupDone?'Ready':'Finish setup'):'End Turn'}</button>
   </nav>
-  {panel&&<div className={'mobile-player-overlay panel-'+panel}>
+  {panel&&<div className={'mobile-player-overlay panel-'+panel+(panel==='hand'&&showHandField?' hand-field-visible':'')}>
    <section className="mobile-player-panel" role="dialog" aria-modal="true" aria-label={panel==='chat'?'Chat':panel==='hand'?'Your hand':'Your field and bank'} onKeyDown={e=>{if(e.key==='Escape'){e.stopPropagation();setPanel(null);}}}>
-    <header className="mobile-player-panel-head"><h2>{panel==='chat'?'Chat':panel==='hand'?`Your hand · ${player.hand.length}`:`Your field · ${sets}/3 sets`}</h2><button ref={close} type="button" aria-label="Close player panel" onClick={()=>setPanel(null)}>×</button></header>
+    <header className="mobile-player-panel-head"><h2>{panel==='chat'?'Chat':panel==='hand'?`Your hand · ${player.hand.length}`:`Your field · ${sets}/3 sets`}</h2>{panel==='hand'&&<label className="hand-field-toggle"><input type="checkbox" role="switch" checked={showHandField} onChange={e=>setShowHandField(e.target.checked)} aria-label="Show your field above your hand"/><span className="hand-field-switch" aria-hidden="true"/><span>Show field</span></label>}<button ref={close} type="button" aria-label="Close player panel" onClick={()=>setPanel(null)}>×</button></header>
     {panel==='chat'?<><small className="chat-context">{props.onSendChat?'Messages to everyone in this room':'Local game · messages stay on this device'}</small><div className="chat-messages" ref={messageList} role="log" aria-label="Chat messages" aria-live="polite">{messages.length?messages.map(m=><article key={m.id}><strong>{m.name}</strong><p>{m.text}</p></article>):<p className="muted">No messages yet.</p>}</div><form className="chat-compose" onSubmit={send}><input aria-label="Chat message" placeholder="Type a message…" maxLength={240} value={draft} onChange={e=>setDraft(e.target.value)}/><button className="gold" disabled={sending||!draft.trim()} type="submit">{sending?'Sending…':'Send'}</button></form>{chatError&&<small role="alert">{chatError}</small>}</>:<PlayerZone {...props} onPlaySelected={id=>{setPanel(null);props.onPlaySelected(id);}} onRearrange={()=>{setPanel(null);props.onRearrange();}} onEndTurn={()=>{setPanel(null);props.onEndTurn();}}/>}
    </section>
   </div>}

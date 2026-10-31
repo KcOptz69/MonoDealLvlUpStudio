@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {createPortal} from 'react-dom';
 import '../payment-layout.css';
 import '../selection-prompts.css';
 import { CardInstance, GameState, PropertyGroup } from '../types';
 import { getCardDef, COLORS, DECK } from '../engineBridge';
-import { getCardArt, STATIC_ART } from '../cardArt';
+import { getCardArt, STATIC_ART, isCardInverted } from '../cardArt';
 
 // 1. Rules Modal
 export const RulesModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
@@ -239,6 +239,8 @@ export const ReactionModal: React.FC<{
   state: GameState;
   onRespond: (useJustSayNo: boolean) => void;
 }> = ({ pending, state, onRespond }) => {
+  const [seconds,setSeconds]=useState(10);
+  useEffect(()=>{const tick=()=>setSeconds(Math.max(0,Math.ceil(((pending.deadline||Date.now()+10000)-Date.now())/1000)));tick();const timer=setInterval(tick,200);return()=>clearInterval(timer);},[pending.deadline]);
   const e = pending.e;
   const actor = state.players[e.actor]?.name || 'Opponent';
   const target = state.players[e.target]?.name || 'You';
@@ -257,7 +259,7 @@ export const ReactionModal: React.FC<{
             alt={def.name}
           />
           <div className="reaction-content">
-            <h3>Your response</h3>
+            <h3>Your response · {seconds}s</h3><small>Automatically allowed when the timer ends.</small>
             {e.global && (
               <p className="warning">
                 This action affects everyone. A successful Just Say No cancels it for all players.
@@ -674,7 +676,7 @@ export const OpponentFieldViewerModal: React.FC<{
               <div className="groupcards">
                 {g.cards.map((c) => (
                   <div key={c.id} className="card" style={{ width: '60px' }}>
-                    <img src={getCardArt(c)} alt={getCardDef(c).name} />
+                    <img className={isCardInverted(c,g.color)?'inverted':''} src={getCardArt(c)} alt={getCardDef(c).name} />
                   </div>
                 ))}
               </div>

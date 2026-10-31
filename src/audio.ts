@@ -60,7 +60,7 @@ export function playSound(kind: 'draw' | 'property' | 'bank' | 'play' | 'charge'
       osc.frequency.setValueAtTime(notes[i], t + i * 0.065);
 
       gain.gain.setValueAtTime(0, t + i * 0.065);
-      gain.gain.linearRampToValueAtTime(0.075, t + i * 0.065 + 0.008);
+      gain.gain.linearRampToValueAtTime(0.22, t + i * 0.065 + 0.008);
       gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.065 + 0.14);
 
       osc.connect(gain);
@@ -71,3 +71,5 @@ export function playSound(kind: 'draw' | 'property' | 'bank' | 'play' | 'charge'
     }
   } catch {}
 }
+
+if(typeof document!=='undefined'){document.addEventListener('pointerdown',unlockAudio,{capture:true});document.addEventListener('keydown',unlockAudio,{capture:true});}

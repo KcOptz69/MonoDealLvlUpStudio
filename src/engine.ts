@@ -136,6 +136,7 @@ export class Game {
   begin() {
     const i = this.s.turn;
     const p = this.p(i);
+    if(p.forfeited){this.finishTurn(i);return;}
     if (this.isSetup()) {
       this.s.played = 0;
       if (!this.s.setupStarted) {
@@ -330,10 +331,10 @@ export class Game {
   nextBatchResponse() {
     const b = this.s.batch;
     if (!b) return;
-    const e = b.remaining.shift();
+    const e = b.remaining[0];
     if (e) {
       e.global = true;
-      this.s.pending = { kind: 'counter', responder: e.target, e, negated: false };
+      this.s.pending = { kind: 'counter', responder: e.target, responders:b.remaining.map((x:any)=>x.target), deadline:Date.now()+10000, e, negated: false };
       return;
     }
     this.s.batch = null;
@@ -422,17 +423,22 @@ export class Game {
       this.resolve(e);
       return;
     }
-    this.s.pending = { kind: 'counter', responder: e.target, e, negated: false };
+    this.s.pending = { kind: 'counter', responder: e.target, deadline:Date.now()+10000, e, negated: false };
   }
 
   respond(i: number, no: boolean) {
     const p = this.s.pending;
-    if (!p || p.kind !== 'counter' || p.responder !== i) throw Error('No response requested.');
+    if (!p || p.kind !== 'counter' || (p.responders ? !p.responders.includes(i) : p.responder !== i)) throw Error('No response requested.');
+    if(p.responders){
+      if(!no){this.s.batch.remaining=this.s.batch.remaining.filter((e:any)=>e.target!==i);p.responders=p.responders.filter((j:number)=>j!==i);if(p.responders.length){p.responder=p.responders[0];return;}this.nextBatchResponse();return;}
+      p.e={...this.s.batch.effects.find((e:any)=>e.target===i),global:true};this.s.batch.remaining=this.s.batch.remaining.filter((e:any)=>e.target!==i);delete p.responders;
+    }
     if (no) {
       const c = this.p(i).hand.find((c: any) => c.key === 'just_say_no');
       if (!c) throw Error('No Just Say No in hand.');
       this.s.discard.push(this.takeHand(i, c.id));
       p.negated = !p.negated;
+      p.deadline=Date.now()+10000;
       p.responder = i === p.e.actor ? p.e.target : p.e.actor;
       this.log(this.p(i).name + ' played Just Say No.');
       const action = [...this.s.events].reverse().find(e => e.type === 'play' && e.actor === p.e.actor && e.card?.key === (p.e.cardKey || p.e.key));
@@ -489,6 +495,13 @@ export class Game {
       return;
     }
     if (['rent', 'debt_collector', 'its_my_birthday', 'compulsory_purchase', 'luxury_tax'].includes(e.key)) {
+      if(e.approved&&this.s.queue.length){
+        const effects=[e,...this.s.queue.splice(0)];
+        const payable=effects.filter((x:any)=>this.payable(x.target,x).length&&x.amount>0);
+        for(const x of effects)this.event('charge',{actor:x.actor,target:x.target,amount:x.amount,key:x.key});
+        if(!payable.length){this.s.pending=null;this.nextEffect();return;}
+        this.s.pending={kind:'payment',responder:payable[0].target,e:payable[0],payments:payable};return;
+      }
       this.event('charge', { actor: i, target: t, amount: e.amount, key: e.key });
       this.s.pending = { kind: 'payment', responder: t, e };
       if (!this.payable(t, e).length) this.pay(t, []);
@@ -584,8 +597,8 @@ export class Game {
 
   pay(i: number, ids: string[]) {
     const pending = this.s.pending;
-    if (!pending || pending.kind !== 'payment' || pending.responder !== i) throw Error('Payment not requested');
-    const e = pending.e;
+    if (!pending || pending.kind !== 'payment' || (pending.payments ? !pending.payments.some((e:any)=>e.target===i) : pending.responder !== i)) throw Error('Payment not requested');
+    const e = pending.payments?.find((e:any)=>e.target===i)||pending.e;
     const all = this.payable(i, e);
     const picked = ids.map(id => all.find(x => x.id === id));
     if (new Set(ids).size !== ids.length || picked.some(x => !x)) throw Error('Invalid payment selection');
@@ -618,12 +631,14 @@ export class Game {
     this.insurance(i, lost, ins);
     this.log(this.p(i).name + ' paid ' + sum + 'M' + (receiver === null ? ' to the discard pile.' : ' to ' + this.p(receiver).name + '.'));
     this.event('payment', { actor: i, target: receiver, key: e.key, amount: sum, owed: e.amount, cards: picked.map(x => ({ ...x.card })) });
-    this.s.pending = null;
-    this.nextEffect();
+    const remaining=pending.payments?.filter((e:any)=>e.target!==i);
+    if(remaining?.length)this.s.pending={kind:'payment',responder:remaining[0].target,e:remaining[0],payments:remaining};
+    else{this.s.pending = null;this.nextEffect();}
   }
 
   owe(i: number, id: string) {
     const p = this.s.pending;
+    if(p?.payments?.some((e:any)=>e.target===i)){const own=p.payments.find((e:any)=>e.target===i);this.s.queue.unshift(...p.payments.filter((e:any)=>e.target!==i));p.e=own;p.responder=i;delete p.payments;}
     if (!p || p.kind !== 'payment' || p.responder !== i || p.e.key === 'luxury_tax') {
       throw Error('I Owe You replaces payments to another player only.');
     }
@@ -776,7 +791,10 @@ export class Game {
       this.p(i).defending = true;
       this.log(this.p(i).name + ' is defending three sets!');
     }
+    const active=this.s.players.map((p:any,j:number)=>!p.forfeited?j:-1).filter((j:number)=>j>=0);
+    if(active.length<=1){this.s.winner=active[0]??null;return;}
     this.s.turn = (i + 1) % this.s.players.length;
+    while(this.p(this.s.turn).forfeited)this.s.turn=(this.s.turn+1)%this.s.players.length;
     if (this.s.turn === (this.s.startPlayer ?? 0)) this.s.round++;
     this.begin();
   }
@@ -953,7 +971,7 @@ export class Game {
   bot(i: number, preview = false) {
     const p = this.s.pending;
     if (p) {
-      if (p.responder !== i) return;
+      if (p.responders ? !p.responders.includes(i) : p.payments ? !p.payments.some((e:any)=>e.target===i) : p.responder !== i) return;
       if (p.kind === 'counter') {
         const worth = this.shouldBlock(i, p);
         const no = worth && this.p(i).hand.some((c: any) => c.key === 'just_say_no');
@@ -964,8 +982,9 @@ export class Game {
       if (preview) return null;
       if (p.kind === 'payment') {
         const card = this.p(i).hand.find((c: any) => c.key === 'i_owe_you');
-        const ids = this.autoPayment(i, p.e);
-        if (card && p.e.key !== 'luxury_tax' && (p.e.amount >= 5 || ids.some((id: string) => this.find(i, id)))) this.owe(i, card.id);
+        const ownEffect=p.payments?.find((e:any)=>e.target===i)||p.e;
+        const ids = this.autoPayment(i, ownEffect);
+        if (card && ownEffect.key !== 'luxury_tax' && (ownEffect.amount >= 5 || ids.some((id: string) => this.find(i, id)))) this.owe(i, card.id);
         else this.pay(i, ids);
         return;
       }

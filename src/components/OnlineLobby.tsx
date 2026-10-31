@@ -22,7 +22,7 @@ export const OnlineLobby:React.FC<OnlineLobbyProps>=({roomView,onCreateRoom,onJo
  const joined=!!roomView&&!roomView.started;
  const active=roomView?.seats.filter(Boolean)||[];
  const ready=roomView?.seats[roomView.seat]?.ready||false;
- const canStart=active.length>=2&&active.every(s=>s?.ready);
+ const canStart=!roomView?.matchActive&&active.length>=2&&active.every(s=>s?.ready);
  const copy=async()=>{if(!roomView)return;const url=new URL(window.location.href);url.search='';url.hash='';url.searchParams.set('room',roomView.code);try{await navigator.clipboard.writeText(url.toString());setCopied(true);setTimeout(()=>setCopied(false),2500);}catch{window.prompt('Copy invite link',url.toString());}};
  return <>
   <div className="home-online-title"><h1>Online lobby</h1><span>{joined?active.length:0}/5 players</span></div>
@@ -45,7 +45,7 @@ export const OnlineLobby:React.FC<OnlineLobbyProps>=({roomView,onCreateRoom,onJo
     {seat?<><span className={seat.ready?'home-ready':'home-not-ready'}>{seat.ready?'● Ready':'● Not ready'}</span>{roomView!.host&&seat.bot&&<button className="quiet" disabled={loading} onClick={()=>onRemoveBot(i)}>Remove</button>}</>:roomView!.host&&<button className="quiet" disabled={loading} onClick={()=>onAddBot(i)}>Add bot</button>}
    </div>)}</div>
 
-   <div className="home-room-buttons"><button className="gold" disabled={loading} onClick={()=>onToggleReady(!ready)}>{ready?'Unready':'Ready'}</button>{roomView!.host?<button className="gold" disabled={loading||!canStart} onClick={onStartGame}>Start game</button>:<span>Waiting for host</span>}<button className="quiet" disabled={loading} onClick={onLeaveRoom}>Leave lobby</button></div>
+   <div className="home-room-buttons"><button className="gold" disabled={loading||roomView?.matchActive} onClick={()=>onToggleReady(!ready)}>{ready?'Unready':'Ready'}</button>{roomView!.host?<button className="gold" disabled={loading||!canStart} onClick={onStartGame}>Start game</button>:<span>Waiting for host</span>}<button className="quiet" disabled={loading} onClick={onLeaveRoom}>Leave lobby</button></div>
    <p className="home-hint">All players must be ready before the host can start.</p>
   </>}
  </>;

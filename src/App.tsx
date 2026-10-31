@@ -1,3 +1,4 @@
+import {GameFeedback} from './GameFeedback';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GameState, CardInstance, OnlineRoomView } from './types';
 import { Game, DECK, getCardDef } from './engineBridge';
@@ -43,6 +44,7 @@ export const App: React.FC = () => {
   const [onlineView, setOnlineView] = useState<OnlineRoomView | null>(null);
   const [onlineLoading, setOnlineLoading] = useState<boolean>(false);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const onlineRevision=useRef(-1);
 
   const [playerName,setPlayerName]=useState(()=>{try{return localStorage.getItem('kaze_online_name')||'Player';}catch{return 'Player';}});
   const [playerToken,setPlayerToken]=useState(()=>{try{const n=Number(localStorage.getItem('kaze_player_token')||0);return Number.isInteger(n)&&n>=0&&n<13?n:0;}catch{return 0;}});
@@ -50,6 +52,7 @@ export const App: React.FC = () => {
   const profileQueue=useRef<Promise<void>>(Promise.resolve());
   const changeProfileToken=(index:number)=>{setPlayerToken(index);try{localStorage.setItem('kaze_player_token',String(index));}catch{}};
 
+  const [movingEvents,setMovingEvents]=useState<number[]>([]);
   // Selected card & previews
   const [selectedCard, setSelectedCard] = useState<CardInstance | null>(null);
   const [selectedOwner, setSelectedOwner] = useState<number>(0);
@@ -172,7 +175,6 @@ export const App: React.FC = () => {
     refreshGameState(g);
     saveLocalGame(g);
     showToast(`First player (random): ${g.p(g.s.turn).name}`);
-    playSound('play');
   };
 
   // Resume local game
@@ -219,7 +221,7 @@ export const App: React.FC = () => {
         actorIndex = bots[0];
       }
     } else {
-      actorIndex = g.s.pending ? g.s.pending.responder : g.s.turn;
+      actorIndex = g.s.pending ? (g.s.pending.responders||g.s.pending.payments?.map((e:any)=>e.target)||[g.s.pending.responder]).find((i:number)=>i>0)??0 : g.s.turn;
     }
 
     // Only bot plays if actor is not human (0)
@@ -244,16 +246,13 @@ export const App: React.FC = () => {
                 : null,
             });
           }
-          playSound('play');
 
           botTimerRef.current = setTimeout(() => {
             try {
               if (plan.response) {
                 g.respond(actorIndex, true);
-                playSound('negate');
               } else {
                 g.play(actorIndex, plan.id, plan.mode, plan.args);
-                playSound(plan.mode === 'bank' ? 'bank' : 'play');
               }
               setBoardPlay(prev => prev?.preview ? {...prev, preview:false} : prev);
               refreshGameState(g);
@@ -316,13 +315,16 @@ export const App: React.FC = () => {
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
     }
+    onlineRevision.current=-1;
     const params = new URLSearchParams(session);
     const es = new EventSource(`/api/events?${params}`);
     eventSourceRef.current = es;
 
+    es.onopen=()=>{roomRequest({...session,cmd:'state'}).then(v=>{if(eventSourceRef.current===es)es.onmessage?.({data:JSON.stringify(v)} as MessageEvent);}).catch((err:any)=>showToast(err.message));};
     es.onmessage = (e) => {
       try {
         const v: OnlineRoomView = JSON.parse(e.data);
+        if(v.revision<onlineRevision.current)return;onlineRevision.current=v.revision;
         setOnlineView(v);
         if (v.started && v.state) {
           setGameState(v.state);
@@ -339,7 +341,7 @@ export const App: React.FC = () => {
             });
           }
         } else {
-          setView('lobby');
+          setGameState(null);setGame(null);setBoardPlay(null);setWizardCard(null);setEndTurnPendingLeft(null);setView('lobby');
         }
       } catch (err) {
         console.error(err);
@@ -457,8 +459,8 @@ export const App: React.FC = () => {
     try {
       if (onlineSession) {
         // Online matches keep their reserved seat so accidental exits can reconnect.
-        localStorage.setItem('kaze_online_session', JSON.stringify(onlineSession));
-        await handleLeaveRoom();
+        if(save){localStorage.setItem('kaze_online_session', JSON.stringify(onlineSession));await handleLeaveRoom();}
+        else{await roomRequest({...onlineSession,cmd:onlineView?.host?'stop':'forfeit'});setGameState(null);setGame(null);setView('lobby');}
       } else {
         if (save && game) localStorage.setItem('kaze_deal_save', JSON.stringify(game.s));
         else localStorage.removeItem('kaze_deal_save');
@@ -492,6 +494,12 @@ export const App: React.FC = () => {
     return () => {document.removeEventListener('keydown',onKey);previous?.focus();};
   },[showExit]);
 
+  useEffect(()=>{
+    const p=game?.s.pending;if(onlineSession||view!=='game'||p?.kind!=='counter')return;
+    if(!p.deadline){p.deadline=Date.now()+10000;refreshGameState(game);}
+    const timer=setTimeout(()=>{if(game.s.pending!==p)return;for(const i of [...(p.responders||[p.responder])]){if(game.s.pending!==p)break;game.respond(i,false);}refreshGameState(game);saveLocalGame(game);},Math.max(0,p.deadline-Date.now()));return()=>clearTimeout(timer);
+  },[game,gameState,onlineSession,view,refreshGameState,saveLocalGame]);
+
   // Remote action runner for online game
   const remoteAction = async (method: string, args: any[]) => {
     if (!onlineSession) return;
@@ -511,13 +519,11 @@ export const App: React.FC = () => {
     if (onlineSession) {
       remoteAction('play', [cardId, 'bank', {}]);
       setSelectedCard(null);
-      playSound('bank');
       return;
     }
     try {
       const c = game.p(0).hand.find((x: any) => x.id === cardId);
       game.play(0, cardId, 'bank');
-      playSound('bank');
       if (c) {
         setBoardPlay({
           owner: 0,
@@ -595,14 +601,12 @@ export const App: React.FC = () => {
       remoteAction('play', [cardId, 'play', a]);
       setSelectedCard(null);
       setWizardCard(null);
-      playSound('play');
       return;
     }
 
     try {
       const c = game.p(0).hand.find((x: any) => x.id === cardId);
       game.play(0, cardId, 'play', args);
-      playSound(def?.type === 'rent' ? 'charge' : 'play');
       if (c) {
         setBoardPlay({
           owner: 0,
@@ -640,7 +644,10 @@ export const App: React.FC = () => {
 
   const handleEndTurn = () => {
     if (onlineSession) {
-      remoteAction('end', [false]);
+      if(gameState?.phase==='setup'){remoteAction('end',[false]);return;}
+      const limit=gameState?.players[0].special.some(c=>c.key==='corporate_headquarters')?4:3;
+      const left=Math.max(0,limit-(gameState?.played||0));
+      if(left>0)setEndTurnPendingLeft(left);else remoteAction('end',[false]);
       return;
     }
     if (game.isSetup()) {
@@ -680,7 +687,6 @@ export const App: React.FC = () => {
       setSelectedCard(null);
       refreshGameState(game);
       saveLocalGame(game);
-      if (draw) playSound('draw');
     } catch (err: any) {
       showToast(err.message);
     }
@@ -689,13 +695,11 @@ export const App: React.FC = () => {
   const handleRespond = (useJustSayNo: boolean) => {
     if (onlineSession) {
       remoteAction('respond', [useJustSayNo]);
-      playSound(useJustSayNo ? 'negate' : 'play');
       return;
     }
     try {
       const c = useJustSayNo ? game.p(0).hand.find((x: any) => x.key === 'just_say_no') : null;
       game.respond(0, useJustSayNo);
-      playSound(useJustSayNo ? 'negate' : 'play');
       if (c) {
         setBoardPlay({
           owner: 0,
@@ -714,12 +718,10 @@ export const App: React.FC = () => {
   const handlePay = (selectedIds: string[]) => {
     if (onlineSession) {
       remoteAction('pay', [selectedIds]);
-      playSound('payment');
       return;
     }
     try {
       game.pay(0, selectedIds);
-      playSound('payment');
       refreshGameState(game);
       saveLocalGame(game);
     } catch (err: any) {
@@ -730,12 +732,10 @@ export const App: React.FC = () => {
   const handleOfferIOU = (cardId: string) => {
     if (onlineSession) {
       remoteAction('owe', [cardId]);
-      playSound('payment');
       return;
     }
     try {
       game.owe(0, cardId);
-      playSound('payment');
       refreshGameState(game);
       saveLocalGame(game);
     } catch (err: any) {
@@ -873,6 +873,7 @@ export const App: React.FC = () => {
       {/* Active Game Table View */}
       {view === 'game' && gameState && (
         <div className="app">
+          <GameFeedback key={onlineSession?.code||'local'} state={gameState} onMoving={setMovingEvents}/>
           <TopBar
             state={gameState}
             isOnline={!!onlineSession}
@@ -909,7 +910,7 @@ export const App: React.FC = () => {
 
               {/* Center shared board (draw, discard, played card, payment activity) */}
               <SharedBoard
-                state={gameState}
+                state={{...gameState,events:gameState.events.filter(e=>!movingEvents.includes(e.seq)||!['payment','transfer','discard'].includes(e.type))}}
                 boardPlay={boardPlay}
                 onSelectCard={(c, owner = 0) => {
                   setSelectedCard(c);
@@ -1043,10 +1044,10 @@ export const App: React.FC = () => {
 
       {/* Reaction (Just Say No) Modal */}
       {gameState?.pending &&
-        gameState.pending.responder === 0 &&
+        (gameState.pending.responders?.includes(0) || (!gameState.pending.responders&&gameState.pending.responder === 0)) &&
         gameState.pending.kind === 'counter' && (
           <ReactionModal
-            pending={gameState.pending}
+            pending={{...gameState.pending,e:gameState.pending.payments?.find(e=>e.target===0)||gameState.batch?.effects?.find((e:any)=>gameState.pending?.responders?.includes(0)&&e.target===0)||gameState.pending.e}}
             state={gameState}
             onRespond={handleRespond}
           />
@@ -1054,11 +1055,11 @@ export const App: React.FC = () => {
 
       {/* Payment Selection Modal */}
       {gameState?.pending &&
-        gameState.pending.responder === 0 &&
+        (gameState.pending.payments?.some(e=>e.target===0)||gameState.pending.responder===0) &&
         gameState.pending.kind === 'payment' && (
           <PaymentModal
             key={`${gameState.turnSerial || 0}:${gameState.pending.e.actor}:${gameState.pending.e.target}:${gameState.pending.e.key}:${gameState.events.filter(e=>e.type==='charge').at(-1)?.seq || 0}`}
-            pending={gameState.pending}
+            pending={{...gameState.pending,e:gameState.pending.payments?.find(e=>e.target===0)||gameState.batch?.effects?.find((e:any)=>gameState.pending?.responders?.includes(0)&&e.target===0)||gameState.pending.e}}
             state={gameState}
             onPay={handlePay}
             onOfferIOU={handleOfferIOU}
@@ -1080,7 +1081,7 @@ export const App: React.FC = () => {
           />
         )}
 
-      {showExit && <div className="overlay exit-game-overlay"><section className="modal exit-game-dialog" role="dialog" aria-modal="true" aria-labelledby="exit-game-title"><h2 id="exit-game-title">Exit game?</h2><p>{onlineSession ? 'Your online seat stays reserved for reconnection. The match continues while you are away.' : 'Save your progress to continue this game later, or exit without keeping this game.'}</p><div className="exit-game-options"><button className="gold" onClick={()=>handleExitGame(true)}>Save and exit</button><button className="quiet" onClick={()=>handleExitGame(false)}>Just exit</button><button className="quiet" onClick={()=>setShowExit(false)}>Cancel</button></div></section></div>}
+      {showExit && <div className="overlay exit-game-overlay"><section className="modal exit-game-dialog" role="dialog" aria-modal="true" aria-labelledby="exit-game-title"><h2 id="exit-game-title">Exit game?</h2><p>{onlineSession ? 'Save and exit keeps your seat. Just exit ends the match for everyone if you are host; otherwise you forfeit and return to the lobby.' : 'Save your progress to continue this game later, or exit without keeping this game.'}</p><div className="exit-game-options"><button className="gold" onClick={()=>handleExitGame(true)}>Save and exit</button><button className="quiet" onClick={()=>handleExitGame(false)}>Just exit</button><button className="quiet" onClick={()=>setShowExit(false)}>Cancel</button></div></section></div>}
 
       {/* Winner Celebration Modal */}
       {gameState && gameState.winner !== null && (

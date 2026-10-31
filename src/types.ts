@@ -25,6 +25,7 @@ export interface PropertyGroup {
 }
 
 export interface PlayerState {
+  forfeited?:boolean;
   tokenIndex?: number;
   name: string;
   hand: CardInstance[];
@@ -56,6 +57,9 @@ export interface GameEvent {
 }
 
 export interface PendingAction {
+  responders?:number[];
+  deadline?:number;
+  payments?:PendingAction['e'][];
   kind: 'counter' | 'payment' | 'discard';
   responder: number;
   negated?: boolean;
@@ -112,6 +116,7 @@ export interface SeatInfo {
 export interface ChatMessage {id:number;name:string;text:string;time:number;senderSeat?:number;}
 
 export interface OnlineRoomView {
+  matchActive?:boolean;
   chat?: ChatMessage[];
   code: string;
   host: boolean;

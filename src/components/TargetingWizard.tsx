@@ -30,7 +30,7 @@ export const TargetingWizard: React.FC<TargetingWizardProps> = ({
   // Candidate opponents
   const opponents = state.players
     .map((p, idx) => ({ player: p, index: idx }))
-    .filter(({ index }) => index !== 0);
+    .filter(({ index,player }) => index !== 0 && !player.forfeited);
 
   // Tough luck requires an opponent with >= 1 complete set
   const eligibleOpponents = opponents.filter(({ player, index }) => {
@@ -322,7 +322,7 @@ export const TargetingWizard: React.FC<TargetingWizardProps> = ({
                         type="button"
                         className={`target-option ${targetProperty === c.id ? 'picked' : ''}`}
                       aria-pressed={targetProperty === c.id}
-                        onClick={() => setTargetProperty(c.id)}
+                        onClick={() => {setTargetProperty(c.id);setRecolor(getCardDef(c).colors?.[0]||'Brown');}}
                       >
                         <img className="target-card" src={getCardArt(c)} alt={cd.name} />
                         <span>{cd.name}</span>
