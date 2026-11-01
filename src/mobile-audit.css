@@ -1,0 +1,42 @@
+/* Keep modal controls visible independently from a large property collection. */
+.mobile-device .fieldview-inspection{display:flex;flex-direction:column;overflow:hidden}
+.mobile-device .fieldview-inspection-scroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
+.mobile-device .fieldview-inspection>footer{flex:none;padding-top:6px}
+.mobile-device .expansion-selector .fieldview-dialog{display:flex;flex-direction:column;max-height:calc(100dvh - 16px);overflow:hidden;gap:5px}
+.mobile-device .expansion-selector .expansion-heading,.mobile-device .expansion-selector .expansion-footer{flex:none}
+.mobile-device .expansion-field-scroll{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain}
+.mobile-device .expansion-selector .fieldview-specials{display:none}
+.mobile-device .expansion-selector .field-art img{height:clamp(70px,25dvh,150px);width:auto}
+.mobile-device .expansion-selector .fieldview-head{padding-bottom:4px}
+.mobile-device .expansion-selector .fieldview-body{align-items:start}
+.mobile-device .expansion-selector .expansion-footer{min-height:36px;padding-top:4px}
+/* Restore payment remains available above every artwork inspection. */
+.mobile-device .payment-restore-tab{z-index:100080}
+.mobile-device body:has(.mobile-player-overlay) .turn-notice,.mobile-device body:has(.mobile-card-view) .turn-notice,.mobile-device body:has(.field-art-overlay) .turn-notice,.mobile-device body:has(.overlay) .turn-notice{visibility:hidden}
+/* The gesture handler owns horizontal browsing; property drag mode owns its cards. */
+.mobile-device .player-zone .groups{touch-action:pan-y!important}
+.mobile-device .panel-field.transfer-enabled .groupcards .card,.mobile-device .panel-field.transfer-enabled .groupcards .card img{touch-action:none!important}
+/* Account for the home indicator and notch without extending the document. */
+.mobile-device .app{padding-bottom:env(safe-area-inset-bottom)}
+.mobile-device .mobile-player-overlay{padding-top:max(8px,env(safe-area-inset-top));padding-bottom:max(8px,env(safe-area-inset-bottom));grid-template-rows:minmax(0,1fr)}
+.mobile-device .mobile-player-panel{height:100%;max-height:100%}
+/* Full artwork rows fit the available payment area on short landscape screens. */
+.mobile-device .payment-modal .payment-modal-groups{container-type:size}
+.mobile-device .payment-modal .payment-section{padding:6px}
+.mobile-device .payment-modal .payment-section h3{font-size:11px;margin:0 0 3px;line-height:15px}
+.mobile-device .payment-modal .payment-card-row .choice{width:auto;min-width:60px;flex:0 0 auto;padding:4px}
+.mobile-device .payment-modal .payment-card-row .choice img{height:clamp(56px,calc(100cqh - 60px),124px);width:auto;aspect-ratio:2/3}
+.mobile-device .payment-modal .payment-card-row .choice>strong,.mobile-device .payment-modal .payment-card-row .choice>span{display:none}
+.mobile-device .payment-modal>p{margin:5px 0;font-size:11px;line-height:15px}
+.mobile-device .payment-modal #selectionTotal{font-size:12px;line-height:16px}
+.mobile-device .payment-modal .payment-modal-footer{margin-top:6px;gap:7px}
+.mobile-device .overlay .payment-modal{height:calc(100dvh - 12px);max-height:calc(100dvh - 12px)}
+.mobile-device .expansion-selector .fieldview-head,.mobile-device .expansion-selector .fieldview-bank{display:none}
+.mobile-device .expansion-selector .fieldview-body{grid-template-columns:minmax(0,1fr)}
+.mobile-device .expansion-heading>div{flex:1;min-width:0}
+.mobile-device .expansion-bank-button{flex:none;min-height:34px;padding:5px 8px;font-size:11px}
+.mobile-device .field-art-overlay>div{padding-top:42px;max-height:calc(100dvh - 16px)}
+.mobile-device .field-art-overlay img{max-height:calc(100dvh - 72px);max-width:calc(100vw - 24px)}
+.mobile-device .field-art-overlay button{top:0;right:0;min-height:34px;min-width:34px;padding:3px 9px}
+.expansion-bank-button{display:none}
+.mobile-device .expansion-bank-button{display:inline-flex;align-items:center}

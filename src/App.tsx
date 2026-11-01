@@ -47,6 +47,8 @@ import {
   OpponentFieldViewerModal,
 } from './components/Modals';
 
+import './mobile-audit.css';
+
 type ViewMode = 'menu' | 'lobby' | 'game';
 
 export const App: React.FC = () => {

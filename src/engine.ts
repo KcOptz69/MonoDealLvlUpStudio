@@ -268,7 +268,7 @@ export class Game {
     }
     if(c.key==='expansion_property'){
       const owned=c.expansionOwner===i;
-      if(owned)color=c.locked||c.expansionColor;
+      if(owned){color=c.locked||c.expansionColor;c.expansionColor=color;}
       else{
         const colors=[...new Set(this.expansionGroups(i).map((g:any)=>g.color))];
         if(!colors.length){delete c.expansionOwner;delete c.expansionColor;this.p(i).hand.push(c);this.log('Expansion Property needs an existing set with space and returned to hand.');return;}
@@ -499,13 +499,16 @@ export class Game {
   respond(i: number, no: boolean) {
     const p = this.s.pending;
     if (!p || p.kind !== 'counter' || (p.responders ? !p.responders.includes(i) : p.responder !== i)) throw Error('No response requested.');
+    if(typeof no!=='boolean')throw Error('Choose allow or Just Say No.');
+    if(no&&p.deadline&&Date.now()>=p.deadline)throw Error('The reaction timer has expired.');
+    const reaction=no?this.p(i).hand.find((c:any)=>c.key==='just_say_no'):null;
+    if(no&&!reaction)throw Error('No Just Say No in hand.');
     if(p.responders){
       if(!no){this.s.batch.remaining=this.s.batch.remaining.filter((e:any)=>e.target!==i);p.responders=p.responders.filter((j:number)=>j!==i);if(p.responders.length){p.responder=p.responders[0];return;}this.nextBatchResponse();return;}
       p.e={...this.s.batch.effects.find((e:any)=>e.target===i),global:true};this.s.batch.remaining=this.s.batch.remaining.filter((e:any)=>e.target!==i);delete p.responders;
     }
     if (no) {
-      const c = this.p(i).hand.find((c: any) => c.key === 'just_say_no');
-      if (!c) throw Error('No Just Say No in hand.');
+      const c = reaction;
       this.s.discard.push(this.takeHand(i, c.id));
       p.negated = !p.negated;
       p.deadline=Date.now()+10000;
@@ -716,17 +719,17 @@ export class Game {
 
   owe(i: number, id: string) {
     const p = this.s.pending;
-    if(p?.payments?.some((e:any)=>e.target===i)){const own=p.payments.find((e:any)=>e.target===i);this.s.queue.unshift(...p.payments.filter((e:any)=>e.target!==i));p.e=own;p.responder=i;delete p.payments;}
-    if (!p || p.kind !== 'payment' || p.responder !== i || ['luxury_tax','jail_bail'].includes(p.e.key)) {
-      throw Error('I Owe You replaces payments to another player only.');
-    }
-    const c = this.p(i).hand.find((c: any) => c.id === id && c.key === 'i_owe_you');
-    if (!c) throw Error('I Owe You must be in your hand.');
+    const payment=p?.kind==='payment'?(p.payments?.find((e:any)=>e.target===i)||(p.responder===i?p.e:null)):null;
+    if(!payment||['luxury_tax','jail_bail'].includes(payment.key))throw Error('I Owe You replaces payments to another player only.');
+    const c=this.p(i).hand.find((c:any)=>c.id===id&&c.key==='i_owe_you');
+    if(!c)throw Error('I Owe You must be in your hand.');
+    // Validate before changing the simultaneous payment queue.
+    if(p.payments){this.s.queue.unshift(...p.payments.filter((e:any)=>e.target!==i));p.e=payment;p.responder=i;delete p.payments;}
     this.takeHand(i, id);
     this.s.discard.push(c);
     this.s.iou = { payer: i, payment: p.e, card: c };
     this.event('play', { actor: i, card: { ...c }, key: c.key });
-    this.s.pending = { kind: 'counter', responder: p.e.actor, e: { actor: i, target: p.e.actor, key: 'i_owe_you', owed: p.e.amount }, negated: false };
+    this.s.pending = { kind: 'counter', responder: p.e.actor, deadline:Date.now()+10000, e: { actor: i, target: p.e.actor, key: 'i_owe_you', owed: p.e.amount }, negated: false };
     this.log(this.p(i).name + ' offered I Owe You instead of paying.');
   }
 
@@ -815,7 +818,7 @@ export class Game {
     this.ready(i);
     const f: any = this.find(i, id);
     if (!f || f.special) throw Error('Choose a normal property or wildcard.');
-    if(f.card.key==='expansion_property'&&f.card.expansionOwner===i&&color!==f.card.expansionColor)throw Error('Expansion Property color is fixed until ownership changes.');
+    if(f.card.key==='expansion_property'&&f.card.expansionOwner===i&&color!==(f.card.locked||f.card.expansionColor))throw Error('Expansion Property color is fixed until ownership changes.');
     if (f.card.locked && color !== f.card.locked) throw Error('This wildcard is permanently locked.');
     if (!this.d(f.card).colors.includes(color)) throw Error('Color not allowed');
     if (gid === f.group.id) throw Error('Already in that set');

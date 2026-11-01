@@ -313,8 +313,10 @@ class Game {
         }
         if (c.key === 'expansion_property') {
             const owned = c.expansionOwner === i;
-            if (owned)
+            if (owned) {
                 color = c.locked || c.expansionColor;
+                c.expansionColor = color;
+            }
             else {
                 const colors = [...new Set(this.expansionGroups(i).map((g) => g.color))];
                 if (!colors.length) {
@@ -621,6 +623,13 @@ class Game {
         const p = this.s.pending;
         if (!p || p.kind !== 'counter' || (p.responders ? !p.responders.includes(i) : p.responder !== i))
             throw Error('No response requested.');
+        if (typeof no !== 'boolean')
+            throw Error('Choose allow or Just Say No.');
+        if (no && p.deadline && Date.now() >= p.deadline)
+            throw Error('The reaction timer has expired.');
+        const reaction = no ? this.p(i).hand.find((c) => c.key === 'just_say_no') : null;
+        if (no && !reaction)
+            throw Error('No Just Say No in hand.');
         if (p.responders) {
             if (!no) {
                 this.s.batch.remaining = this.s.batch.remaining.filter((e) => e.target !== i);
@@ -637,9 +646,7 @@ class Game {
             delete p.responders;
         }
         if (no) {
-            const c = this.p(i).hand.find((c) => c.key === 'just_say_no');
-            if (!c)
-                throw Error('No Just Say No in hand.');
+            const c = reaction;
             this.s.discard.push(this.takeHand(i, c.id));
             p.negated = !p.negated;
             p.deadline = Date.now() + 10000;
@@ -888,24 +895,24 @@ class Game {
     }
     owe(i, id) {
         const p = this.s.pending;
-        if (p?.payments?.some((e) => e.target === i)) {
-            const own = p.payments.find((e) => e.target === i);
-            this.s.queue.unshift(...p.payments.filter((e) => e.target !== i));
-            p.e = own;
-            p.responder = i;
-            delete p.payments;
-        }
-        if (!p || p.kind !== 'payment' || p.responder !== i || ['luxury_tax', 'jail_bail'].includes(p.e.key)) {
+        const payment = p?.kind === 'payment' ? (p.payments?.find((e) => e.target === i) || (p.responder === i ? p.e : null)) : null;
+        if (!payment || ['luxury_tax', 'jail_bail'].includes(payment.key))
             throw Error('I Owe You replaces payments to another player only.');
-        }
         const c = this.p(i).hand.find((c) => c.id === id && c.key === 'i_owe_you');
         if (!c)
             throw Error('I Owe You must be in your hand.');
+        // Validate before changing the simultaneous payment queue.
+        if (p.payments) {
+            this.s.queue.unshift(...p.payments.filter((e) => e.target !== i));
+            p.e = payment;
+            p.responder = i;
+            delete p.payments;
+        }
         this.takeHand(i, id);
         this.s.discard.push(c);
         this.s.iou = { payer: i, payment: p.e, card: c };
         this.event('play', { actor: i, card: { ...c }, key: c.key });
-        this.s.pending = { kind: 'counter', responder: p.e.actor, e: { actor: i, target: p.e.actor, key: 'i_owe_you', owed: p.e.amount }, negated: false };
+        this.s.pending = { kind: 'counter', responder: p.e.actor, deadline: Date.now() + 10000, e: { actor: i, target: p.e.actor, key: 'i_owe_you', owed: p.e.amount }, negated: false };
         this.log(this.p(i).name + ' offered I Owe You instead of paying.');
     }
     donate(i, id, target) {
@@ -997,7 +1004,7 @@ class Game {
         const f = this.find(i, id);
         if (!f || f.special)
             throw Error('Choose a normal property or wildcard.');
-        if (f.card.key === 'expansion_property' && f.card.expansionOwner === i && color !== f.card.expansionColor)
+        if (f.card.key === 'expansion_property' && f.card.expansionOwner === i && color !== (f.card.locked || f.card.expansionColor))
             throw Error('Expansion Property color is fixed until ownership changes.');
         if (f.card.locked && color !== f.card.locked)
             throw Error('This wildcard is permanently locked.');

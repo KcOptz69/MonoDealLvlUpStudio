@@ -359,6 +359,8 @@ export const PaymentModal: React.FC<{
                       key={x.id}
                       type="button"
                       className={`choice ${isChecked ? 'checked' : ''}`}
+                      aria-label={`${def.name} · ${x.value}M`}
+                      aria-pressed={isChecked}
                       onClick={() => toggleItem(x.id)}
                     >
                       <img src={getCardArt(x.card)} alt={def.name} />
@@ -383,6 +385,8 @@ export const PaymentModal: React.FC<{
                       key={x.id}
                       type="button"
                       className={`choice ${isChecked ? 'checked' : ''}`}
+                      aria-label={`${def.name} · ${x.value}M`}
+                      aria-pressed={isChecked}
                       onClick={() => toggleItem(x.id)}
                     >
                       <img src={getCardArt(x.card)} alt={def.name} />
