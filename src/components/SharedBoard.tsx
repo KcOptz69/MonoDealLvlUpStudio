@@ -1,3 +1,4 @@
+import {CooperationBar} from './CooperationBar';
 import React, { useEffect, useRef } from 'react';
 import '../turn-plays.css';
 import { GameState, CardInstance } from '../types';
@@ -17,6 +18,9 @@ interface PlayedCardInfo {
 
 interface SharedBoardProps {
   state: GameState;
+  serverTime?:number;
+  onDonate?:()=>void;
+  onCooperationSkip?:(id:string)=>Promise<void>|void;
   boardPlay: PlayedCardInfo | null;
   onSelectCard: (card: CardInstance, owner?: number) => void;
   onBrowseDiscard: () => void;
@@ -41,6 +45,7 @@ function TurnPlayedCards({state,upcoming,onSelectCard}:{state:GameState;upcoming
 export const SharedBoard: React.FC<SharedBoardProps> = ({
   state,
   boardPlay,
+  serverTime,onDonate,onCooperationSkip,
   onSelectCard,
   onBrowseDiscard,
 }) => {
@@ -81,6 +86,7 @@ export const SharedBoard: React.FC<SharedBoardProps> = ({
 
       {/* Played card panel */}
       <section className="played-panel" aria-label="Played card">
+        {state.cooperation&&<CooperationBar window={state.cooperation} state={state} serverTime={serverTime} onDonate={onDonate} onSkip={onCooperationSkip}/>}
         <h3>{state.phase === 'setup' ? 'Played card' : `Cards this turn · ${state.players[state.turn]?.name}`}</h3>
         <div className="board-play" id="boardPlay" aria-live="polite">
           {state.phase!=='setup'?<TurnPlayedCards state={state} upcoming={boardPlay} onSelectCard={onSelectCard}/>:<div className="table-play-empty">SIMULTANEOUS SETUP<span>Cards stay hidden until everyone is ready</span></div>}

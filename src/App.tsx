@@ -1,3 +1,4 @@
+import {syncCooperation,voteCooperationSkip} from './cooperation';
 import {ExpansionSelector} from './components/ExpansionSelector';
 import {installHandDragging} from './handDragging';
 import './field-improvements.css';
@@ -157,6 +158,7 @@ export const App: React.FC = () => {
   // Synchronize state from Game instance
   const refreshGameState = useCallback((g: any) => {
     if (!g) return;
+    syncCooperation(g,i=>i>0,[0]);
     const s = { ...g.s };
     motionClock.current.observe(s);
     // clone to force React update
@@ -223,6 +225,7 @@ export const App: React.FC = () => {
     }
 
     const g = game;
+    if(g.s.cooperation){clearTimeout(botTimerRef.current);parallelBots.current.clear();return;}
     const fast=!!g.s.fastBots;
     const revealMs=fast?timing.fastBotRevealMs:timing.botRevealMs;
     const thinkMs=()=>{const min=fast?timing.fastBotThinkMinMs:timing.botThinkMinMs,max=fast?timing.fastBotThinkMaxMs:timing.botThinkMaxMs;return min+Math.floor(Math.random()*(max-min+1));};
@@ -291,6 +294,12 @@ export const App: React.FC = () => {
 
     return () => clearTimeout(botTimerRef.current);
   }, [view, showExit, game, gameState, onlineSession, refreshGameState, saveLocalGame]);
+
+  useEffect(()=>{
+    const window=game?.s.cooperation;if(onlineSession||view!=='game'||!window)return;
+    const timer=setTimeout(()=>{if(game.s.cooperation?.id!==window.id)return;syncCooperation(game,i=>i>0,[0]);refreshGameState(game);saveLocalGame(game);},Math.max(0,window.deadline-Date.now()));
+    return()=>clearTimeout(timer);
+  },[game,gameState?.cooperation?.id,gameState?.cooperation?.deadline,onlineSession,view,refreshGameState,saveLocalGame]);
 
   // Online Room API calls
   const roomRequest = async (payload: any) => {
@@ -941,6 +950,12 @@ export const App: React.FC = () => {
               <SharedBoard
                 state={{...gameState,events:gameState.events.filter(e=>!movingEvents.includes(e.seq)||!['payment','transfer','discard','donation'].includes(e.type))}}
                 boardPlay={boardPlay}
+                serverTime={onlineSession?onlineView?.serverTime:undefined}
+                onDonate={()=>setDonationPicker(true)}
+                onCooperationSkip={async(id)=>{
+                  if(onlineSession){await roomRequest({...onlineSession,cmd:'cooperation-skip',data:{id}});}
+                  else{voteCooperationSkip(game,0,id);refreshGameState(game);saveLocalGame(game);}
+                }}
                 onSelectCard={(c, owner = 0) => {
                   setSelectedCard(c);
                   setSelectedOwner(owner);

@@ -15,6 +15,11 @@ const assert=require('node:assert/strict');const React=require('react');const{re
  const noop=()=>{};let count=0;
  const {ExpansionSelector}=await server.ssrLoadModule('/src/components/ExpansionSelector.tsx');
  const mount=(Component,props)=>{assert(renderToString(React.createElement(Component,props)));count++;};
+ const {CooperationBar,cooperationSeconds}=await server.ssrLoadModule('/src/components/CooperationBar.tsx');
+ for(let elapsed=0;elapsed<=30;elapsed++)assert.equal(cooperationSeconds(31000,1000+elapsed*1000),30-elapsed);
+ assert.equal(cooperationSeconds(31000,500,500),30);assert.equal(cooperationSeconds(31000,32000),0);
+ const clockNow=Date.now();const coopHtml=renderToString(React.createElement(CooperationBar,{window:{id:'test',actor:1,deadline:clockNow+30000,eligible:[0,2],votes:[2]},state:g.s,serverTime:clockNow,onSkip:noop,onDonate:noop}));
+ assert(coopHtml.replace(/<!--.*?-->/g,'').includes('00:30'));assert(coopHtml.includes('Skip'));assert(coopHtml.includes('Donate'));assert(coopHtml.includes('Cooperation'));count++;
  const rulesHtml=renderToString(React.createElement(modals.RulesModal,{onClose:noop}));
  assert.equal((rulesHtml.match(/role="tab"/g)||[]).length,3);
  for(const phrase of ['Quick Start','Payments &amp; Reactions','Extra Rules','Set up together','Tied leaders share the win.'])assert(rulesHtml.includes(phrase),phrase);

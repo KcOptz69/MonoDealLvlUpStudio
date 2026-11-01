@@ -16,6 +16,7 @@ module.exports=(async()=>{
  fs.writeFileSync('assets.json',JSON.stringify(art));
  const ts=require('typescript');
  fs.writeFileSync('parallel-bots.cjs',ts.transpileModule(fs.readFileSync('src/parallelBots.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText);
+ fs.writeFileSync('cooperation.cjs',ts.transpileModule(fs.readFileSync('src/cooperation.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText);
  const {build}=await import('vite');
  await build({configFile:false,root:__dirname,build:{outDir:'dist',emptyOutDir:true}});
  fs.writeFileSync('dist/data.js','const DECK='+JSON.stringify(deck)+';\nconst ART='+JSON.stringify(imagePaths)+';');

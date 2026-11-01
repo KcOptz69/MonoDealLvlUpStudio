@@ -92,6 +92,9 @@ export interface PendingAction {
 }
 
 export interface GameState {
+  cooperation?:import('./cooperation').CooperationWindow;
+  cooperationTurn?:string;
+  botDonationTurn?:string;
   roundLimit?:number|null;
   fastBots?:boolean;
   roundCompleted?:number[];
@@ -134,6 +137,7 @@ export interface SeatInfo {
 export interface ChatMessage {id:number;name:string;text:string;time:number;senderSeat?:number;}
 
 export interface OnlineRoomView {
+  serverTime?:number;
   options?:{roundLimit:number|null;fastBots:boolean};
   matchActive?:boolean;
   chat?: ChatMessage[];
