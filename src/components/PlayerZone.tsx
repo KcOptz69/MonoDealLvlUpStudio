@@ -1,3 +1,4 @@
+import {defenseFragile} from '../boardSelection';
 import {SetRentBadge} from './SetRentBadge';
 import { isCardInverted } from '../cardOrientation';
 import {PlayerToken} from './PlayerToken';
@@ -78,7 +79,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
   return (
     <section className="player-zone" aria-label="Your hand, properties and bank">
       <div className="center">
-        <div className="property-area">
+        <div className="property-area" data-hand-drop="field">
           <div className="sectionhead">
             <span className="desktop-player-identity"><PlayerToken index={player?.tokenIndex??0}/><span title={player?.name}>{player?.name}</span></span>
             <strong>YOUR FIELD · {setsCount} / 3 SETS</strong>
@@ -100,7 +101,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
                         key={g.id}
                         data-group-id={g.id}
                         data-group-color={g.color}
-                        className={`group ${isFull ? 'complete' : ''}`}
+                        className={`group ${isFull ? 'complete' : ''} ${defenseFragile(player,g)?'defense-fragile':''}`}
                         style={{ '--c': colInfo.hex } as React.CSSProperties}
                         onDragOver={(e) => {
                           e.preventDefault();
@@ -118,7 +119,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
                           <span>{g.color}</span>
                           <span className="set-summary">
                             <span>{isFull ? 'FULL SET' : `${g.cards.length} / ${colInfo.size}`}</span>
-                            <SetRentBadge group={g} owner={player}/>
+                            <SetRentBadge group={g} owner={player}/>{defenseFragile(player,g)&&<span className="defense-risk-mark" title="Losing a property from this set may cancel defense" aria-label="Defense at risk">!</span>}
                           </span>
                         </div>
                         <div className="groupcards">
@@ -212,7 +213,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
             {/* Bank on the right of your field */}
             <button
               type="button"
-              className="bank-field"
+              className="bank-field" data-hand-drop="bank"
               onClick={() => onViewBank(0)}
               aria-label={`Your bank, ${bankTotal} million`}
             >
@@ -255,6 +256,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
                   type="button"
                   data-card-id={c.id}
                   className={`card ${isSelected ? 'selected' : ''}`}
+                  draggable={myTurn&&!state.pending}
                   onClick={() => onSelectCard(c, 0)}
                   title={`${def.name} — ${def.value}M`}
                 >

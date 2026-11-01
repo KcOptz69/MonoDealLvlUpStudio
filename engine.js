@@ -240,12 +240,14 @@ class Game {
             return;
         }
         if (p.kind === 'expansion') {
-            if (!p.colors.includes(value) || !this.expansionGroups(i, p.card.id).some((g) => g.color === value))
+            const groups = this.expansionGroups(i, p.card.id);
+            const target = groups.find((g) => g.id === value) || groups.find((g) => g.color === value);
+            if (!target || !p.colors.includes(target.color) || (p.card.locked && p.card.locked !== target.color))
                 throw Error('Choose an existing matching-color set with space.');
             const c = this.removeProp(i, p.card.id, false);
-            c.expansionColor = value;
+            c.expansionColor = target.color;
             c.expansionOwner = i;
-            this.place(i, c, value);
+            this.place(i, c, target.color, target.id);
             this.clean(i);
             this.s.pending = null;
             this.nextEffect();

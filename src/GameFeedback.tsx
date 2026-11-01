@@ -1,4 +1,7 @@
 import timing from '../timing.json';
+import {useBoardPolish} from './boardPolish';
+import {deferredSetBoxes,releaseSetBoxes} from './presentationSets';
+import './board-polish.css';
 import React,{useCallback,useEffect,useLayoutEffect,useRef,useState}from'react';
 import{createPortal}from'react-dom';
 import{GameState,GameEvent,CardInstance}from'./types';
@@ -36,16 +39,29 @@ function MotionFlight({event,onDone,fast}:{event:GameEvent;onDone:(seq:number)=>
   const to=hand?{x:hand.x+hand.width/2,y:hand.y+hand.height/2}:played?{x:played.x+played.width/2,y:played.y+played.height/2}:event.type==='discard'?spot(null):spot(target,event.type==='bank'||event.type==='payment');
   return cards.map((card,i)=>({key:`${event.seq}-${card.id}-${i}`,card,from,to,delay:i*stagger}));
  });
- useLayoutEffect(()=>{const timer=setTimeout(()=>onDone(event.seq),flights.length?motionMs+tailMs+Math.max(0,flights.length-1)*stagger:0);return()=>clearTimeout(timer);},[event.seq,onDone]);
+ const done=useRef(onDone);done.current=onDone;
+ useLayoutEffect(()=>{const timer=setTimeout(()=>done.current(event.seq),flights.length?motionMs+tailMs+Math.max(0,flights.length-1)*stagger:0);return()=>clearTimeout(timer);},[event.seq]);
  return <>{flights.map(f=><img key={f.key} className="feedback-flight" src={getCardArt(f.card)} alt={f.card.key==='card_back'?'Drawing a face-down card':'Card moving'} style={{left:f.from.x,top:f.from.y,'--flight-x':`${f.to.x-f.from.x}px`,'--flight-y':`${f.to.y-f.from.y}px`,animationDelay:`${f.delay}ms`,animationDuration:`${motionMs}ms`} as React.CSSProperties}/>)}</>;
 }
 export function GameFeedback({state,onMoving}:{state:GameState;onMoving:(seqs:number[])=>void}){
+ useBoardPolish(state);
+ const groupIds=useRef(new Set(state.players.flatMap(p=>p.groups.map(g=>g.id))));
+ const [deferredSets,setDeferredSets]=useState<Record<string,number[]>>({});
+ const [arrivals,setArrivals]=useState<GameEvent[]>([]);
+ const arrivalTimers=useRef(new Set<ReturnType<typeof setTimeout>>());
+ useEffect(()=>()=>arrivalTimers.current.forEach(clearTimeout),[]);
  const last=useRef<number|null>(null);const [queue,setQueue]=useState<GameEvent[]>([]);
  const finish=useCallback((seq:number)=>setQueue(q=>q.filter(e=>e.seq!==seq)),[]);
- useLayoutEffect(()=>{const seq=state.eventSeq||0;if(last.current===null||seq<last.current){last.current=seq;return;}const fresh=(state.events||[]).filter(e=>e.seq>last.current!);last.current=seq;for(const e of fresh){const sound=e.type==='negate'?'negate':e.type==='charge'?'charge':e.type==='payment'||e.type==='transfer'||e.type==='donation'?'payment':e.type==='property'?'property':e.type==='bank'?'bank':e.type==='draw'?'draw':e.type==='play'?'play':null;if(sound)playSound(sound);}const motion=fresh.filter(e=>state.phase!=='setup'&&!e.setup&&['payment','transfer','bank','property','discard','draw','play','donation'].includes(e.type)&&(e.cards?.length||e.card));if(motion.length)setQueue(q=>[...q,...motion]);},[state.eventSeq]);
+ const landed=(event:GameEvent)=>{
+  setDeferredSets(boxes=>releaseSetBoxes(boxes,event.seq));
+  document.dispatchEvent(new CustomEvent('deal-motion-landed',{detail:event}));
+  if(event.type==='payment'&&event.target!=null&&event.cards?.length){setArrivals(list=>[...list,event]);const timer=setTimeout(()=>{setArrivals(list=>list.filter(e=>e.seq!==event.seq));arrivalTimers.current.delete(timer);},state.fastBots?650:1100);arrivalTimers.current.add(timer);}
+  finish(event.seq);
+ };
+ useLayoutEffect(()=>{const seq=state.eventSeq||0;if(last.current===null||seq<last.current){last.current=seq;groupIds.current=new Set(state.players.flatMap(p=>p.groups.map(g=>g.id)));setDeferredSets({});return;}const fresh=(state.events||[]).filter(e=>e.seq>last.current!);last.current=seq;for(const e of fresh){const sound=e.type==='negate'?'negate':e.type==='charge'?'charge':e.type==='payment'||e.type==='transfer'||e.type==='donation'?'payment':e.type==='property'?'property':e.type==='bank'?'bank':e.type==='draw'?'draw':e.type==='play'?'play':null;if(sound)playSound(sound);}const motion=fresh.filter(e=>state.phase!=='setup'&&!e.setup&&['payment','transfer','bank','property','discard','draw','play','donation'].includes(e.type)&&(e.cards?.length||e.card));if(motion.length){setQueue(q=>[...q,...motion]);const deferred=deferredSetBoxes(state,groupIds.current,motion);if(Object.keys(deferred).length)setDeferredSets(boxes=>({...boxes,...deferred}));}groupIds.current=new Set(state.players.flatMap(p=>p.groups.map(g=>g.id)));},[state]);
  useEffect(()=>{onMoving(queue.map(e=>e.seq));},[queue]);
  const active=activeMotionEvents(queue);
  const concealed=Array.from(new Set(queue.flatMap(e=>(e.cards||[e.card!]).filter(Boolean).map(c=>c.id))));
  const board=document.querySelector('.table')?.getBoundingClientRect();
- return createPortal(<div className="feedback-layer" style={board?{clipPath:`inset(${Math.max(0,board.top)}px ${Math.max(0,window.innerWidth-board.right)}px ${Math.max(0,window.innerHeight-board.bottom)}px ${Math.max(0,board.left)}px)`}:{visibility:'hidden'}}><style>{concealed.filter(id=>/^[a-zA-Z0-9_-]+$/.test(id)).map(id=>`[data-card-id="${id}"]{visibility:hidden!important}`).join('\n')}</style>{active.map(e=><MotionFlight key={e.seq} event={e} onDone={finish} fast={!!state.fastBots}/>)}</div>,document.body);
+ return createPortal(<div className="feedback-layer" style={board?{clipPath:`inset(${Math.max(0,board.top)}px ${Math.max(0,window.innerWidth-board.right)}px ${Math.max(0,window.innerHeight-board.bottom)}px ${Math.max(0,board.left)}px)`}:{visibility:'hidden'}}><style>{concealed.filter(id=>/^[a-zA-Z0-9_-]+$/.test(id)).map(id=>`[data-card-id="${id}"]{visibility:hidden!important}`).join('\n')+Object.keys(deferredSets).filter(id=>/^[a-zA-Z0-9_-]+$/.test(id)).map(id=>`[data-group-id="${id}"]{display:none!important}`).join('\n')}</style>{active.map(e=><MotionFlight key={e.seq} event={e} onDone={()=>landed(e)} fast={!!state.fastBots}/>)}{Array.from(new Set(arrivals.map(e=>e.target!))).map(target=>{const payments=arrivals.filter(e=>e.target===target);const own=target===0;const element=own?document.querySelector('.shared-board'):document.querySelector(`[data-player="${target}"]`);const r=element?.getBoundingClientRect();if(!r)return null;return <div key={payments.map(e=>e.seq).join('-')} className="payment-arrival" style={{left:r.left+r.width/2,top:r.top+Math.min(r.height-24,own?r.height-28:48),animationDuration:state.fastBots?'650ms':'1100ms'}}><span>✓</span> {state.players[target]?.name} · +{payments.reduce((sum,e)=>sum+(e.amount||0),0)}M received</div>;})}</div>,document.body);
 }

@@ -1,3 +1,4 @@
+import {defenseFragile} from '../boardSelection';
 import {SetRentBadge} from './SetRentBadge';
 import '../opponent-cards.css';
 import { isCardInverted } from '../cardOrientation';
@@ -63,6 +64,9 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
             data-player={playerIndex}
             className={`opponent ${isActive ? 'active' : ''} ${p.defending ? 'opponent-defending' : ''}`}
             aria-label={`${p.name}’s board`}
+            tabIndex={0}
+            onClick={e=>{if(!(e.target as Element).closest('button'))onViewPlayer(playerIndex);}}
+            onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();onViewPlayer(playerIndex);}}}
           >
             {p.jailed&&<img className="jail-field-icon" src="/ui/jail.png" alt="In Jail"/>}<div className="ophead">
               <button
@@ -114,14 +118,14 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
                       <section
                         key={g.id}
                         data-group-id={g.id}
-                        className={`group ${isFull ? 'complete' : ''}`}
+                        className={`group ${isFull ? 'complete' : ''} ${defenseFragile(p,g)?'defense-fragile':''}`}
                         style={{ '--c': colInfo.hex } as React.CSSProperties}
                       >
                         <div className="grouphead">
                           <span>{g.color}</span>
                           <span className="set-summary">
                             <span>{isFull ? 'FULL SET' : `${g.cards.length} / ${colInfo.size}`}</span>
-                            <SetRentBadge group={g} owner={p}/>
+                            <SetRentBadge group={g} owner={p}/>{defenseFragile(p,g)&&<span className="defense-risk-mark" title="Losing a property from this set may cancel defense" aria-label="Defense at risk">!</span>}
                           </span>
                         </div>
                         <div className="groupcards">
@@ -134,7 +138,7 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
                                 data-card-id={c.id}
                                 type="button"
                                 className={`card ${selectedCardId === c.id ? 'selected' : ''}`}
-                                onClick={() => onSelectCard(c, playerIndex)}
+                                onClick={() => onViewPlayer(playerIndex)}
                                 title={`${def.name} — ${def.value}M`}
                               >
                                 <img
@@ -173,7 +177,7 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
                               data-card-id={c.id}
                               type="button"
                               className={`card ${selectedCardId === c.id ? 'selected' : ''}`}
-                              onClick={() => onSelectCard(c, playerIndex)}
+                              onClick={() => onViewPlayer(playerIndex)}
                               title={`${def.name} — ${def.value}M`}
                             >
                               <img src={artUrl} alt={def.name} draggable={false} />

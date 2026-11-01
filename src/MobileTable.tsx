@@ -33,7 +33,7 @@ export function MobileTableOverlays({enabled,portrait}:{enabled:boolean;portrait
   const click=(event:MouseEvent)=>{
    if(held&&Date.now()<suppressUntil&&event.target instanceof Node&&held.contains(event.target)){event.preventDefault();event.stopImmediatePropagation();held=null;return;}
    // Taps still select hand/payment/target choices; field artwork opens only on hold.
-   if(event.target instanceof Element&&event.target.closest('.opponent .card,.groupcards .card,.turn-play-entry>button,.played-card-main,.played-extra,.activity-cards img')){event.preventDefault();event.stopImmediatePropagation();}
+   if(event.target instanceof Element&&event.target.closest('.player-zone .groupcards .card,.turn-play-entry>button,.played-card-main,.played-extra,.activity-cards img')){event.preventDefault();event.stopImmediatePropagation();}
   };
   const context=(event:Event)=>{if(findImage(event.target))event.preventDefault();};
   const scroll=()=>cancel();

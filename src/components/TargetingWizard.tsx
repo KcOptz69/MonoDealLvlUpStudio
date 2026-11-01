@@ -1,3 +1,4 @@
+import {ExpansionSelector} from './ExpansionSelector';
 import {PlayerToken} from './PlayerToken';
 import React, { useState } from 'react';
 import '../wildcard.css';
@@ -200,6 +201,7 @@ export const TargetingWizard: React.FC<TargetingWizardProps> = ({
     </div>
   );
 
+  if(card.key==='expansion_property')return <ExpansionSelector state={state} card={card} onClose={onCancel} onSelect={g=>onConfirm({id:card.id,color:g.color,group:g.id})}/>;
   if (def.type === 'wild') return <div className="overlay wildcard-overlay"><section className="wildcard-dialog" role="dialog" aria-modal="true" aria-label="Choose property color"><header><button onClick={onCancel} aria-label="Close">×</button></header><div className="wildcard-body"><img className="wildcard-card" src={getCardArt(card)} alt={def.name}/><div className="wildcard-choice-panel"><h2>Choose property color</h2>{!allowedColors.length&&<p>You need an existing matching-color set with space for another card.</p>}<div className="wildcard-colors">{allowedColors.map(col=><button key={col} className={'wildcard-color'+(selectedColor===col?' picked':'')} aria-pressed={selectedColor===col} onClick={()=>setSelectedColor(col)}><span className="wildcard-swatch" style={{background:COLORS[col]?.hex}}/><span>{col}</span>{selectedColor===col&&<b>✓</b>}</button>)}</div></div></div><footer><button className="quiet" onClick={onCancel}>Cancel</button><button className="gold" disabled={!allowedColors.includes(selectedColor)} onClick={handleSubmit}>Play property</button></footer></section></div>;
 
   return (

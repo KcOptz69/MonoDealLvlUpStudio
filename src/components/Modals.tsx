@@ -1,3 +1,4 @@
+import {suggestPayment} from '../paymentSuggestion';
 import {FieldView} from './FieldView';
 import {PlayerToken} from './PlayerToken';
 import '../victory.css';
@@ -300,17 +301,7 @@ export const PaymentModal: React.FC<{
   const iouCards = (player.hand || []).filter((c) => c.key === 'i_owe_you');
 
   const handleSuggest = () => {
-    // Greedy heuristic to reach amountOwed
-    let sum = 0;
-    const picks: string[] = [];
-    const sorted = [...items].sort((a, b) => a.value - b.value);
-    for (const item of sorted) {
-      if (sum < amountOwed) {
-        picks.push(item.id);
-        sum += item.value;
-      }
-    }
-    setSelectedIds(picks);
+    setSelectedIds(suggestPayment(items,amountOwed,e.key==='luxury_tax'));
   };
 
   items.sort((a,b)=>a.value-b.value);
@@ -561,7 +552,7 @@ export const BankViewerModal: React.FC<{
   bank: CardInstance[];
   onClose: () => void;
 }> = ({ title, bank, onClose }) => (
-  <div className="overlay">
+  <div className="overlay bank-view-overlay">
     <section className="modal" role="dialog" aria-modal="true" aria-label={title}>
       <div className="modalhead">
         <h2>{title}</h2>

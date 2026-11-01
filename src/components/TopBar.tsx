@@ -43,7 +43,7 @@ export const TopBar: React.FC<TopBarProps> = ({
       </div>
 
       <span className="turnbanner">{turnText}</span>
-      <span className="muted" style={{ fontSize: '10px' }}>
+      <span className="muted round-number" style={{ fontSize: '10px' }}>
         Round {state.round}{state.roundLimit===10?'/10':''}
       </span>
 

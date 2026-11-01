@@ -1,3 +1,6 @@
+import {ExpansionSelector} from './components/ExpansionSelector';
+import {installHandDragging} from './handDragging';
+import './field-improvements.css';
 import {installFieldScrolling} from './fieldScrolling';
 import {DonationModal,DonationHandPicker} from './components/DonationModal';
 import {TargetFeedback} from './components/TargetFeedback';
@@ -13,7 +16,7 @@ import './tabletop.css';
 import {GameFeedback} from './GameFeedback';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GameState, CardInstance, OnlineRoomView } from './types';
-import { Game, DECK, getCardDef } from './engineBridge';
+import { Game, DECK, COLORS, getCardDef } from './engineBridge';
 import { isSoundEnabled, setSoundEnabled, playSound } from './audio';
 import { setMusicScene, setMusicEnabled, musicEnabled } from './music';
 import { MainMenu } from './components/MainMenu';
@@ -580,6 +583,26 @@ export const App: React.FC = () => {
     setWizardCard(card);
   };
 
+  useEffect(()=>installHandDragging((id,zone,color,gid)=>{
+    const c=gameState?.players[0].hand.find(c=>c.id===id);if(!c)return;
+    const def=getCardDef(c);
+    if(zone==='bank'||def.type==='money'){handleBankCard(id);return;}
+    if(zone==='field'&&!['property','wild','special'].includes(def.type)){showToast('Drop action cards in the center to play, or in your bank.');return;}
+    if(color&&['property','wild'].includes(def.type))executePlay(id,{id,color,group:gid});else handlePlayCard(id);
+  },document,(id,zone,color,gid)=>{
+    const p=gameState?.players[0],c=p?.hand.find(c=>c.id===id);if(!c||gameState.pending||gameState.winner!==null)return false;
+    const setup=gameState.phase==='setup';if(setup?p.setupDone:gameState.turn!==0)return false;
+    const def=getCardDef(c),property=['property','wild','special'].includes(def.type),used=setup?(p.setupPlayed||0):gameState.played,limit=setup?3:p.special.some(c=>c.key==='corporate_headquarters')?4:3;
+    const freeBank=!setup&&p.special.some(c=>c.key==='free_parking')&&!p.freeBankUsed;
+    if(zone==='bank'||(zone==='play'&&def.type==='money'))return !property&&(used<limit||freeBank);
+    if(zone==='field'&&!property)return false;
+    if(setup&&!property)return false;
+    if(used>=limit&&!['community_chest','chance'].includes(c.key))return false;
+    if(color){const group=p.groups.find(g=>g.id===gid);if(!group||group.color!==color||group.cards.length>=COLORS[color]?.size||!def.colors?.includes(color))return false;if(c.locked&&c.locked!==color)return false;}
+    if(c.key==='expansion_property')return p.groups.some(g=>(!gid||g.id===gid)&&g.cards.length<COLORS[g.color]?.size&&g.cards.some(x=>x.key!=='expansion_property')&&(!c.locked||c.locked===g.color)&&(!(c.expansionOwner===0&&c.expansionColor)||c.expansionColor===g.color));
+    return true;
+  }),[gameState,onlineSession]);
+
   const executePlay = (cardId: string, args: any) => {
     const hand = onlineSession ? gameState?.players[0]?.hand : game?.p(0)?.hand;
     const candidate = hand?.find((c: any) => c.id === cardId);
@@ -1085,9 +1108,10 @@ export const App: React.FC = () => {
           />
         )}
 
-      {gameState?.pending?.responder===0&&['jail','chance','expansion'].includes(gameState.pending.kind)&&<div className="overlay"><section className="modal new-rule-choice" role="dialog" aria-modal="true" aria-label="Resolve card effect">
+      {gameState?.pending?.responder===0&&['jail','chance'].includes(gameState.pending.kind)&&<div className="overlay"><section className="modal new-rule-choice" role="dialog" aria-modal="true" aria-label="Resolve card effect">
         {gameState.pending.kind==='jail'?<><img className="jail-choice-art" src="/ui/jail.png" alt="In Jail"/><h2>Pay bail or skip your turn</h2><p>Discard at least 10M from your bank and/or field to take this turn.</p><button className="gold" onClick={()=>runChoice('jail',[true])}>Pay 10M bail</button><button className="quiet" onClick={()=>runChoice('jail',[false])}>Skip this turn</button></>:gameState.pending.kind==='chance'?<><h2>Chance · keep one card</h2><div className="chance-options">{gameState.pending.cards?.map(c=><button key={c.id} onClick={()=>runChoice('choose',[c.id])}><img src={getCardArt(c)} alt={getCardDef(c).name}/></button>)}</div></>:<><h2>Expansion Property · join an existing set</h2>{gameState.pending.colors?.map(color=><button className="quiet" key={color} onClick={()=>runChoice('choose',[color])}>{color}</button>)}</>}
       </section></div>}
+      {gameState?.pending?.kind==='expansion'&&gameState.pending.responder===0&&<ExpansionSelector state={gameState} card={gameState.pending.card!} transferring onSelect={g=>runChoice('choose',[g.id])}/>}
       {/* Hand Limit Discard Modal */}
       {gameState?.pending &&
         gameState.pending.responder === 0 &&

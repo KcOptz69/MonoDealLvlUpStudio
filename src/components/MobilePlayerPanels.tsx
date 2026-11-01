@@ -27,6 +27,7 @@ export const MobilePlayerPanels:React.FC<Props>=(props)=>{
  useEffect(()=>{if(state.pending)setPanel(null);},[state.pending]);
  useEffect(()=>{if(!props.onSendChat&&panel==='chat')setPanel(null);},[props.onSendChat,panel]);
  useEffect(()=>{if(panel)close.current?.focus();},[panel]);
+ useEffect(()=>{const closeHand=()=>setPanel(null);document.addEventListener('deal-hand-dropped',closeHand);return()=>document.removeEventListener('deal-hand-dropped',closeHand);},[]);
  return <>
   <nav className="mobile-player-dock" aria-label="Your cards and turn controls">
    <div className="mobile-player-identity"><PlayerToken index={player.tokenIndex ?? 0}/><strong title={player.name}>{player.name}</strong></div>

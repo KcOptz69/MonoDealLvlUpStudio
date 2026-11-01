@@ -60,7 +60,7 @@ export const SharedBoard: React.FC<SharedBoardProps> = ({
     .reverse();
 
   return (
-    <section className="shared-board" aria-label="Shared board">
+    <section className="shared-board" data-hand-drop="play" aria-label="Shared board">
       {/* Draw and discard piles */}
       <section className="pile-panel" aria-label="Draw and discard piles">
         <div className="board-pile draw-zone">

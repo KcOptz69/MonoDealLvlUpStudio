@@ -206,7 +206,7 @@ export class Game {
       this.p(i).hand.push(c);this.s.discard.push(...cards.filter((x:any)=>x!==c));this.event('discard',{actor:i,cards:cards.filter((x:any)=>x!==c)});this.log(this.p(i).name+' kept '+this.d(c).name+' from Chance.');this.s.pending=null;this.nextEffect();return;
     }
     if(p.kind==='expansion'){
-      if(!p.colors.includes(value)||!this.expansionGroups(i,p.card.id).some((g:any)=>g.color===value))throw Error('Choose an existing matching-color set with space.');const c=this.removeProp(i,p.card.id,false);c.expansionColor=value;c.expansionOwner=i;this.place(i,c,value);this.clean(i);this.s.pending=null;this.nextEffect();return;
+      const groups=this.expansionGroups(i,p.card.id);const target=groups.find((g:any)=>g.id===value)||groups.find((g:any)=>g.color===value);if(!target||!p.colors.includes(target.color)||(p.card.locked&&p.card.locked!==target.color))throw Error('Choose an existing matching-color set with space.');const c=this.removeProp(i,p.card.id,false);c.expansionColor=target.color;c.expansionOwner=i;this.place(i,c,target.color,target.id);this.clean(i);this.s.pending=null;this.nextEffect();return;
     }
     throw Error('Invalid choice.');
   }
