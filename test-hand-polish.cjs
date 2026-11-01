@@ -9,5 +9,6 @@ const e=(x,y)=>({target:card,pointerType:'touch',isPrimary:true,button:0,pointer
 listeners.pointerdown[0](e(30,220));listeners.pointermove[0](e(80,180));assert(root.classes.has('hand-dragging'));assert(card.classes.has('hand-card-lifted'));assert(good.classes.has('hand-drop-valid'));assert(bad.classes.has('hand-drop-invalid'));
 listeners.pointerup[0](e(80,180));assert.deepEqual(drops,[['cash','bank',undefined,undefined]]);assert(!root.classes.has('hand-dragging'));
 hit=bad;listeners.pointerdown[0](e(30,220));listeners.pointermove[0](e(80,180));listeners.pointerup[0](e(80,180));assert.equal(drops.length,1);assert.equal(animations.length,1,'invalid touch drop animates home');assert.equal(animations[0].frames[1].left,'60px');assert.equal(animations[0].options.duration,300);animations[0].onfinish();
+root.classes.add('mobile-device');const count=drops.length;listeners.pointerdown[0](e(30,220));listeners.pointermove[0](e(80,180));listeners.pointerup[0](e(80,180));assert.equal(drops.length,count);assert(!root.classes.has('hand-dragging'),'mobile layout has no hand dragging');
 dispose();assert(Object.values(listeners).every(x=>x.length===0));delete global.Element;
 console.log('PASS mobile lift, legal-target glow, valid bank drop, invalid return animation, and listener cleanup');

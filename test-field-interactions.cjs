@@ -17,7 +17,7 @@ const {installHandDragging}=load('src/handDragging.ts');
 class El {constructor(data={}){this.dataset=data;this.classList={add(){},remove(){}};}closest(selector){if(selector.includes('.hand .card'))return this.hand?this:null;return this.target?this:null;}setPointerCapture(){} }
 global.Element=El;
 const listeners={},drops=[],events=[];let hit=new El({handDrop:'play'});hit.target=true;
-const doc={addEventListener(n,f){(listeners[n]??=[]).push(f);},removeEventListener(n,f){listeners[n]=listeners[n].filter(x=>x!==f);},dispatchEvent(e){events.push(e.type);},elementFromPoint(){return hit;},defaultView:{addEventListener(){},removeEventListener(){}},documentElement:{classList:{remove(){}}},querySelectorAll(){return []}};
+const doc={addEventListener(n,f){(listeners[n]??=[]).push(f);},removeEventListener(n,f){listeners[n]=listeners[n].filter(x=>x!==f);},dispatchEvent(e){events.push(e.type);},elementFromPoint(){return hit;},defaultView:{addEventListener(){},removeEventListener(){}},documentElement:{classList:{remove(){},contains(){return false;}}},querySelectorAll(){return []}};
 const dispose=installHandDragging((...args)=>drops.push(args),doc);const card=new El({cardId:'hand1'});card.hand=true;const data=new Map();const dt={types:['application/x-deal-hand'],setData(k,v){data.set(k,v);},getData(k){return data.get(k)||'';}};
 listeners.dragstart[0]({target:card,dataTransfer:dt});assert.equal(dt.getData('application/x-deal-hand'),'hand1');
 let stopped=false;const event={clientX:2,clientY:3,dataTransfer:dt,preventDefault(){},stopImmediatePropagation(){stopped=true;}};
