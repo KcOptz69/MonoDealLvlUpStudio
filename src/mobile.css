@@ -82,3 +82,24 @@
 .mobile-device .bank-field>.bank-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;height:auto;max-height:none;gap:2px;margin:3px 0;overflow:hidden;align-items:center}
 .mobile-device .bank-field>.bank-cards img{width:100%;height:auto;max-width:100%;aspect-ratio:2/3;object-fit:contain;margin:0;transform:none;min-width:0;border-radius:2px}
 .mobile-device .bank-field>span,.mobile-device .bank-field>small{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+
+/* Swipe browsing takes priority over every previous drag/transfer rule. */
+.mobile-device .player-zone .field-body{min-width:0;max-width:100%;overflow:hidden}
+.mobile-device .player-zone .groups{min-width:0;width:100%;max-width:100%;box-sizing:border-box;overflow-x:auto;overflow-y:hidden;touch-action:pan-x!important;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+.mobile-device .player-zone .groups>.group{flex:0 0 auto}
+.mobile-device .player-zone .card,.mobile-device .player-zone .card img,.mobile-device .opponent .card,.mobile-device .opponent .card img,.mobile-device .field-art,.mobile-device .field-art img{touch-action:pan-x!important;-webkit-user-drag:none;cursor:default}
+.mobile-device .hand .card[draggable=true]{touch-action:pan-x!important;cursor:default}
+/* The explicit field-only transfer mode still supports dragging and edge scroll. */
+.mobile-device .panel-field.transfer-enabled .groupcards .card,.mobile-device .panel-field.transfer-enabled .groupcards .card img{touch-action:none!important;cursor:grab}
+
+/* Keep the hand constrained to its panel, with overflow inside the card row. */
+.mobile-device .mobile-player-overlay{grid-template-columns:minmax(0,1fr)}
+.mobile-device .mobile-player-panel{min-width:0;max-width:100%}
+.mobile-device .panel-hand .player-zone,.mobile-device .panel-hand .handtray,.mobile-device .panel-hand .handwrap{min-width:0;width:100%;max-width:100%;box-sizing:border-box}
+.mobile-device .panel-hand .player-zone .hand{flex:1 1 0%;min-width:0;width:100%;max-width:100%;overflow-x:auto!important;overflow-y:hidden;scroll-behavior:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.mobile-device .panel-hand .player-zone .hand,.mobile-device .panel-hand .player-zone .hand .card,.mobile-device .panel-hand .player-zone .hand .card img{touch-action:pan-y!important;-webkit-user-drag:none;user-select:none;-webkit-user-select:none}
+.mobile-device .panel-hand .player-zone .hand .card{flex-shrink:0}
+/* Shared swipe handling for horizontal game lists; vertical scrolling stays native. */
+.mobile-device :is(.groups,.opponent-field,.fieldview-properties,.fieldview-cards,.turn-play-strip,.activity-cards,.payment-card-row,.chance-options,.donation-hand-cards){min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scroll-behavior:auto;touch-action:pan-y!important}
+.mobile-device :is(.opponent-field,.fieldview-properties,.fieldview-cards,.turn-play-strip,.activity-cards,.payment-card-row,.chance-options,.donation-hand-cards) :is(button,img,.card),.mobile-device .player-zone .groups :is(.card,img){touch-action:pan-y!important;-webkit-user-drag:none}
+.mobile-device .panel-field.transfer-enabled .groupcards .card,.mobile-device .panel-field.transfer-enabled .groupcards .card img{touch-action:none!important}

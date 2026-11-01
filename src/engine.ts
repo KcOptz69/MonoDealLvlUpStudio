@@ -1089,6 +1089,47 @@ export class Game {
     return (e.amount || 0) > cash && this.allProps(i).length > 0 || own.defending && (e.amount || 0) > cash || (e.amount || 0) >= 5 && own.hand.filter((c: any) => c.key === 'just_say_no').length > 1;
   }
 
+  arrangementScore(i:number,groups:any[]){
+    const full=groups.filter(g=>this.full(g)),colors=new Set(full.map(g=>g.color));
+    return colors.size*1000000+full.length*10000+groups.reduce((score:number,g:any)=>{
+      const size=COLORS[g.color].size,n=g.cards.length;
+      const backed=g.cards.some((c:any)=>this.d(c).value>0);
+      return score+(backed?30*(n/size)**2:0)+(this.full(g)?COLORS[g.color].rent[size-1]:0)-2-(this.full(g)?g.cards.filter((c:any)=>this.d(c).type==='wild'&&!c.locked&&c.key!=='expansion_property').length:0);
+    },0);
+  }
+
+  bestArrangement(i:number){
+    const initial=this.p(i).groups;if(initial.reduce((n:number,g:any)=>n+g.cards.length,0)<2)return null;
+    const baseline=this.arrangementScore(i,initial),minimum=this.p(i).defending?this.sets(i):0;
+    const signature=(groups:any[])=>groups.map(g=>`${g.color}:${g.cards.map((c:any)=>c.id).sort().join(',')}:${g.house?.id||''}:${g.hotel?.id||''}`).sort().join('|');
+    const valid=(groups:any[])=>groups.every(g=>g.cards.length<=COLORS[g.color].size&&(!g.cards.some((c:any)=>c.key==='expansion_property')||g.cards.some((c:any)=>c.key!=='expansion_property')))&&new Set(groups.filter(g=>this.full(g)).map(g=>g.color)).size>=minimum;
+    const seen=new Set([signature(initial)]);let beam=[{groups:initial,score:baseline}],best=beam[0];
+    // Three small search layers can consolidate split colors or free a wild through a swap.
+    for(let depth=0;depth<3;depth++){
+      const next:any[]=[];
+      for(const node of beam)for(let source=0;source<node.groups.length;source++){
+        const from=node.groups[source];if(from.house||from.hotel)continue;
+        for(const card of from.cards){
+          const def=this.d(card),fixed=card.locked||(card.key==='expansion_property'?(card.expansionColor||from.color):undefined);
+          const colors=fixed?[fixed]:def.colors;
+          for(const color of colors){
+            const destinations=node.groups.flatMap((g:any,index:number)=>index!==source&&g.color===color&&g.cards.length<COLORS[color].size?[index]:[]);
+            if(card.key!=='expansion_property'&&color!==from.color&&!destinations.length)destinations.push(-1);
+            for(const dest of destinations){
+              const groups=node.groups.map((g:any)=>({...g,cards:[...g.cards]}));groups[source].cards=groups[source].cards.filter((c:any)=>c.id!==card.id);
+              if(dest<0)groups.push({id:`bot-new-${color}-${depth}`,color,cards:[card]});else groups[dest].cards.push(card);
+              const packed=groups.filter((g:any)=>g.cards.length);if(!valid(packed))continue;
+              const key=signature(packed);if(seen.has(key))continue;seen.add(key);
+              const candidate={groups:packed,score:this.arrangementScore(i,packed)};next.push(candidate);if(candidate.score>best.score+.0001)best=candidate;
+            }
+          }
+        }
+      }
+      next.sort((a,b)=>b.score-a.score);beam=next.slice(0,6);if(!beam.length)break;
+    }
+    return best.score>baseline+.0001?best.groups:null;
+  }
+
   bot(i: number, preview = false) {
     const p = this.s.pending;
     if (p) {
@@ -1102,7 +1143,11 @@ export class Game {
       }
       if (preview) return null;
       if(p.kind==='chance'){this.choose(i,[...p.cards].sort((a:any,b:any)=>this.keep(i,b)-this.keep(i,a))[0].id);return;}
-      if(p.kind==='expansion'){this.choose(i,p.colors[0]);return;}
+      if(p.kind==='expansion'){
+        const groups=this.expansionGroups(i,p.card.id).filter((g:any)=>p.colors.includes(g.color)&&(!p.card.locked||g.color===p.card.locked));
+        const rank=(g:any)=>{const n=g.cards.filter((c:any)=>c.id!==p.card.id).length;return (n+1===COLORS[g.color].size?(this.p(i).groups.some((x:any)=>x.color===g.color&&this.full(x)&&!x.cards.some((c:any)=>c.id===p.card.id))?100:1000):0)+n/COLORS[g.color].size;};
+        groups.sort((a:any,b:any)=>rank(b)-rank(a));this.choose(i,groups[0]?.id||p.colors[0]);return;
+      }
       if(p.kind==='jail'){this.jail(i,this.assetValue(i)>=10&&this.p(i).bank.reduce((n:number,c:any)=>n+this.d(c).value,0)>=10);return;}
       if (p.kind === 'payment') {
         const card = this.p(i).hand.find((c: any) => c.key === 'i_owe_you');
@@ -1119,31 +1164,11 @@ export class Game {
       }
     }
     if (!this.canAct(i)) return;
-    for (const from of this.p(i).groups) {
-      if (!this.full(from)) {
-        for (const c of from.cards) {
-          if (this.d(c).type === 'wild' && !c.locked && c.key!=='expansion_property') {
-            for (const dest of this.p(i).groups) {
-              if (dest !== from && !this.full(dest) && dest.cards.length === COLORS[dest.color].size - 1 && this.d(c).colors.includes(dest.color)&&(this.d(c).value>0||dest.cards.some((x:any)=>this.d(x).value>0))) {
-                if (preview) return null;
-                this.move(i, c.id, dest.color, dest.id);
-                return;
-              }
-            }
-          }
-        }
-      }
-    }
-    for (const a of this.p(i).groups) {
-      if (!this.full(a)) {
-        for (const b of this.p(i).groups) {
-          if (a !== b && a.color === b.color && !this.full(b) && a.cards.length + b.cards.length <= COLORS[a.color].size) {
-            if (preview) return null;
-            this.move(i, b.cards[0].id, a.color, a.id);
-            return;
-          }
-        }
-      }
+    const arrangement=this.bestArrangement(i);
+    if(arrangement){
+      if(preview)return null;
+      this.p(i).groups=arrangement.map((g:any)=>({...g,id:g.id.startsWith('bot-new-')?'g'+this.s.nextId++:g.id}));
+      this.clean(i);this.log(this.p(i).name+' rearranged properties to strengthen their sets.');return;
     }
     const options = this.options(i).map(o => ({ ...o, score: this.scoreMove(i, o) })).sort((a, b) => b.score - a.score);
     if (!options.length || options[0].score < 0) {

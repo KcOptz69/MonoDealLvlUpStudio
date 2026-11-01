@@ -138,7 +138,7 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
                                 data-card-id={c.id}
                                 type="button"
                                 className={`card ${selectedCardId === c.id ? 'selected' : ''}`}
-                                onClick={() => onViewPlayer(playerIndex)}
+                                onClick={e=>{e.stopPropagation();if(document.documentElement.classList.contains('mobile-device'))onViewPlayer(playerIndex);else onSelectCard(c,playerIndex);}}
                                 title={`${def.name} — ${def.value}M`}
                               >
                                 <img
@@ -177,7 +177,7 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
                               data-card-id={c.id}
                               type="button"
                               className={`card ${selectedCardId === c.id ? 'selected' : ''}`}
-                              onClick={() => onViewPlayer(playerIndex)}
+                              onClick={e=>{e.stopPropagation();if(document.documentElement.classList.contains('mobile-device'))onViewPlayer(playerIndex);else onSelectCard(c,playerIndex);}}
                               title={`${def.name} — ${def.value}M`}
                             >
                               <img src={artUrl} alt={def.name} draggable={false} />

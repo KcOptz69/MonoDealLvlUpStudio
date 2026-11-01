@@ -14,7 +14,7 @@ export function MobileTableOverlays({enabled,portrait}:{enabled:boolean;portrait
   let x=0,y=0,pointer=-1,held:Element|null=null,suppressUntil=0;
   const cancel=()=>{if(timer)clearTimeout(timer);timer=null;image=null;pointer=-1;};
   const findImage=(target:EventTarget|null)=>{
-   if(!(target instanceof Element)||target.closest('.mobile-card-view,.mobile-rotate,.transfer-enabled .groupcards,.field-art'))return null;
+   if(!(target instanceof Element)||target.closest('.mobile-card-view,.mobile-rotate,.transfer-enabled .groupcards,.arranging-properties .groupcards,.field-art'))return null;
    const img=target.closest('img') || target.closest('.card,button')?.querySelector('img');
    if(!(img instanceof HTMLImageElement))return null;
    // All approved cards use this artwork directory; omit the logo and hidden card back.
@@ -32,6 +32,7 @@ export function MobileTableOverlays({enabled,portrait}:{enabled:boolean;portrait
   const move=(event:PointerEvent)=>{if(event.pointerId===pointer&&Math.hypot(event.clientX-x,event.clientY-y)>10)cancel();};
   const click=(event:MouseEvent)=>{
    if(held&&Date.now()<suppressUntil&&event.target instanceof Node&&held.contains(event.target)){event.preventDefault();event.stopImmediatePropagation();held=null;return;}
+   if(event.target instanceof Element&&event.target.closest('.arranging-properties .groupcards'))return;
    // Taps still select hand/payment/target choices; field artwork opens only on hold.
    if(event.target instanceof Element&&event.target.closest('.player-zone .groupcards .card,.turn-play-entry>button,.played-card-main,.played-extra,.activity-cards img')){event.preventDefault();event.stopImmediatePropagation();}
   };
@@ -40,8 +41,8 @@ export function MobileTableOverlays({enabled,portrait}:{enabled:boolean;portrait
   document.addEventListener('pointerdown',down,true);document.addEventListener('pointermove',move,true);
   document.addEventListener('pointerup',cancel,true);document.addEventListener('pointercancel',cancel,true);
   document.addEventListener('click',click,true);document.addEventListener('contextmenu',context,true);
-  document.addEventListener('dragstart',context,true);document.addEventListener('scroll',scroll,true);
-  return()=>{cancel();document.removeEventListener('pointerdown',down,true);document.removeEventListener('pointermove',move,true);document.removeEventListener('pointerup',cancel,true);document.removeEventListener('pointercancel',cancel,true);document.removeEventListener('click',click,true);document.removeEventListener('contextmenu',context,true);document.removeEventListener('dragstart',context,true);document.removeEventListener('scroll',scroll,true);};
+  document.addEventListener('dragstart',context,true);document.addEventListener('scroll',scroll,true);document.addEventListener('deal-hand-swipe',cancel,true);
+  return()=>{cancel();document.removeEventListener('pointerdown',down,true);document.removeEventListener('pointermove',move,true);document.removeEventListener('pointerup',cancel,true);document.removeEventListener('pointercancel',cancel,true);document.removeEventListener('click',click,true);document.removeEventListener('contextmenu',context,true);document.removeEventListener('dragstart',context,true);document.removeEventListener('scroll',scroll,true);document.removeEventListener('deal-hand-swipe',cancel,true);};
  },[enabled,portrait]);
  useEffect(()=>{
   const root=document.getElementById('root');if(!root)return;

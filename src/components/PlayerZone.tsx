@@ -2,13 +2,18 @@ import {defenseFragile} from '../boardSelection';
 import {SetRentBadge} from './SetRentBadge';
 import { isCardInverted } from '../cardOrientation';
 import {PlayerToken} from './PlayerToken';
-import React from 'react';
+import React,{useEffect,useState} from 'react';
+import {propertyDestinations} from '../propertyArrangement';
+import '../property-arrangement.css';
 import { GameState, CardInstance, PropertyGroup, ChatMessage } from '../types';
 import { getCardDef, COLORS } from '../engineBridge';
 import { getCardArt } from '../cardArt';
 
 interface PlayerZoneProps {
   state: GameState;
+  allowDrag?:boolean;
+  arrangeMode?:boolean;
+  onArrangeModeChange?:(enabled:boolean)=>void;
   chatMessages?: ChatMessage[];
   chatOwnSeat?: number;
   onSendChat?: (text:string)=>Promise<void>;
@@ -25,6 +30,8 @@ interface PlayerZoneProps {
 
 export const PlayerZone: React.FC<PlayerZoneProps> = ({
   state,
+  allowDrag=true,
+  arrangeMode,onArrangeModeChange,
   selectedCard,
   onSelectCard,
   onPlaySelected,
@@ -39,6 +46,15 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
   const player = state.players[0];
   const myTurn = state.winner === null && (isSetup ? !player?.setupDone : state.turn === 0);
 
+  const [localArrange,setLocalArrange]=useState(false),[moveCard,setMoveCard]=useState(''),[showNewSet,setShowNewSet]=useState(false);
+  const canArrange=myTurn&&!state.pending&&!!onDropPropertyToGroup;
+  const arranging=canArrange&&(arrangeMode??localArrange);
+  const setArrange=(enabled:boolean)=>{setLocalArrange(enabled);onArrangeModeChange?.(enabled);setMoveCard('');setShowNewSet(false);};
+  useEffect(()=>{if(!canArrange){setLocalArrange(false);onArrangeModeChange?.(false);setMoveCard('');setShowNewSet(false);}},[canArrange]);
+  useEffect(()=>{if(moveCard&&!player.groups.some(g=>g.cards.some(c=>c.id===moveCard))){setMoveCard('');setShowNewSet(false);}},[state,moveCard]);
+  const destinations=propertyDestinations(state,moveCard);
+  const moveTo=(color:string,gid?:string)=>{if(!arranging||!moveCard)return;onDropPropertyToGroup?.(moveCard,color,gid);setMoveCard('');setShowNewSet(false);};
+  const chooseProperty=(id:string)=>{setMoveCard(id===moveCard?'':id);setShowNewSet(false);};
   const calculateLimit = () => {
     if (isSetup) return 3;
     const hasHeadquarters = player?.special.some((c) => c.key === 'corporate_headquarters');
@@ -77,15 +93,17 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
   const selectedDef = selectedInHand ? getCardDef(selectedCard) : null;
 
   return (
-    <section className="player-zone" aria-label="Your hand, properties and bank">
+    <section className={'player-zone'+(arranging?' arranging-properties':'')} aria-label="Your hand, properties and bank">
       <div className="center">
         <div className="property-area" data-hand-drop="field">
           <div className="sectionhead">
             <span className="desktop-player-identity"><PlayerToken index={player?.tokenIndex??0}/><span title={player?.name}>{player?.name}</span></span>
             <strong>YOUR FIELD · {setsCount} / 3 SETS</strong>
             {player?.defending && <span className="defense">DEFENDING</span>}
+            {canArrange&&<button type="button" className={arranging?'gold arrange-toggle':'quiet arrange-toggle'} aria-pressed={arranging} onClick={()=>setArrange(!arranging)}>{arranging?'Done':'Arrange'}</button>}
           </div>
 
+          {arranging&&<div className="arrange-help" role="status">{moveCard?'Choose a glowing set, or New set.':'Select a property to move.'}{moveCard&&!destinations.groups.length&&!destinations.newColors.length&&<span>No legal destination for this property.</span>}{player.groups.some(g=>g.house||g.hotel)&&<button type="button" className="quiet arrange-buildings" onClick={onRearrange}>Buildings</button>}{showNewSet&&<div className="arrange-new-colors" role="group" aria-label="New set color">{destinations.newColors.map(color=><button type="button" className="quiet" key={color} onClick={()=>moveTo(color)}><span style={{background:COLORS[color]?.hex}}/>{color}</button>)}</div>}</div>}
           <div className="field-body">{player.jailed&&<img className="jail-field-icon" src="/ui/jail.png" alt="In Jail"/>}
             <div className="groups">
               {player && (player.groups.length > 0 || player.special.length > 0) ? (
@@ -101,7 +119,8 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
                         key={g.id}
                         data-group-id={g.id}
                         data-group-color={g.color}
-                        className={`group ${isFull ? 'complete' : ''} ${defenseFragile(player,g)?'defense-fragile':''}`}
+                        className={`group ${isFull ? 'complete' : ''} ${defenseFragile(player,g)?'defense-fragile':''} ${arranging&&destinations.groups.some(x=>x.id===g.id)?'arrange-destination':''}`}
+                        onClick={()=>{if(arranging&&destinations.groups.some(x=>x.id===g.id))moveTo(g.color,g.id);}}
                         style={{ '--c': colInfo.hex } as React.CSSProperties}
                         onDragOver={(e) => {
                           e.preventDefault();
@@ -116,7 +135,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
                         }}
                       >
                         <div className="grouphead">
-                          <span>{g.color}</span>
+                          <span>{g.color}</span>{arranging&&destinations.groups.some(x=>x.id===g.id)&&<button type="button" className="arrange-move-here" onClick={e=>{e.stopPropagation();moveTo(g.color,g.id);}}>Move here</button>}
                           <span className="set-summary">
                             <span>{isFull ? 'FULL SET' : `${g.cards.length} / ${colInfo.size}`}</span>
                             <SetRentBadge group={g} owner={player}/>{defenseFragile(player,g)&&<span className="defense-risk-mark" title="Losing a property from this set may cancel defense" aria-label="Defense at risk">!</span>}
@@ -131,9 +150,10 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
                                 key={c.id}
                                 type="button"
                                 data-card-id={c.id}
-                                className={`card ${selectedCard?.id === c.id ? 'selected' : ''}`}
-                                onClick={() => onSelectCard(c, 0)}
-                                draggable={myTurn && !state.pending}
+                                className={`card ${(arranging?moveCard===c.id:selectedCard?.id===c.id) ? 'selected' : ''}`}
+                                aria-pressed={arranging?moveCard===c.id:undefined}
+                                onClick={e=>{e.stopPropagation();if(arranging){if(moveCard&&destinations.groups.some(x=>x.id===g.id))moveTo(g.color,g.id);else chooseProperty(c.id);}else onSelectCard(c,0);}}
+                                draggable={allowDrag&&myTurn && !state.pending}
                                 onDragStart={(e) => {
                                   e.dataTransfer.setData('text/plain', c.id);
                                 }}
@@ -176,7 +196,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
                               type="button"
                               data-card-id={c.id}
                               className={`card ${selectedCard?.id === c.id ? 'selected' : ''}`}
-                              onClick={() => onSelectCard(c, 0)}
+                              onClick={() => {if(!arranging)onSelectCard(c, 0);}}
                               title={`${def.name} — ${def.value}M`}
                             >
                               <img src={artUrl} alt={def.name} draggable={false} />
@@ -200,12 +220,13 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
                 <button
                   type="button"
                   className="new-set-drop"
-                  onClick={onRearrange}
-                  title="Rearrange properties"
+                  disabled={arranging&&(!moveCard||!destinations.newColors.length)}
+                  onClick={()=>{if(!arranging){setArrange(true);return;}if(destinations.newColors.length===1)moveTo(destinations.newColors[0]);else setShowNewSet(v=>!v);}}
+                  title="Arrange properties"
                 >
-                  ＋ New set
+                  {arranging?'＋ New set':'Arrange properties'}
                   <br />
-                  <small>Drag here or rearrange</small>
+                  <small>{arranging?'Start a separate set':'Select a card, then a set'}</small>
                 </button>
               )}
             </div>
@@ -256,7 +277,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
                   type="button"
                   data-card-id={c.id}
                   className={`card ${isSelected ? 'selected' : ''}`}
-                  draggable={myTurn&&!state.pending}
+                  draggable={allowDrag&&myTurn&&!state.pending}
                   onClick={() => onSelectCard(c, 0)}
                   title={`${def.name} — ${def.value}M`}
                 >

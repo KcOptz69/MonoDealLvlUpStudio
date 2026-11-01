@@ -1,0 +1,13 @@
+const assert=require('node:assert/strict'),fs=require('fs'),ts=require('typescript');const m={exports:{}};new Function('module','exports',ts.transpileModule(fs.readFileSync('src/mobileHandScrolling.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText)(m,m.exports);
+class Node{};global.Node=Node;const card=new Node(),hand={scrollWidth:1400,clientWidth:500,scrollLeft:0,contains:n=>n===card};card.closest=selector=>selector.includes('transfer-enabled')?null:hand;
+const handlers={},emitted=[];const doc={addEventListener(n,f,options){handlers[n]={f,options};},removeEventListener(n){delete handlers[n];},dispatchEvent(e){emitted.push(e.type);}};
+const dispose=m.exports.installMobileHandScrolling(doc),event=(x,y)=>({target:card,touches:[{identifier:1}],changedTouches:[{identifier:1,clientX:x,clientY:y}],cancelable:true,preventDefault(){this.prevented=true;}});
+handlers.touchstart.f(event(350,50));let e=event(200,51);handlers.touchmove.f(e);assert.equal(hand.scrollLeft,150);assert(e.prevented);assert(emitted.includes('deal-hand-swipe'));handlers.touchend.f(e);
+let blocked=false;handlers.click.f({target:card,preventDefault(){blocked=true;},stopImmediatePropagation(){}});assert(blocked,'swipe must not select or play a card');
+handlers.touchstart.f(event(200,50));handlers.touchmove.f(event(600,50));assert.equal(hand.scrollLeft,0,'swipe back clamps at start');handlers.touchend.f(event(600,50));
+handlers.touchstart.f(event(300,50));handlers.touchmove.f(event(-2000,50));assert.equal(hand.scrollLeft,900,'long swipe clamps at end');handlers.touchcancel.f();
+hand.scrollLeft=100;handlers.touchstart.f(event(200,50));e=event(202,90);handlers.touchmove.f(e);assert.equal(hand.scrollLeft,100);assert(!e.prevented,'vertical gesture remains available');
+card.closest=selector=>selector.includes('transfer-enabled')?hand:hand;handlers.touchstart.f(event(300,50));e=event(50,50);handlers.touchmove.f(e);assert(!e.prevented,'property drag mode is not intercepted');card.closest=selector=>selector.includes('transfer-enabled')?null:hand;
+hand.scrollWidth=400;handlers.touchstart.f(event(300,50));e=event(50,50);handlers.touchmove.f(e);assert(!e.prevented,'short hand does not intercept gestures');
+assert.equal(handlers.touchmove.options.passive,false);dispose();assert.equal(Object.keys(handlers).length,0);delete global.Node;
+console.log('PASS mobile hand swipe left/right, bounds, hold-preview cancellation, no accidental clicks, vertical/short-hand exceptions and cleanup');
