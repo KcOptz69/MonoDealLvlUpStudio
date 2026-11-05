@@ -1,6 +1,6 @@
 import type { CardInstance, CardDef } from './types';
 export const STATIC_ART: Record<string,string> = {
-  "protected_estate":"/artwork/protected_estate.svg",
+  "protected_estate":"/artwork/protected_estate.png",
   "mediterranean_avenue": "/artwork/mediterranean_avenue.webp",
   "baltic_avenue": "/artwork/baltic_avenue.webp",
   "oriental_avenue": "/artwork/oriental_avenue.webp",

@@ -932,7 +932,6 @@ export const App: React.FC = () => {
             onOpenMenu={() => setShowExit(true)}
           />
 
-          {onlineSession&&!mobile&&<button className="hide-hand-toggle quiet" aria-pressed={hideHand} onClick={()=>setHideHand(v=>!v)}>{hideHand?'Show cards':'Hide cards'}</button>}
           {onlineSession&&onlineView?.paused&&<div className="host-pause-banner" role="status">Game paused by host {onlineView.host&&<button className="gold" onClick={async()=>{try{await roomRequest({...onlineSession,cmd:'pause',data:{paused:false}});}catch(err:any){showToast(err.message);}}}>Resume game</button>}</div>}
           <ToughLuckResult key={onlineSession?.code||'local'} state={gameState} hidden={!!onlineSession&&hideHand&&!mobile}/>
           <div className="game">
@@ -981,6 +980,8 @@ export const App: React.FC = () => {
 
               {/* Player zone: your field, bank, hand & turn controls */}
               <PlayerArea
+                hideCards={hideHand}
+                onToggleHideCards={onlineSession&&!mobile?()=>setHideHand(v=>!v):undefined}
                 state={gameState}
                 selectedCard={selectedCard}
                 chatOwnSeat={onlineView?.seat}

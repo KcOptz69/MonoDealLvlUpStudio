@@ -14,6 +14,8 @@ import { getCardArt } from '../cardArt';
 interface PlayerZoneProps {
   state: GameState;
   allowDrag?:boolean;
+  hideCards?:boolean;
+  onToggleHideCards?:()=>void;
   arrangeMode?:boolean;
   onArrangeModeChange?:(enabled:boolean)=>void;
   chatMessages?: ChatMessage[];
@@ -32,7 +34,7 @@ interface PlayerZoneProps {
 
 export const PlayerZone: React.FC<PlayerZoneProps> = ({
   state,
-  allowDrag=true,
+  allowDrag=true,hideCards=false,onToggleHideCards,
   arrangeMode,onArrangeModeChange,
   selectedCard,
   onSelectCard,
@@ -265,7 +267,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
             <span>
               {isSetup ? 'SETUP · ' : ''}YOUR HAND ({player?.hand.length || 0})
             </span>
-            <span>End-turn limit {calculateHandLimit()}</span>
+            <span className="hand-limit-controls"><span>End-turn limit {calculateHandLimit()}</span>{onToggleHideCards&&<button type="button" className="hide-hand-toggle quiet" aria-pressed={hideCards} onClick={onToggleHideCards}>{hideCards?'Show cards':'Hide cards'}</button>}</span>
           </div>
 
           <div className="hand">
