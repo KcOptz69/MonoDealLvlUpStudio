@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),{Game,COLORS}=require('./engine.cjs')
 function random(seed){return()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};}
 function invariant(g){
  const cards=[...g.s.deck,...g.s.discard,...(g.s.pending?.kind==='chance'?g.s.pending.cards:[]),...g.s.players.flatMap(p=>[...p.hand,...p.bank,...p.special,...p.groups.flatMap(x=>[...x.cards,x.house,x.hotel].filter(Boolean))])];
- assert.equal(cards.length,152+(g.s.minted||0),'card conservation');assert.equal(new Set(cards.map(c=>c.id)).size,cards.length,'unique card IDs');
+ assert.equal(cards.length,160+(g.s.minted||0),'card conservation');assert.equal(new Set(cards.map(c=>c.id)).size,cards.length,'unique card IDs');
  const ids=[];
  g.s.players.forEach((p,i)=>{for(const x of p.groups){ids.push(x.id);assert(x.cards.length>0&&x.cards.length<=COLORS[x.color].size);for(const c of x.cards){assert(g.d(c).colors.includes(x.color));if(c.locked)assert.equal(c.locked,x.color);if(c.key==='expansion_property'){assert.equal(c.expansionOwner,i);assert.equal(c.expansionColor,x.color);assert(p.groups.some(y=>y.color===x.color&&y.cards.some(c=>c.key!=='expansion_property')));}}
  if(x.house)assert(g.full(x));if(x.hotel)assert(x.house);}

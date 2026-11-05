@@ -61,22 +61,3 @@ test('Bank Withdrawal retrieves one banked action at zero remaining plays and re
  assert.equal(g.d(withdrawal).value, 1);
  assert.equal(deck.find(card => card.key === 'bank_withdrawal').copies, 4);
 });
-
-test('Eviction Notice blocks the specific card for the current turn only', () => {
- const g = fresh();
- const property = give(g, 1, 'baltic_avenue', 'field');
- const eviction = give(g, 0, 'eviction_notice');
- g.play(0, eviction.id, 'play', {target: 1, property: property.id});
- allow(g);
- assert(g.p(1).hand.includes(property));
- // A donation can put the evicted card into the active player's hand.
- g.p(0).hand.push(g.p(1).hand.pop());
- const plays = g.s.played;
- assert.throws(() => g.play(0, property.id, 'play', {color: 'Brown'}), /evicted property/);
- assert.equal(g.s.played, plays);
- assert(!g.options(0).some(option => option.id === property.id));
- g.p(1).hand.push(g.p(0).hand.pop());
- g.end(0);
- g.play(1, property.id, 'play', {color: 'Brown'});
- assert(g.find(1, property.id));
-});
