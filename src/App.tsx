@@ -1130,7 +1130,7 @@ export const App: React.FC = () => {
         (gameState.pending.payments?.some(e=>e.target===0)||gameState.pending.responder===0) &&
         gameState.pending.kind === 'payment' && (
           <PaymentModal
-            key={`${gameState.turnSerial || 0}:${gameState.pending.e.actor}:${gameState.pending.e.target}:${gameState.pending.e.key}:${gameState.events.filter(e=>e.type==='charge').at(-1)?.seq || 0}`}
+            key={`${gameState.turnSerial || 0}:${(gameState.pending.payments?.find(e=>e.target===0)||gameState.pending.e).actor}:0:${(gameState.pending.payments?.find(e=>e.target===0)||gameState.pending.e).key}:${gameState.events.filter(e=>e.type==='charge').at(-1)?.seq || 0}`}
             pending={{...gameState.pending,e:gameState.pending.payments?.find(e=>e.target===0)||gameState.batch?.effects?.find((e:any)=>gameState.pending?.responders?.includes(0)&&e.target===0)||gameState.pending.e}}
             state={gameState}
             serverTime={onlineView?.serverTime}

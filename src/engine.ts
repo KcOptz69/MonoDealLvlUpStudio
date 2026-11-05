@@ -113,8 +113,11 @@ export class Game {
     for (let j = 0; j < n; j++) {
       if (!this.s.deck.length && this.s.discard.length) {
         this.s.deck = this.s.discard.splice(0);
+        for(let k=0;k<10;k++)this.s.deck.push({id:'wildmint'+this.s.nextId++,key:'multicolor_wildcard',generated:true});
+        this.s.minted=(this.s.minted||0)+10;
+        this.s.deckRefreshes=(this.s.deckRefreshes||0)+1;
         this.shuffle(this.s.deck);
-        this.log('The discard pile was reshuffled.');
+        this.log('The discard pile was reshuffled. Added 10 all-color Property Wilds.');
       }
       if (this.s.deck.length) {
         const c = this.s.deck.pop();

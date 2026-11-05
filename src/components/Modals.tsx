@@ -346,7 +346,7 @@ export const PaymentModal: React.FC<{
 
         {brokenColors.length > 0 && (
           <div className="warning">
-            Warning: this payment breaks your {brokenColors.join(', ')} full set
+            Payment allowed. This will break your {brokenColors.join(', ')} full set
             {brokenColors.length > 1 ? 's' : ''} and may end your defense.
           </div>
         )}

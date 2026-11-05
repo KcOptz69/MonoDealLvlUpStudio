@@ -1,6 +1,6 @@
 'use strict';
 const {randomBytes}=require('node:crypto');
-const {Game,BOT_NAMES}=require('./engine');
+const {Game,BOT_NAMES}=require('./engine.cjs');
 const DECK=require('./deck.json');
 const timing=require('./timing.json');
 const {MotionClock,ParallelBotTimers,parallelBotActors,parallelBotContext}=require('./parallel-bots.cjs');
