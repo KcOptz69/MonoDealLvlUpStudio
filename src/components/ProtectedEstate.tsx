@@ -1,0 +1,13 @@
+import React,{useState} from 'react';
+import type {CardInstance,GameState} from '../types';
+import {getCardArt} from '../cardArt';
+import {estatePayment,getCardDef} from '../engineBridge';
+export function ProtectedEstateField({card,onPreview,inspection=false}:{card:CardInstance;onPreview?:(card:CardInstance)=>void;inspection?:boolean}){
+ return <section className={(inspection?'fieldview-set':'group')+' protected-estate-set'} aria-label="Protected Estate · protected complete set"><div className={inspection?'fieldview-sethead':'grouphead'}><span>Protected Estate</span><b>FULL SET</b></div><div className={inspection?'fieldview-cards':'groupcards'}><button className={inspection?'field-art':'card'} type="button" data-card-id={card.id} draggable={false} onClick={e=>{e.stopPropagation();onPreview?.(card);}} title="Protected Estate · cannot be stolen or transferred"><img src={getCardArt(card)} alt="Protected Estate" draggable={false}/></button></div></section>;
+}
+export function EstatePurchaseModal({state,onChoose}:{state:GameState;onChoose:(buy:boolean)=>Promise<void>|void}){
+ const [sending,setSending]=useState(false),[error,setError]=useState('');
+ const player=state.players[0],ids=estatePayment(player.bank,getCardDef),cards=player.bank.filter(c=>ids.includes(c.id)),total=cards.reduce((n,c)=>n+getCardDef(c).value,0);
+ const choose=async(buy:boolean)=>{if(sending)return;setSending(true);setError('');try{await onChoose(buy);}catch(e){setError(e instanceof Error?e.message:'Purchase failed.');setSending(false);}};
+ return <div className="overlay estate-purchase-overlay"><section className="modal estate-purchase" role="dialog" aria-modal="true" aria-labelledby="estate-purchase-title"><img className="estate-purchase-art" src={getCardArt('protected_estate')} alt="Protected Estate · 0M"/><div className="estate-purchase-copy"><small>ROUND {state.round} · END OF TURN</small><h2 id="estate-purchase-title">Buy Protected Estate?</h2><p>Spend <strong>20M from your bank</strong> for one protected complete set.</p><p>0M value · Cannot be stolen, transferred or used as payment. <strong>One per player.</strong></p><div className="estate-bank-preview" aria-label="Bank cards spent">{cards.map(c=><img key={c.id} src={getCardArt(c)} alt={getCardDef(c).name}/>)}</div><small>{total}M will go to the discard pile.{total>20?' No change is given.':''}</small><div className="estate-purchase-actions"><button className="gold" disabled={sending||total<20} onClick={()=>choose(true)}>Buy · {total}M</button><button className="quiet" disabled={sending} onClick={()=>choose(false)}>Pass · end turn</button></div>{error&&<p role="alert">{error}</p>}</div></section></div>;
+}

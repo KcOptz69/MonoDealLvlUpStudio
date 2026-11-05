@@ -1,3 +1,5 @@
+import {ProtectedEstateField} from './ProtectedEstate';
+import {completeSetCount} from '../boardSelection';
 import {defenseFragile} from '../boardSelection';
 import {SetRentBadge} from './SetRentBadge';
 import { isCardInverted } from '../cardOrientation';
@@ -81,7 +83,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
     return fullColors.size;
   };
 
-  const setsCount = calculateSets(player?.groups || []);
+  const setsCount = completeSetCount(player);
   const bankTotal = (player?.bank || []).reduce((sum, c) => sum + getCardDef(c).value, 0);
 
   const freeBank=state.phase!=='setup'&&player.special.some(c=>c.key==='free_parking')&&!player.freeBankUsed;
@@ -106,7 +108,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
           {arranging&&<div className="arrange-help" role="status">{moveCard?'Choose a glowing set, or New set.':'Select a property to move.'}{moveCard&&!destinations.groups.length&&!destinations.newColors.length&&<span>No legal destination for this property.</span>}{player.groups.some(g=>g.house||g.hotel)&&<button type="button" className="quiet arrange-buildings" onClick={onRearrange}>Buildings</button>}{showNewSet&&<div className="arrange-new-colors" role="group" aria-label="New set color">{destinations.newColors.map(color=><button type="button" className="quiet" key={color} onClick={()=>moveTo(color)}><span style={{background:COLORS[color]?.hex}}/>{color}</button>)}</div>}</div>}
           <div className="field-body">{player.jailed&&<img className="jail-field-icon" src="/ui/jail.png" alt="In Jail"/>}
             <div className="groups">
-              {player && (player.groups.length > 0 || player.special.length > 0) ? (
+              {player && (player.groups.length > 0 || player.special.length > 0 || !!player.protectedEstate) ? (
                 <>
                   {player.groups.map((g) => {
                     const colInfo = COLORS[g.color] || { size: 2, hex: '#8b5438' };
@@ -181,6 +183,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
                     );
                   })}
 
+                  {player.protectedEstate&&<ProtectedEstateField card={player.protectedEstate} onPreview={c=>onSelectCard(c,0)}/>}
                   {player.special.length > 0 && (
                     <section className="group specialgroup">
                       <div className="grouphead" style={{ '--c': '#a88037' } as React.CSSProperties}>

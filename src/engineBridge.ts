@@ -1,13 +1,14 @@
-import { Game, COLORS, BOT_NAMES, DealEngine } from './engine';
+import { Game, COLORS, BOT_NAMES, DealEngine, estatePayment, PROTECTED_ESTATE } from './engine';
 import deckData from '../deck.json';
 import { CardDef } from './types';
 
 export const DECK: CardDef[] = deckData as CardDef[];
 
-export { Game, COLORS, BOT_NAMES, DealEngine };
+export { Game, COLORS, BOT_NAMES, DealEngine, estatePayment, PROTECTED_ESTATE };
 
 export function getCardDef(keyOrCard: string | { key: string }): CardDef {
   const key = typeof keyOrCard === 'string' ? keyOrCard : keyOrCard?.key;
+  if(key==='protected_estate')return PROTECTED_ESTATE as CardDef;
   const found = DECK.find(d => d.key === key);
   return found || {
     key: key || 'unknown',

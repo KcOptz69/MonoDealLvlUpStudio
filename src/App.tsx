@@ -49,6 +49,8 @@ import {
 
 import './mobile-audit.css';
 import './online-controls.css';
+import './protected-estate.css';
+import {EstatePurchaseModal} from './components/ProtectedEstate';
 import {ToughLuckResult} from './components/ToughLuckResult';
 import {Deadline} from './components/OnlineClock';
 
@@ -1145,6 +1147,7 @@ export const App: React.FC = () => {
         {gameState.pending.kind==='jail'?<><img className="jail-choice-art" src="/ui/jail.png" alt="In Jail"/><h2>Pay bail or skip your turn</h2><p>Discard at least 10M from your bank and/or field to take this turn.</p><button className="gold" onClick={()=>runChoice('jail',[true])}>Pay 10M bail</button><button className="quiet" onClick={()=>runChoice('jail',[false])}>Skip this turn</button></>:gameState.pending.kind==='chance'?<><h2>Chance · keep one card</h2><div className="chance-options">{gameState.pending.cards?.map(c=><button key={c.id} onClick={()=>runChoice('choose',[c.id])}><img src={getCardArt(c)} alt={getCardDef(c).name}/></button>)}</div></>:<><h2>Expansion Property · join an existing set</h2>{gameState.pending.colors?.map(color=><button className="quiet" key={color} onClick={()=>runChoice('choose',[color])}>{color}</button>)}</>}
       </section></div>}
       {gameState?.pending?.kind==='expansion'&&gameState.pending.responder===0&&<ExpansionSelector state={gameState} card={gameState.pending.card!} transferring onSelect={g=>runChoice('choose',[g.id])}/>}
+      {view==='game'&&gameState?.pending?.kind==='estate'&&gameState.pending.responder===0&&<EstatePurchaseModal key={gameState.turnSerial} state={gameState} onChoose={async(buy)=>{if(onlineSession){await roomRequest({...onlineSession,cmd:'action',data:{method:'estate',args:[buy]}});}else{game.estate(0,buy);refreshGameState(game);saveLocalGame(game);}}}/>}
       {/* Hand Limit Discard Modal */}
       {gameState?.pending &&
         gameState.pending.responder === 0 &&
@@ -1169,6 +1172,7 @@ export const App: React.FC = () => {
           winnerName={gameState.players[gameState.winner]?.name || 'Player'}
           winnerToken={gameState.players[gameState.winner]?.tokenIndex??0}
           sets={gameState.players[gameState.winner]?.groups??[]}
+          protectedEstate={!!gameState.players[gameState.winner]?.protectedEstate}
           endReason={gameState.endReason}
           shortDefense={gameState.players.length>=4}
           scoreResults={gameState.scoreResults?.map(row=>({...row,name:gameState.players[row.player]?.name||'Player',token:gameState.players[row.player]?.tokenIndex??row.player,winner:!!gameState.winners?.includes(row.player)}))}

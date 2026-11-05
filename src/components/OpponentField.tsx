@@ -1,3 +1,5 @@
+import {ProtectedEstateField} from './ProtectedEstate';
+import {completeSetCount} from '../boardSelection';
 import {defenseFragile} from '../boardSelection';
 import {SetRentBadge} from './SetRentBadge';
 import '../opponent-cards.css';
@@ -55,7 +57,7 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
         if(isSetup)return <section className="opponent setup-concealed" key={playerIndex} data-player={playerIndex} aria-label={p.name+' setup field'}><div className="ophead"><PlayerToken index={p.tokenIndex??playerIndex}/><strong>{p.name}</strong></div><small>{p.setupDone?'Ready':'Setting up'} · {p.setupPlayed||0}/3 actions</small><div className="setup-cardbacks">{Array.from({length:p.setupPlayed||0},(_,i)=><img key={i} src={STATIC_ART.card_back} alt="Hidden setup card"/>)}</div><small>Revealed when everyone is ready</small></section>;
 
         const isActive = isSetup ? !p.setupDone : state.turn === playerIndex;
-        const setsCount = calculateSets(p.groups);
+        const setsCount = completeSetCount(p);
         const bankTotal = getBankTotal(p.bank);
 
         return (
@@ -79,7 +81,7 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
                 <strong>{p.name}</strong>
                 <span className="opponent-desktop-state">
                   {p.forfeited?'In lobby':state.pending?.responders?.includes(playerIndex)||state.pending?.payments?.some(e=>e.target===playerIndex)||state.pending?.responder===playerIndex
-                    ? state.pending.kind==='payment'?'Paying':state.pending.kind==='counter'?'Responding':'Discarding'
+                    ? state.pending.kind==='payment'?'Paying':state.pending.kind==='counter'?'Responding':state.pending.kind==='estate'?'Choosing purchase':'Choosing'
                     : isSetup ? p.setupDone?'✓ Ready':`${3-(p.setupPlayed||0)} setup actions`
                     : p.defending?`Defending · ${remainingDefense(playerIndex)} turns`
                     : state.turn===playerIndex?'● Playing':'Waiting'}
@@ -97,7 +99,7 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
             <div className="opmeta">
               <span className="opponent-hand-count"><span className="card-stack-icon" aria-hidden="true"><img src={STATIC_ART.card_back} alt=""/></span>{p.hand.length} cards</span>
               <span>{setsCount} / 3 sets</span>
-              <span className={'opponent-mobile-status'+(p.defending?' defending-status':'')+(state.pending?.responder===playerIndex?' needs-response':'')}>{p.forfeited?'In lobby':state.pending?.responders?.includes(playerIndex)||state.pending?.payments?.some(e=>e.target===playerIndex)||state.pending?.responder===playerIndex ? state.pending.kind==='payment'?'Paying':state.pending.kind==='counter'?'Responding':'Discarding' : isSetup ? p.setupDone?'Ready':`${3-(p.setupPlayed||0)} setup actions` : p.defending?`Defending · ${remainingDefense(playerIndex)} turns`:state.turn===playerIndex?'● Playing':'Waiting'}</span>
+              <span className={'opponent-mobile-status'+(p.defending?' defending-status':'')+(state.pending?.responder===playerIndex?' needs-response':'')}>{p.forfeited?'In lobby':state.pending?.responders?.includes(playerIndex)||state.pending?.payments?.some(e=>e.target===playerIndex)||state.pending?.responder===playerIndex ? state.pending.kind==='payment'?'Paying':state.pending.kind==='counter'?'Responding':state.pending.kind==='estate'?'Choosing purchase':'Choosing' : isSetup ? p.setupDone?'Ready':`${3-(p.setupPlayed||0)} setup actions` : p.defending?`Defending · ${remainingDefense(playerIndex)} turns`:state.turn===playerIndex?'● Playing':'Waiting'}</span>
               {p.defending && (
                 <span className="defense">
                   DEFENDING · {remainingDefense(playerIndex)} turns to victory
@@ -106,7 +108,7 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
             </div>
 
             <div className="opponent-field">
-              {p.groups.length > 0 || p.special.length > 0 ? (
+              {p.groups.length > 0 || p.special.length > 0 || !!p.protectedEstate ? (
                 <>
                   {p.groups.map((g) => {
                     const colInfo = COLORS[g.color] || { size: 2, hex: '#8b5438' };
@@ -162,6 +164,7 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
                     );
                   })}
 
+                  {p.protectedEstate&&<ProtectedEstateField card={p.protectedEstate} onPreview={c=>onSelectCard(c,playerIndex)}/>}
                   {p.special.length > 0 && (
                     <section className="group specialgroup">
                       <div className="grouphead" style={{ '--c': '#a88037' } as React.CSSProperties}>

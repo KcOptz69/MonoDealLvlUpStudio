@@ -27,6 +27,8 @@ export interface PropertyGroup {
 }
 
 export interface PlayerState {
+  protectedEstate?:CardInstance;
+  estatePurchased?:boolean;
   defenseRemaining?:number|null;
   setupHidden?:boolean;
   jailed?:boolean;
@@ -50,7 +52,7 @@ export interface GameEvent {
   targetPlaySeq?: number;
   seq: number;
   category?:string;
-  type: 'tough_luck_result' | 'donation' | 'draw' | 'bank' | 'property' | 'play' | 'charge' | 'transfer' | 'payment' | 'discard' | 'negate' | 'setup_turn' | 'reveal' | 'special_trigger';
+  type: 'estate_purchase' | 'tough_luck_result' | 'donation' | 'draw' | 'bank' | 'property' | 'play' | 'charge' | 'transfer' | 'payment' | 'discard' | 'negate' | 'setup_turn' | 'reveal' | 'special_trigger';
   actor: number;
   target?: number | null;
   card?: CardInstance;
@@ -70,7 +72,7 @@ export interface PendingAction {
   responders?:number[];
   deadline?:number;
   payments?:PendingAction['e'][];
-  kind: 'counter' | 'payment' | 'discard' | 'jail' | 'chance' | 'expansion';
+  kind: 'estate' | 'counter' | 'payment' | 'discard' | 'jail' | 'chance' | 'expansion';
   cards?:CardInstance[];
   colors?:string[];
   card?:CardInstance;

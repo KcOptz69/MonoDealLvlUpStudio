@@ -1,3 +1,4 @@
+import {completeSetCount} from '../boardSelection';
 import {ExpansionSelector} from './ExpansionSelector';
 import {PlayerToken} from './PlayerToken';
 import React, { useState } from 'react';
@@ -38,10 +39,7 @@ export const TargetingWizard: React.FC<TargetingWizardProps> = ({
   // Tough luck requires an opponent with >= 1 complete set
   const eligibleOpponents = opponents.filter(({ player, index }) => {
     if (card.key === 'tough_luck') {
-      const fullCount = player.groups.filter((g) => {
-        const col = COLORS[g.color];
-        return col && g.cards.length === col.size;
-      }).length;
+      const fullCount = completeSetCount(player);
       return fullCount >= 1;
     }
     return true;
@@ -188,7 +186,7 @@ export const TargetingWizard: React.FC<TargetingWizardProps> = ({
               {eligibleOpponents.map(({player,index})=>{
                 const bank=player.bank.reduce((sum,c)=>sum+getCardDef(c).value,0);
                 const properties=[...player.special,...player.groups.flatMap(g=>[...g.cards,...(g.house?[g.house]:[]),...(g.hotel?[g.hotel]:[])])].reduce((sum,c)=>sum+getCardDef(c).value,0);
-                const full=new Set(player.groups.filter(g=>g.cards.length===COLORS[g.color]?.size&&g.cards.some(c=>getCardDef(c).value>0)).map(g=>g.color)).size;
+                const full=completeSetCount(player);
                 return <button key={index} type="button" className={'debt-target-choice'+(targetOpponent===index?' picked':'')} aria-pressed={targetOpponent===index} onClick={()=>setTargetOpponent(index)}>
                   <PlayerToken index={player.tokenIndex ?? index}/><span className="debt-target-summary"><strong>{player.name}</strong><small>Bank {bank}M · Properties {properties}M</small><small>{full}/3 complete sets{player.defending?' · DEFENDING':''}{bank+properties===0?' · No assets':''}</small></span><span className="debt-target-tick" aria-hidden="true">{targetOpponent===index?'✓':''}</span>
                 </button>;
@@ -253,7 +251,7 @@ export const TargetingWizard: React.FC<TargetingWizardProps> = ({
                     >
                       <PlayerToken index={player.tokenIndex ?? index}/>
                       <strong>{player.name}</strong>
-                      <small>Bank {player.bank.reduce((sum,c)=>sum+getCardDef(c).value,0)}M · {new Set(player.groups.filter(g=>g.cards.length===COLORS[g.color]?.size&&g.cards.some(c=>getCardDef(c).value>0)).map(g=>g.color)).size}/3 complete sets{player.defending?' · DEFENDING':''}</small>
+                      <small>Bank {player.bank.reduce((sum,c)=>sum+getCardDef(c).value,0)}M · {completeSetCount(player)}/3 complete sets{player.defending?' · DEFENDING':''}</small>
                     </button>
                   ))}
                 </div>

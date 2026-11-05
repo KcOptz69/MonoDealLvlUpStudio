@@ -3,14 +3,14 @@ import {CardInstance,GameState,PropertyGroup} from '../types';
 import {getCardArt} from '../cardArt';
 import {getCardDef} from '../engineBridge';
 import {FieldContents} from './FieldView';
-import {fullSet} from '../boardSelection';
+import {fullSet,completeSetCount} from '../boardSelection';
 import '../board-target.css';
 import {usesBoardTarget} from '../boardSelection';
 export function BoardTarget({card,state,onConfirm,onCancel}:{card:CardInstance;state:GameState;onConfirm:(args:any)=>void;onCancel:()=>void}){
  const def=getCardDef(card),rent=def.type==='rent',single=(!rent||def.any),needsProperty=['sly_deal','forced_deal','eviction_notice','forced_rezoning'].includes(card.key);
  const [target,setTarget]=useState<number|null>(null),[property,setProperty]=useState(''),[own,setOwn]=useState(''),[group,setGroup]=useState(''),[color,setColor]=useState(''),[inspect,setInspect]=useState<number|null>(null),[category,setCategory]=useState(''),[categoryOpen,setCategoryOpen]=useState(false);
  const eligibleProp=(i:number,c:CardInstance)=>{const g=state.players[i].groups.find(g=>g.cards.some(x=>x.id===c.id));if(!g&&!state.players[i].special.some(x=>x.id===c.id))return false;if(['sly_deal','forced_deal'].includes(card.key))return !g||!fullSet(g);if(card.key==='forced_rezoning')return getCardDef(c).type==='wild'&&!c.locked;return true;};
- const eligiblePlayer=(i:number)=>{const p=state.players[i];if(i===0||p.forfeited)return false;if(card.key==='tough_luck'||card.key==='deal_breaker')return p.groups.some(fullSet);if(needsProperty)return [...p.special,...p.groups.flatMap(g=>g.cards)].some(c=>eligibleProp(i,c));if(card.key==='compulsory_purchase')return [...p.special,...p.groups.flatMap(g=>g.cards)].some(c=>getCardDef(c).value>0);return true;};
+ const eligiblePlayer=(i:number)=>{const p=state.players[i];if(i===0||p.forfeited)return false;if(card.key==='tough_luck')return completeSetCount(p)>0;if(card.key==='deal_breaker')return p.groups.some(fullSet);if(needsProperty)return [...p.special,...p.groups.flatMap(g=>g.cards)].some(c=>eligibleProp(i,c));if(card.key==='compulsory_purchase')return [...p.special,...p.groups.flatMap(g=>g.cards)].some(c=>getCardDef(c).value>0);return true;};
  const choosePlayer=(i:number)=>{if(!eligiblePlayer(i))return;setTarget(i);setProperty('');setGroup('');setCategory('');setColor('');if(card.key==='tough_luck')setCategoryOpen(true);else if((needsProperty||card.key==='deal_breaker')&&document.documentElement.classList.contains('mobile-device'))setInspect(i);};
  const pick=(i:number,c:CardInstance)=>{if(!eligibleProp(i,c))return;if(i===0){setOwn(c.id);return;}setProperty(c.id);if(card.key==='forced_rezoning')setColor(getCardDef(c).colors?.[0]||'');};
  const pickGroup=(i:number,g:PropertyGroup)=>{if(rent&&i===0){if(def.any||def.colors?.includes(g.color))setGroup(g.id);}else if(card.key==='deal_breaker'&&i===target&&fullSet(g))setGroup(g.id);};

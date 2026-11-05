@@ -10,8 +10,9 @@ function expireTurn(g){
  // Finish outstanding non-reaction choices legally before passing. Reactions/payments suspend the clock.
  for(let guard=0;guard<20&&g.s.turn===actor&&g.s.winner===null;guard++){
   const p=g.s.pending;
-  if(!p){g.end(actor,false);break;}
+  if(!p){g.end(actor,false);if(g.s.pending?.kind==='estate')g.estate(actor,false);break;}
   else if(p.kind==='discard')g.discard(p.responder,g.p(p.responder).hand.slice(0,Math.max(0,g.p(p.responder).hand.length-g.handLimit(p.responder))).map(c=>c.id));
+  else if(p.kind==='estate'){g.estate(p.responder,false);break;}
   else if(p.kind==='jail'){g.jail(p.responder,false);break;}
   else if(p.kind==='chance')g.choose(p.responder,p.cards[0].id);
   else if(p.kind==='expansion')g.choose(p.responder,p.colors[0]);

@@ -1,5 +1,13 @@
 /* Monopoly Deal Lvl. Up — rules engine for React */
 
+// Purchased endgame set: kept outside transferable property zones.
+export const PROTECTED_ESTATE={key:'protected_estate',name:'Protected Estate',copies:0,value:0,type:'property',colors:[],text:'Counts as one complete set. Cannot be stolen, transferred or used as payment. One per player. Purchase for 20M from round 10.'};
+export function estatePayment(bank:any[],definition:(card:any)=>{value:number}):string[]{
+ const dp=new Map<number,string[]>([[0,[]]]);
+ for(const c of bank){const value=definition(c).value;if(value<=0)continue;for(const [sum,ids] of [...dp]){const next=sum+value;if(!dp.has(next)||dp.get(next)!.length>ids.length+1)dp.set(next,[...ids,c.id]);}}
+ return [...dp].filter(([sum])=>sum>=20).sort((a,b)=>a[0]-b[0]||a[1].length-b[1].length)[0]?.[1]||[];
+}
+
 export const COLORS: Record<string, { size: number; rent: number[]; hex: string }> = {
   Brown: { size: 2, rent: [1, 2], hex: '#8b5438' },
   'Light Blue': { size: 3, rent: [1, 2, 3], hex: '#62c9ef' },
@@ -92,7 +100,7 @@ export class Game {
     this.s.events = this.s.events.slice(-120);
   }
 
-  d(c: any) { return this.defs.find(d => d.key === c.key); }
+  d(c: any) { return c.key==='protected_estate'?PROTECTED_ESTATE:this.defs.find(d => d.key === c.key); }
   p(i: number) { return this.s.players[i]; }
   log(t: string) { this.s.log.unshift(t); this.s.log = this.s.log.slice(0, 100); }
 
@@ -129,7 +137,9 @@ export class Game {
   }
 
   full(g: any) { return g.cards.length === COLORS[g.color].size && g.cards.some((c: any) => this.d(c).value > 0); }
-  sets(i: number) { return new Set(this.p(i).groups.filter((g: any) => this.full(g)).map((g: any) => g.color)).size; }
+  sets(i: number) { return new Set(this.p(i).groups.filter((g: any) => this.full(g)).map((g: any) => g.color)).size+(this.p(i).protectedEstate?1:0); }
+
+  fieldPropertyCount(i:number){return this.allProps(i).length+(this.p(i).protectedEstate?1:0);}
 
   check() {
     for(let i=0;i<this.s.players.length;i++){
@@ -359,7 +369,7 @@ export class Game {
     }
     if (d.type === 'rent') {
       const g = this.group(i,args.group);
-      let r=c.key==='empire_rent'?this.allProps(i).length:this.rent(i,g);
+      let r=c.key==='empire_rent'?this.fieldPropertyCount(i):this.rent(i,g);
       for(const id of this.doubleIds(args)){
         const double=this.takeHand(i,id);this.s.discard.push(double);this.event('play',{actor:i,card:{...double},key:double.key});this.s.played++;r*=2;
       }
@@ -378,7 +388,7 @@ export class Game {
       }));
     } else if (c.key === 'luxury_tax') {
       this.s.queue = this.s.players.map((_: any, j: number) => j).filter((j: number) => j !== i && !this.p(j).forfeited).map((t: number) => ({
-        actor: i, target: t, key: c.key, amount: 5 * this.p(t).groups.filter((g: any) => this.full(g)).length
+        actor: i, target: t, key: c.key, amount: 5 * (this.p(t).groups.filter((g: any) => this.full(g)).length+(this.p(t).protectedEstate?1:0))
       }));
     } else {
       this.s.queue = [{
@@ -449,7 +459,7 @@ export class Game {
     if (c.key === 'double_the_rent') throw Error('Select a Rent card and enable Double the Rent.');
     if (d.type === 'rent') {
       const g=this.group(i,a.group);
-      if(c.key==='empire_rent'){if(!this.allProps(i).length)throw Error('You need properties to charge Empire Rent.');}
+      if(c.key==='empire_rent'){if(!this.fieldPropertyCount(i))throw Error('You need properties to charge Empire Rent.');}
       else if(!g||(d.colors&&!d.colors.includes(g.color)))throw Error('Choose one of your matching property sets.');
       const ids=this.doubleIds(a);
       if(!Array.isArray(ids)||new Set(ids).size!==ids.length||this.s.played+1+ids.length>this.limit(i)||ids.some((id:string)=>!this.p(i).hand.some((c:any)=>c.id===id&&c.key==='double_the_rent')))throw Error('Each Double the Rent needs a card and enough available plays.');
@@ -848,6 +858,28 @@ export class Game {
     delete a[key];
   }
 
+  canBuyEstate(i:number){return !this.isSetup()&&this.s.round>=10&&!this.p(i).forfeited&&!this.p(i).estatePurchased&&!this.p(i).protectedEstate&&this.p(i).bank.reduce((n:number,c:any)=>n+this.d(c).value,0)>=20;}
+  estatePayment(i:number){return estatePayment(this.p(i).bank,c=>this.d(c));}
+  completeEnd(i:number){
+    if(this.canBuyEstate(i)){this.s.pending={kind:'estate',responder:i,e:{actor:i,target:i,key:'protected_estate',amount:20}};return;}
+    this.finishTurn(i);
+  }
+  estate(i:number,buy:boolean){
+    if(this.s.pending?.kind!=='estate'||this.s.pending.responder!==i)throw Error('No Protected Estate purchase requested.');
+    if(typeof buy!=='boolean')throw Error('Choose Buy or Pass.');
+    if(buy){
+      if(!this.canBuyEstate(i))throw Error('Protected Estate requires round 10+, 20M in the bank and no previous purchase.');
+      const ids=this.estatePayment(i),cards=this.p(i).bank.filter((c:any)=>ids.includes(c.id));
+      this.p(i).bank=this.p(i).bank.filter((c:any)=>!ids.includes(c.id));this.s.discard.push(...cards);
+      this.p(i).estatePurchased=true;this.p(i).protectedEstate={id:'estate'+this.s.nextId++,key:'protected_estate'};
+      const paid=cards.reduce((n:number,c:any)=>n+this.d(c).value,0);
+      this.event('discard',{actor:i,cards:cards.map((c:any)=>({...c})),message:'Protected Estate purchase'});
+      this.event('estate_purchase',{actor:i,card:{...this.p(i).protectedEstate}});
+      this.log(this.p(i).name+' purchased Protected Estate for '+paid+'M. It counts as one protected complete set.');
+    }
+    this.s.pending=null;this.finishTurn(i);
+  }
+
   end(i: number, drawUnused = false) {
     this.ready(i);
     if (this.isSetup() && drawUnused) throw Error('Unused setup actions cannot draw cards.');
@@ -863,7 +895,7 @@ export class Game {
       this.s.pending = { kind: 'discard', responder: i };
       return;
     }
-    this.finishTurn(i);
+    this.completeEnd(i);
   }
 
   discard(i: number, ids: string[]) {
@@ -876,7 +908,7 @@ export class Game {
     for (const id of ids) this.s.discard.push(this.takeHand(i, id));
     this.event('discard', { actor: i, cards });
     this.s.pending = null;
-    this.finishTurn(i);
+    this.completeEnd(i);
   }
 
   finishTurn(i = this.s.turn) {
@@ -956,7 +988,7 @@ export class Game {
           }
         }
       }
-      if(c.key==='empire_rent'){for(const target of others){const score=this.allProps(i).length;if(score){push(c,{target},score);const ids=p.hand.filter((c:any)=>c.key==='double_the_rent').slice(0,Math.max(0,this.limit(i)-this.used(i)-1)).map((c:any)=>c.id);if(ids.length)push(c,{target,doubleIds:ids},score*2**ids.length);}}}
+      if(c.key==='empire_rent'){for(const target of others){const score=this.fieldPropertyCount(i);if(score){push(c,{target},score);const ids=p.hand.filter((c:any)=>c.key==='double_the_rent').slice(0,Math.max(0,this.limit(i)-this.used(i)-1)).map((c:any)=>c.id);if(ids.length)push(c,{target,doubleIds:ids},score*2**ids.length);}}}
       else if (d.type === 'rent') {
         for (const g of p.groups) {
           if (d.any || d.colors.includes(g.color)) {
@@ -1040,7 +1072,7 @@ export class Game {
     if (['house', 'hotel'].includes(c.key)) return this.sets(i) >= 2 ? 6 : 3;
     if (d.type === 'rent') {
       const g = this.group(i, a.group);
-      const base = (c.key==='empire_rent'?this.allProps(i).length:this.rent(i,g))*2**this.doubleIds(a).length + (this.has(i, 'luxury_district') ? 1 : 0);
+      const base = (c.key==='empire_rent'?this.fieldPropertyCount(i):this.rent(i,g))*2**this.doubleIds(a).length + (this.has(i, 'luxury_district') ? 1 : 0);
       const targets = d.any ? [a.target] : this.s.players.map((_: any, j: number) => j).filter((j: number) => j !== i && !this.p(j).forfeited);
       const gain = targets.reduce((n: number, j: number) => n + Math.min(this.assetValue(j), Math.max(0, base - (this.has(j, 'rent_controlled_residence') ? 2 : 0))), 0);
       return gain * (a.doubleId ? 0.65 : 0.85) - 1 + (bank < 3 ? 1 : 0) + (d.any && this.assetValue(a.target) > 0 ? this.threat(a.target) * 0.3 : 0);
@@ -1157,6 +1189,7 @@ export class Game {
         const rank=(g:any)=>{const n=g.cards.filter((c:any)=>c.id!==p.card.id).length;return (n+1===COLORS[g.color].size?(this.p(i).groups.some((x:any)=>x.color===g.color&&this.full(x)&&!x.cards.some((c:any)=>c.id===p.card.id))?100:1000):0)+n/COLORS[g.color].size;};
         groups.sort((a:any,b:any)=>rank(b)-rank(a));this.choose(i,groups[0]?.id||p.colors[0]);return;
       }
+      if(p.kind==='estate'){this.estate(i,this.s.roundLimit!==10);return;}
       if(p.kind==='jail'){this.jail(i,this.assetValue(i)>=10&&this.p(i).bank.reduce((n:number,c:any)=>n+this.d(c).value,0)>=10);return;}
       if (p.kind === 'payment') {
         const card = this.p(i).hand.find((c: any) => c.key === 'i_owe_you');
@@ -1197,5 +1230,5 @@ export class Game {
   }
 }
 
-export const DealEngine = { Game, COLORS, BOT_NAMES };
+export const DealEngine = { Game, COLORS, BOT_NAMES, estatePayment, PROTECTED_ESTATE };
 export default DealEngine;

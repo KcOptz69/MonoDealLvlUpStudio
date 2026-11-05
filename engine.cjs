@@ -2,7 +2,24 @@
 "use strict";
 /* Monopoly Deal Lvl. Up — rules engine for React */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DealEngine = exports.Game = exports.BOT_NAMES = exports.COLORS = void 0;
+exports.DealEngine = exports.Game = exports.BOT_NAMES = exports.COLORS = exports.PROTECTED_ESTATE = void 0;
+exports.estatePayment = estatePayment;
+// Purchased endgame set: kept outside transferable property zones.
+exports.PROTECTED_ESTATE = { key: 'protected_estate', name: 'Protected Estate', copies: 0, value: 0, type: 'property', colors: [], text: 'Counts as one complete set. Cannot be stolen, transferred or used as payment. One per player. Purchase for 20M from round 10.' };
+function estatePayment(bank, definition) {
+    const dp = new Map([[0, []]]);
+    for (const c of bank) {
+        const value = definition(c).value;
+        if (value <= 0)
+            continue;
+        for (const [sum, ids] of [...dp]) {
+            const next = sum + value;
+            if (!dp.has(next) || dp.get(next).length > ids.length + 1)
+                dp.set(next, [...ids, c.id]);
+        }
+    }
+    return [...dp].filter(([sum]) => sum >= 20).sort((a, b) => a[0] - b[0] || a[1].length - b[1].length)[0]?.[1] || [];
+}
 exports.COLORS = {
     Brown: { size: 2, rent: [1, 2], hex: '#8b5438' },
     'Light Blue': { size: 3, rent: [1, 2, 3], hex: '#62c9ef' },
@@ -90,7 +107,7 @@ class Game {
         (this.s.events || (this.s.events = [])).push({ seq: this.s.eventSeq, type, setup: this.isSetup(), turnId: this.s.turnSerial || 0, ...data });
         this.s.events = this.s.events.slice(-120);
     }
-    d(c) { return this.defs.find(d => d.key === c.key); }
+    d(c) { return c.key === 'protected_estate' ? exports.PROTECTED_ESTATE : this.defs.find(d => d.key === c.key); }
     p(i) { return this.s.players[i]; }
     log(t) { this.s.log.unshift(t); this.s.log = this.s.log.slice(0, 100); }
     shuffle(a) {
@@ -125,7 +142,8 @@ class Game {
             this.event('draw', { actor: i, cards });
     }
     full(g) { return g.cards.length === exports.COLORS[g.color].size && g.cards.some((c) => this.d(c).value > 0); }
-    sets(i) { return new Set(this.p(i).groups.filter((g) => this.full(g)).map((g) => g.color)).size; }
+    sets(i) { return new Set(this.p(i).groups.filter((g) => this.full(g)).map((g) => g.color)).size + (this.p(i).protectedEstate ? 1 : 0); }
+    fieldPropertyCount(i) { return this.allProps(i).length + (this.p(i).protectedEstate ? 1 : 0); }
     check() {
         for (let i = 0; i < this.s.players.length; i++) {
             const p = this.p(i), supported = new Set(p.groups.filter((g) => g.cards.some((c) => c.key !== 'expansion_property')).map((g) => g.color));
@@ -447,7 +465,7 @@ class Game {
         }
         if (d.type === 'rent') {
             const g = this.group(i, args.group);
-            let r = c.key === 'empire_rent' ? this.allProps(i).length : this.rent(i, g);
+            let r = c.key === 'empire_rent' ? this.fieldPropertyCount(i) : this.rent(i, g);
             for (const id of this.doubleIds(args)) {
                 const double = this.takeHand(i, id);
                 this.s.discard.push(double);
@@ -475,7 +493,7 @@ class Game {
         }
         else if (c.key === 'luxury_tax') {
             this.s.queue = this.s.players.map((_, j) => j).filter((j) => j !== i && !this.p(j).forfeited).map((t) => ({
-                actor: i, target: t, key: c.key, amount: 5 * this.p(t).groups.filter((g) => this.full(g)).length
+                actor: i, target: t, key: c.key, amount: 5 * (this.p(t).groups.filter((g) => this.full(g)).length + (this.p(t).protectedEstate ? 1 : 0))
             }));
         }
         else {
@@ -556,7 +574,7 @@ class Game {
         if (d.type === 'rent') {
             const g = this.group(i, a.group);
             if (c.key === 'empire_rent') {
-                if (!this.allProps(i).length)
+                if (!this.fieldPropertyCount(i))
                     throw Error('You need properties to charge Empire Rent.');
             }
             else if (!g || (d.colors && !d.colors.includes(g.color)))
@@ -1039,6 +1057,36 @@ class Game {
         b[key] = a[key];
         delete a[key];
     }
+    canBuyEstate(i) { return !this.isSetup() && this.s.round >= 10 && !this.p(i).forfeited && !this.p(i).estatePurchased && !this.p(i).protectedEstate && this.p(i).bank.reduce((n, c) => n + this.d(c).value, 0) >= 20; }
+    estatePayment(i) { return estatePayment(this.p(i).bank, c => this.d(c)); }
+    completeEnd(i) {
+        if (this.canBuyEstate(i)) {
+            this.s.pending = { kind: 'estate', responder: i, e: { actor: i, target: i, key: 'protected_estate', amount: 20 } };
+            return;
+        }
+        this.finishTurn(i);
+    }
+    estate(i, buy) {
+        if (this.s.pending?.kind !== 'estate' || this.s.pending.responder !== i)
+            throw Error('No Protected Estate purchase requested.');
+        if (typeof buy !== 'boolean')
+            throw Error('Choose Buy or Pass.');
+        if (buy) {
+            if (!this.canBuyEstate(i))
+                throw Error('Protected Estate requires round 10+, 20M in the bank and no previous purchase.');
+            const ids = this.estatePayment(i), cards = this.p(i).bank.filter((c) => ids.includes(c.id));
+            this.p(i).bank = this.p(i).bank.filter((c) => !ids.includes(c.id));
+            this.s.discard.push(...cards);
+            this.p(i).estatePurchased = true;
+            this.p(i).protectedEstate = { id: 'estate' + this.s.nextId++, key: 'protected_estate' };
+            const paid = cards.reduce((n, c) => n + this.d(c).value, 0);
+            this.event('discard', { actor: i, cards: cards.map((c) => ({ ...c })), message: 'Protected Estate purchase' });
+            this.event('estate_purchase', { actor: i, card: { ...this.p(i).protectedEstate } });
+            this.log(this.p(i).name + ' purchased Protected Estate for ' + paid + 'M. It counts as one protected complete set.');
+        }
+        this.s.pending = null;
+        this.finishTurn(i);
+    }
     end(i, drawUnused = false) {
         this.ready(i);
         if (this.isSetup() && drawUnused)
@@ -1056,7 +1104,7 @@ class Game {
             this.s.pending = { kind: 'discard', responder: i };
             return;
         }
-        this.finishTurn(i);
+        this.completeEnd(i);
     }
     discard(i, ids) {
         const p = this.s.pending;
@@ -1070,7 +1118,7 @@ class Game {
             this.s.discard.push(this.takeHand(i, id));
         this.event('discard', { actor: i, cards });
         this.s.pending = null;
-        this.finishTurn(i);
+        this.completeEnd(i);
     }
     finishTurn(i = this.s.turn) {
         if (this.isSetup()) {
@@ -1175,7 +1223,7 @@ class Game {
             }
             if (c.key === 'empire_rent') {
                 for (const target of others) {
-                    const score = this.allProps(i).length;
+                    const score = this.fieldPropertyCount(i);
                     if (score) {
                         push(c, { target }, score);
                         const ids = p.hand.filter((c) => c.key === 'double_the_rent').slice(0, Math.max(0, this.limit(i) - this.used(i) - 1)).map((c) => c.id);
@@ -1277,7 +1325,7 @@ class Game {
             return this.sets(i) >= 2 ? 6 : 3;
         if (d.type === 'rent') {
             const g = this.group(i, a.group);
-            const base = (c.key === 'empire_rent' ? this.allProps(i).length : this.rent(i, g)) * 2 ** this.doubleIds(a).length + (this.has(i, 'luxury_district') ? 1 : 0);
+            const base = (c.key === 'empire_rent' ? this.fieldPropertyCount(i) : this.rent(i, g)) * 2 ** this.doubleIds(a).length + (this.has(i, 'luxury_district') ? 1 : 0);
             const targets = d.any ? [a.target] : this.s.players.map((_, j) => j).filter((j) => j !== i && !this.p(j).forfeited);
             const gain = targets.reduce((n, j) => n + Math.min(this.assetValue(j), Math.max(0, base - (this.has(j, 'rent_controlled_residence') ? 2 : 0))), 0);
             return gain * (a.doubleId ? 0.65 : 0.85) - 1 + (bank < 3 ? 1 : 0) + (d.any && this.assetValue(a.target) > 0 ? this.threat(a.target) * 0.3 : 0);
@@ -1437,6 +1485,10 @@ class Game {
                 this.choose(i, groups[0]?.id || p.colors[0]);
                 return;
             }
+            if (p.kind === 'estate') {
+                this.estate(i, this.s.roundLimit !== 10);
+                return;
+            }
             if (p.kind === 'jail') {
                 this.jail(i, this.assetValue(i) >= 10 && this.p(i).bank.reduce((n, c) => n + this.d(c).value, 0) >= 10);
                 return;
@@ -1488,7 +1540,7 @@ class Game {
     }
 }
 exports.Game = Game;
-exports.DealEngine = { Game, COLORS: exports.COLORS, BOT_NAMES: exports.BOT_NAMES };
+exports.DealEngine = { Game, COLORS: exports.COLORS, BOT_NAMES: exports.BOT_NAMES, estatePayment, PROTECTED_ESTATE: exports.PROTECTED_ESTATE };
 exports.default = exports.DealEngine;
 
 if(typeof module!=='undefined'&&module.exports)module.exports=exports.DealEngine;else root.DealEngine=exports.DealEngine;})(typeof globalThis!=='undefined'?globalThis:this);

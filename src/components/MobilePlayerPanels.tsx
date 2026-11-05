@@ -1,3 +1,4 @@
+import {completeSetCount} from '../boardSelection';
 import {installMobileHandScrolling} from '../mobileHandScrolling';
 import {PlayerToken} from './PlayerToken';
 import React,{useEffect,useRef,useState} from 'react';
@@ -27,7 +28,7 @@ export const MobilePlayerPanels:React.FC<Props>=(props)=>{
  const used=setup?player.setupPlayed||0:state.played;
  const remaining=Math.max(0,limit-used);
  const myTurn=state.winner===null&&(setup?!player.setupDone:state.turn===0);
- const sets=new Set(player.groups.filter(g=>g.cards.length===COLORS[g.color]?.size&&g.cards.some(c=>getCardDef(c).value>0)).map(g=>g.color)).size;
+ const sets=completeSetCount(player);
  useEffect(()=>{if(state.pending)setPanel(null);},[state.pending]);
  useEffect(()=>{if(!props.onSendChat&&panel==='chat')setPanel(null);},[props.onSendChat,panel]);
  useEffect(()=>{if(panel)close.current?.focus();},[panel]);
