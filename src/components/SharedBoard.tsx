@@ -19,6 +19,7 @@ interface PlayedCardInfo {
 interface SharedBoardProps {
   state: GameState;
   serverTime?:number;
+  frozenAt?:number;
   onDonate?:()=>void;
   onCooperationSkip?:(id:string)=>Promise<void>|void;
   boardPlay: PlayedCardInfo | null;
@@ -45,7 +46,7 @@ function TurnPlayedCards({state,upcoming,onSelectCard}:{state:GameState;upcoming
 export const SharedBoard: React.FC<SharedBoardProps> = ({
   state,
   boardPlay,
-  serverTime,onDonate,onCooperationSkip,
+  serverTime,frozenAt,onDonate,onCooperationSkip,
   onSelectCard,
   onBrowseDiscard,
 }) => {
@@ -86,8 +87,8 @@ export const SharedBoard: React.FC<SharedBoardProps> = ({
 
       {/* Played card panel */}
       <section className="played-panel" aria-label="Played card">
-        {state.cooperation&&<CooperationBar window={state.cooperation} state={state} serverTime={serverTime} onDonate={onDonate} onSkip={onCooperationSkip}/>}
-        <h3>{state.phase === 'setup' ? 'Played card' : `Cards this turn · ${state.players[state.turn]?.name}`}</h3>
+        {state.cooperation&&<CooperationBar window={state.cooperation} state={state} serverTime={serverTime} frozenAt={frozenAt} onDonate={onDonate} onSkip={onCooperationSkip}/>}
+        <div className="played-panel-heading"><h3>{state.phase === 'setup' ? 'Played card' : `Cards this turn · ${state.players[state.turn]?.name}`}</h3>{state.phase!=='setup'&&<span className="opponent-move-counter" aria-label="Actions remaining">Moves · {Math.max(0,(state.players[state.turn]?.special.some(c=>c.key==='corporate_headquarters')?4:3)-state.played)} / {state.players[state.turn]?.special.some(c=>c.key==='corporate_headquarters')?4:3}</span>}</div>
         <div className="board-play" id="boardPlay" aria-live="polite">
           {state.phase!=='setup'?<TurnPlayedCards state={state} upcoming={boardPlay} onSelectCard={onSelectCard}/>:<div className="table-play-empty">SIMULTANEOUS SETUP<span>Cards stay hidden until everyone is ready</span></div>}
 

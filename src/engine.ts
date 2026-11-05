@@ -171,6 +171,7 @@ export class Game {
     this.s.turnSerial = (this.s.turnSerial || 0) + 1;
     this.s.played = 0;
     p.freeBankUsed = false;
+    this.s.turnRefill = false;
     p.botFreeSeen=[];
     if(p.jailed){this.s.pending={kind:'jail',responder:i,e:{actor:i,target:i,key:'jail_bail',amount:10}};return;}
     this.startTurn(i);
@@ -183,6 +184,7 @@ export class Game {
       const c={id:'mint'+this.s.nextId++,key:'money_3m',generated:true};p.bank.push(c);this.s.minted=(this.s.minted||0)+1;
       this.event('bank',{actor:i,card:{...c},passive:true});this.log(p.name+' gained 3M with Emergency Treasury.');this.trigger(i,'emergency_treasury','+3M added to bank',3);
     }
+    this.s.turnRefill = p.hand.length===0;
     const n=p.hand.length?(this.has(i,'investment_office')?3:2):(this.has(i,'private_vault')?7:5);
     this.draw(i,n);this.log(p.name+' drew '+n+' cards.');
     if(n===7)this.trigger(i,'private_vault','Empty hand · drew 7 cards',7);
@@ -645,6 +647,7 @@ export class Game {
       const take = p.hand.filter((c: any) => this.category(c) === e.category);
       p.hand = p.hand.filter((c: any) => !take.includes(c));
       this.p(i).hand.push(...take);
+      this.event('tough_luck_result',{actor:i,target:t,category:e.category,cards:take.map((c:any)=>({...c})),destination:'hand'});
       this.log(this.p(i).name + ' took ' + take.length + ' ' + e.category + ' cards from ' + p.name + '’s hand.');
     }
     this.check();

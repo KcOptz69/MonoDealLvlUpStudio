@@ -308,7 +308,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
                 {!['property', 'wild', 'special'].includes(selectedDef.type) && (
                   <button
                     type="button"
-                    disabled={!canAct}
+                    disabled={!myTurn||!!state.pending||(!canAct&&!freeBank)}
                     onClick={() => onBankSelected(selectedCard.id)}
                   >
                     Bank {freeBank?'(FREE)':selectedDef.value+'M'}

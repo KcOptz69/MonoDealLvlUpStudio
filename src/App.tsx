@@ -48,12 +48,16 @@ import {
 } from './components/Modals';
 
 import './mobile-audit.css';
+import './online-controls.css';
+import {ToughLuckResult} from './components/ToughLuckResult';
+import {Deadline} from './components/OnlineClock';
 
 type ViewMode = 'menu' | 'lobby' | 'game';
 
 export const App: React.FC = () => {
   const {mobile,portrait}=useMobileLayout();
   const PlayerArea=mobile?MobilePlayerPanels:PlayerZone;
+  const [hideHand,setHideHand]=useState(false);
   const [view, setView] = useState<ViewMode>('menu');
   const [game, setGame] = useState<any>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -855,8 +859,9 @@ export const App: React.FC = () => {
     try { const saved=JSON.parse(localStorage.getItem('kaze_online_session')||'null');
       if(saved?.token && (!invited || invited.toUpperCase()===saved.code)) handleReconnectRoom();
     } catch {}
-    return () => { eventSourceRef.current?.close(); };
+  return () => { eventSourceRef.current?.close(); };
   }, []);
+  useEffect(()=>{if(onlineSession&&gameState?.phase==='play'&&gameState.turn!==0){setWizardCard(null);setDoubleRentPending(null);setEndTurnPendingLeft(null);}},[onlineSession,gameState?.turn,gameState?.turnSerial]);
   const defendingMusic = view==='game' && gameState?.winner===null && gameState?.players.some(p=>p.defending);
   useEffect(() => { setMusicScene(view==='game' ? (gameState?.winner!=null?'victory':defendingMusic?'defending':'game') : 'menu'); }, [view,defendingMusic,gameState?.winner]);
 
@@ -864,6 +869,7 @@ export const App: React.FC = () => {
   useEffect(()=>{if(!canDonate){setDonationCard(null);setDonationPicker(false);}},[canDonate]);
   return (
     <>
+      {view==='game'&&onlineSession&&onlineView?.host&&gameState?.pending&&<button className="quiet host-pause-shortcut" onClick={async()=>{try{await roomRequest({...onlineSession,cmd:'pause',data:{paused:!onlineView.paused}});}catch(err:any){showToast(err.message);}}}>{onlineView.paused?'Resume game':'Pause game'}</button>}
       {view==='game'&&canDonate&&gameState?.pending&&!donationCard&&!donationPicker&&gameState.players[0].hand.length>0&&<button className="quiet donation-shortcut" onClick={()=>setDonationPicker(true)}>Donate (FREE)</button>}
       {view==='game'&&canDonate&&donationPicker&&gameState&&<DonationHandPicker state={gameState} onClose={()=>setDonationPicker(false)} onPick={card=>{setDonationPicker(false);setDonationCard(card);}}/>}
       <MobileTableOverlays enabled={mobile} portrait={portrait}/>
@@ -912,16 +918,21 @@ export const App: React.FC = () => {
 
       {/* Active Game Table View */}
       {view === 'game' && gameState && (
-        <div className="app">
+        <div className={'app'+(onlineSession&&hideHand&&!mobile?' privacy-hidden':'')}>
           <TurnNotices state={gameState}/><SpecialTriggerNotices state={gameState}/><TargetFeedback key={onlineSession?.code||'local-target'} state={gameState}/><GameFeedback key={onlineSession?.code||'local'} state={gameState} onMoving={setMovingEvents}/>
           <TopBar
             state={gameState}
             isOnline={!!onlineSession}
+            room={onlineView}
+            onPause={async()=>{try{await roomRequest({...onlineSession,cmd:'pause',data:{paused:!onlineView?.paused}});}catch(err:any){showToast(err.message);}}}
             onOpenRules={() => setShowRules(true)}
             onOpenSettings={() => setShowSettings(true)}
             onOpenMenu={() => setShowExit(true)}
           />
 
+          {onlineSession&&!mobile&&<button className="hide-hand-toggle quiet" aria-pressed={hideHand} onClick={()=>setHideHand(v=>!v)}>{hideHand?'Show cards':'Hide cards'}</button>}
+          {onlineSession&&onlineView?.paused&&<div className="host-pause-banner" role="status">Game paused by host {onlineView.host&&<button className="gold" onClick={async()=>{try{await roomRequest({...onlineSession,cmd:'pause',data:{paused:false}});}catch(err:any){showToast(err.message);}}}>Resume game</button>}</div>}
+          <ToughLuckResult key={onlineSession?.code||'local'} state={gameState} hidden={!!onlineSession&&hideHand&&!mobile}/>
           <div className="game">
             <main className="table">
 
@@ -953,6 +964,7 @@ export const App: React.FC = () => {
                 state={{...gameState,events:gameState.events.filter(e=>!movingEvents.includes(e.seq)||!['payment','transfer','discard','donation'].includes(e.type))}}
                 boardPlay={boardPlay}
                 serverTime={onlineSession?onlineView?.serverTime:undefined}
+                frozenAt={onlineView?.paused?onlineView.pausedAt:undefined}
                 onDonate={()=>setDonationPicker(true)}
                 onCooperationSkip={async(id)=>{
                   if(onlineSession){await roomRequest({...onlineSession,cmd:'cooperation-skip',data:{id}});}
@@ -1107,6 +1119,8 @@ export const App: React.FC = () => {
           <ReactionModal
             pending={{...gameState.pending,e:gameState.pending.payments?.find(e=>e.target===0)||gameState.batch?.effects?.find((e:any)=>gameState.pending?.responders?.includes(0)&&e.target===0)||gameState.pending.e}}
             state={gameState}
+            serverTime={onlineView?.serverTime}
+            frozenAt={onlineView?.paused?onlineView.pausedAt:undefined}
             onRespond={handleRespond}
           />
         )}
@@ -1119,6 +1133,8 @@ export const App: React.FC = () => {
             key={`${gameState.turnSerial || 0}:${gameState.pending.e.actor}:${gameState.pending.e.target}:${gameState.pending.e.key}:${gameState.events.filter(e=>e.type==='charge').at(-1)?.seq || 0}`}
             pending={{...gameState.pending,e:gameState.pending.payments?.find(e=>e.target===0)||gameState.batch?.effects?.find((e:any)=>gameState.pending?.responders?.includes(0)&&e.target===0)||gameState.pending.e}}
             state={gameState}
+            serverTime={onlineView?.serverTime}
+            frozenAt={onlineView?.paused?onlineView.pausedAt:undefined}
             onPay={handlePay}
             onOfferIOU={handleOfferIOU}
             onSkipJail={()=>runChoice('jail',[false])}
@@ -1133,7 +1149,7 @@ export const App: React.FC = () => {
       {gameState?.pending &&
         gameState.pending.responder === 0 &&
         gameState.pending.kind === 'discard' && (
-          <DiscardModal
+          <><Deadline label="Discard" deadline={gameState.pending.deadline} serverTime={onlineView?.serverTime} frozenAt={onlineView?.paused?onlineView.pausedAt:undefined}/><DiscardModal
             hand={gameState.players[0].hand}
             handLimit={
               gameState.players[0].special.some((c) => c.key === 'private_vault')
@@ -1141,7 +1157,7 @@ export const App: React.FC = () => {
                 : 7
             }
             onDiscard={handleDiscard}
-          />
+          /></>
         )}
 
       {showExit && <div className="overlay exit-game-overlay"><section className="modal exit-game-dialog" role="dialog" aria-modal="true" aria-labelledby="exit-game-title"><h2 id="exit-game-title">Exit game?</h2><p>{onlineSession ? 'Save and exit keeps your seat. Just exit ends the match for everyone if you are host; otherwise you forfeit and return to the lobby.' : 'Save your progress to continue this game later, or exit without keeping this game.'}</p><div className="exit-game-options"><button className="gold" onClick={()=>handleExitGame(true)}>Save and exit</button><button className="quiet" onClick={()=>handleExitGame(false)}>Just exit</button><button className="quiet" onClick={()=>setShowExit(false)}>Cancel</button></div></section></div>}

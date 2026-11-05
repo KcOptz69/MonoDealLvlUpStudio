@@ -1,9 +1,13 @@
 import React from 'react';
+import {TurnClock} from './OnlineClock';
+import type {OnlineRoomView} from '../types';
 import { STATIC_ART } from '../cardArt';
 import { GameState } from '../types';
 
 interface TopBarProps {
   state: GameState;
+  room?:OnlineRoomView;
+  onPause?:()=>void;
   isOnline: boolean;
   onOpenRules: () => void;
   onOpenSettings: () => void;
@@ -11,7 +15,7 @@ interface TopBarProps {
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
-  state,
+  state,room,onPause,
   isOnline,
   onOpenRules,
   onOpenSettings,
@@ -47,6 +51,8 @@ export const TopBar: React.FC<TopBarProps> = ({
         Round {state.round}{state.roundLimit===10?'/10':''}
       </span>
 
+      {isOnline&&room&&<TurnClock room={room}/>}
+      {isOnline&&room?.host&&state.winner===null&&<button className="quiet host-pause" onClick={onPause}>{room.paused?'Resume':'Pause'}</button>}
       <button className="quiet" onClick={onOpenRules}>
         Rules
       </button>

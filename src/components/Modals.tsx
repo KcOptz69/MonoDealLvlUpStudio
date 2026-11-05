@@ -1,3 +1,4 @@
+import {Deadline,useServerNow} from './OnlineClock';
 import {suggestPayment} from '../paymentSuggestion';
 import {FieldView} from './FieldView';
 import {PlayerToken} from './PlayerToken';
@@ -180,10 +181,12 @@ export const EndTurnModal: React.FC<{
 export const ReactionModal: React.FC<{
   pending: NonNullable<GameState['pending']>;
   state: GameState;
+  serverTime?:number;
+  frozenAt?:number;
   onRespond: (useJustSayNo: boolean) => void;
-}> = ({ pending, state, onRespond }) => {
-  const [seconds,setSeconds]=useState(10);
-  useEffect(()=>{const tick=()=>setSeconds(Math.max(0,Math.ceil(((pending.deadline||Date.now()+10000)-Date.now())/1000)));tick();const timer=setInterval(tick,200);return()=>clearInterval(timer);},[pending.deadline]);
+}> = ({ pending, state, onRespond,serverTime,frozenAt }) => {
+  const now=useServerNow(serverTime,frozenAt);
+  const seconds=Math.max(0,Math.ceil(((pending.deadline||now+10000)-now)/1000));
   const e = pending.e;
   const actor = state.players[e.actor]?.name || 'Opponent';
   const target = state.players[e.target]?.name || 'You';
@@ -240,10 +243,12 @@ export const ReactionModal: React.FC<{
 export const PaymentModal: React.FC<{
   pending: NonNullable<GameState['pending']>;
   state: GameState;
+  serverTime?:number;
+  frozenAt?:number;
   onPay: (selectedIds: string[]) => void;
   onOfferIOU?: (cardId: string) => void;
   onSkipJail?:()=>void;
-}> = ({ pending, state, onPay, onOfferIOU,onSkipJail }) => {
+}> = ({ pending, state, onPay, onOfferIOU,onSkipJail,serverTime,frozenAt }) => {
   const e = pending.e;
   const player = state.players[0];
 
@@ -316,13 +321,13 @@ export const PaymentModal: React.FC<{
     propGroups[col].push(p);
   }
 
-  if (minimized) return createPortal(<button type="button" className="payment-restore-tab" onClick={()=>{document.dispatchEvent(new Event('deal-close-artwork'));setMinimized(false);}} aria-label={`Restore payment selection, ${selectedTotal}M selected of ${amountOwed}M owed`}><span>↗ Resume payment · {amountOwed}M</span><small>{selectedTotal}M selected</small></button>,document.body);
+  if (minimized) return createPortal(<button type="button" className="payment-restore-tab" onClick={()=>{document.dispatchEvent(new Event('deal-close-artwork'));setMinimized(false);}} aria-label={`Restore payment selection, ${selectedTotal}M selected of ${amountOwed}M owed`}><span>↗ Resume payment · {amountOwed}M</span><small>{selectedTotal}M selected</small><Deadline label="Pay" deadline={e.paymentDeadline} serverTime={serverTime} frozenAt={frozenAt}/></button>,document.body);
 
   return (
     <div className="overlay">
       <section className="modal payment-modal" role="dialog" aria-modal="true" aria-label="Choose payment">
         <div className="modalhead">
-          <h2>Choose payment · {amountOwed}M</h2>
+          <h2>Choose payment · {amountOwed}M <Deadline label="Pay" deadline={e.paymentDeadline} serverTime={serverTime} frozenAt={frozenAt}/></h2>
           <button type="button" className="quiet payment-minimize" onClick={()=>setMinimized(true)} aria-label="Minimize payment to inspect board">− Minimize</button>
         </div>
 

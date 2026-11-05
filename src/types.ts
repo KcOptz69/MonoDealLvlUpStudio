@@ -49,7 +49,8 @@ export interface GameEvent {
   turnId?: number;
   targetPlaySeq?: number;
   seq: number;
-  type: 'donation' | 'draw' | 'bank' | 'property' | 'play' | 'charge' | 'transfer' | 'payment' | 'discard' | 'negate' | 'setup_turn' | 'reveal' | 'special_trigger';
+  category?:string;
+  type: 'tough_luck_result' | 'donation' | 'draw' | 'bank' | 'property' | 'play' | 'charge' | 'transfer' | 'payment' | 'discard' | 'negate' | 'setup_turn' | 'reveal' | 'special_trigger';
   actor: number;
   target?: number | null;
   card?: CardInstance;
@@ -87,6 +88,7 @@ export interface PendingAction {
     color?: string;
     category?: string;
     global?: boolean;
+    paymentDeadline?:number;
     args?: any;
   };
 }
@@ -137,6 +139,9 @@ export interface SeatInfo {
 export interface ChatMessage {id:number;name:string;text:string;time:number;senderSeat?:number;}
 
 export interface OnlineRoomView {
+  paused?:boolean;
+  pausedAt?:number;
+  clock?:{remaining:number;limit:number;running:boolean};
   serverTime?:number;
   options?:{roundLimit:number|null;fastBots:boolean};
   matchActive?:boolean;
