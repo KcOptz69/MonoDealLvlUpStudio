@@ -46,6 +46,7 @@ export const RulesModal: React.FC<{ onClose: () => void }> = ({onClose}) => {
         </div>
         <div id="rules-panel-payments" role="tabpanel" aria-labelledby="rules-tab-payments" hidden={tab!=='payments'}>
           <article className="rules-step"><figure className="rules-illustration"><div className="rules-card-examples rules-payment-art"><span>{art('money_5m','Money in your bank')}</span><span>{art('park_place','Property in your field')}</span><span>{art('i_owe_you','I Owe You payment replacement card')}</span></div></figure><div className="rules-copy"><h3>Pay from your bank or field.</h3><p>Overpayments receive no change. If you cannot cover the bill, pay all eligible assets. <strong>I Owe You</strong> can replace a payment.</p></div></article>
+          <article className="rules-step"><figure className="rules-illustration">{art('silver_rent','Silver Rent')}</figure><div className="rules-copy"><h3>Silver rent takes properties only.</h3><p>Silver Rent charges all opponents. Rent Any Color can charge one opponent for Silver. All-Color Property Wilds and Expansion Property can join Silver under their normal placement rules.</p></div></article>
           <article className="rules-step"><figure className="rules-illustration rules-no-art">{art('just_say_no','Just Say No reaction card')}<span className="rules-timer-badge">10s</span></figure><div className="rules-copy"><h3>Just Say No is free.</h3><p>Respond within <strong>10 seconds</strong> to block an action—or counter another No. Blocking an all-player action protects everyone.</p></div></article>
         </div>
         <div id="rules-panel-extra" role="tabpanel" aria-labelledby="rules-tab-extra" hidden={tab!=='extra'}>
@@ -64,7 +65,7 @@ export const AuditModal: React.FC<{ onClose: () => void }> = ({ onClose }) => (
   <div className="overlay">
     <section className="modal" role="dialog" aria-modal="true" aria-label="Card library">
       <div className="modalhead">
-        <h2>Card library · 71 designs / 130 cards</h2>
+        <h2>Card library · {DECK.filter(d => d.copies > 0).length} designs / {DECK.reduce((total, d) => total + d.copies, 0)} cards</h2>
         <button className="quiet" onClick={onClose} aria-label="Close">×</button>
       </div>
       <p className="muted">
@@ -256,7 +257,7 @@ export const PaymentModal: React.FC<{
 
   // Collect all payable items
   const items: Array<{ id: string; card: CardInstance; zone: string; value: number; color?: string }> = [];
-  if (e.key !== 'compulsory_purchase') {
+  if (!e.propertyOnly && e.key !== 'compulsory_purchase') {
     for (const c of player.bank) {
       items.push({ id: c.id, card: c, zone: 'bank', value: getCardDef(c).value });
     }
@@ -266,7 +267,7 @@ export const PaymentModal: React.FC<{
       const v = getCardDef(c).value;
       items.push({ id: c.id, card: c, zone: 'property', value: v, color: g.color });
     }
-    if (e.key !== 'compulsory_purchase') {
+    if (!e.propertyOnly && e.key !== 'compulsory_purchase') {
       if (g.house) items.push({ id: g.house.id, card: g.house, zone: 'house', value: 3, color: g.color });
       if (g.hotel) items.push({ id: g.hotel.id, card: g.hotel, zone: 'hotel', value: 4, color: g.color });
     }
@@ -332,7 +333,7 @@ export const PaymentModal: React.FC<{
         </div>
 
         <p>
-          {e.key === 'compulsory_purchase'
+          {e.propertyOnly || e.key === 'compulsory_purchase'
             ? 'Properties only. You choose what to surrender.'
             : e.key==='jail_bail'?'Discard at least 10M to take your turn. No I Owe You.'
             : e.key === 'luxury_tax'
@@ -410,7 +411,7 @@ export const PaymentModal: React.FC<{
         </div>
 
         <div className="payment-modal-footer">
-          {!['luxury_tax','income_tax','jail_bail'].includes(e.key) && onOfferIOU && iouCards.length > 0 && (
+          {!e.propertyOnly && !['luxury_tax','income_tax','jail_bail'].includes(e.key) && onOfferIOU && iouCards.length > 0 && (
             <button className="iou-pay" onClick={() => onOfferIOU(iouCards[0].id)}>
               <img src={getCardArt(iouCards[0])} alt="I Owe You" />
               <span>

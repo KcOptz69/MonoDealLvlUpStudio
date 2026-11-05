@@ -31,6 +31,7 @@ exports.COLORS = {
     'Dark Blue': { size: 2, rent: [3, 8], hex: '#2656a7' },
     Railroad: { size: 4, rent: [1, 2, 3, 4], hex: '#46505a' },
     Utility: { size: 2, rent: [1, 2], hex: '#a66bdf' },
+    Silver: { size: 3, rent: [2, 3, 5], hex: '#bfc7d2' },
 };
 exports.BOT_NAMES = [
     'Dian Bot', 'Karl Bot', 'Anren Bot', 'Steph Bot', 'Trix Bot',
@@ -491,6 +492,7 @@ class Game {
                 target: t,
                 key: 'rent',
                 cardKey: c.key,
+                propertyOnly: c.key !== 'empire_rent' && g?.color === 'Silver',
                 amount: Math.max(0, r - (this.has(t, 'rent_controlled_residence') ? 2 : 0))
             }));
         }
@@ -863,11 +865,11 @@ class Game {
     payable(i, e) {
         const p = this.p(i);
         const items = [];
-        if (e.key !== 'compulsory_purchase') {
+        if (!e.propertyOnly && e.key !== 'compulsory_purchase') {
             items.push(...p.bank.map((c) => ({ id: c.id, card: c, zone: 'bank', value: this.d(c).value })));
         }
         items.push(...this.allProps(i).filter((c) => this.d(c).value > 0).map((c) => ({ id: c.id, card: c, zone: 'property', value: this.d(c).value })));
-        if (e.key !== 'compulsory_purchase') {
+        if (!e.propertyOnly && e.key !== 'compulsory_purchase') {
             for (const g of p.groups) {
                 for (const key of ['house', 'hotel']) {
                     if (g[key])
@@ -942,8 +944,9 @@ class Game {
     owe(i, id) {
         const p = this.s.pending;
         const payment = p?.kind === 'payment' ? (p.payments?.find((e) => e.target === i) || (p.responder === i ? p.e : null)) : null;
-        if (!payment || ['luxury_tax', 'income_tax', 'jail_bail'].includes(payment.key))
+        if (!payment ||  ['luxury_tax', 'income_tax', 'jail_bail'].includes(payment.key))
             throw Error('I Owe You replaces payments to another player only.');
+        if (payment.propertyOnly) throw Error('Silver rent can only be paid with properties.');
         const c = this.p(i).hand.find((c) => c.id === id && c.key === 'i_owe_you');
         if (!c)
             throw Error('I Owe You must be in your hand.');
@@ -1534,7 +1537,7 @@ class Game {
                 const card = this.p(i).hand.find((c) => c.key === 'i_owe_you');
                 const ownEffect = p.payments?.find((e) => e.target === i) || p.e;
                 const ids = this.autoPayment(i, ownEffect);
-                if (card && !['luxury_tax', 'income_tax', 'jail_bail'].includes(ownEffect.key) && (ownEffect.amount >= 5 || ids.some((id) => this.find(i, id))))
+                if (card && !ownEffect.propertyOnly && !['luxury_tax', 'income_tax', 'jail_bail'].includes(ownEffect.key) && (ownEffect.amount >= 5 || ids.some((id) => this.find(i, id))))
                     this.owe(i, card.id);
                 else
                     this.pay(i, ids);

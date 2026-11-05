@@ -4,7 +4,7 @@ function fresh(){const g=new Game(deck,3,()=>.41);for(const p of g.s.players){g.
 function give(g,i,key,zone='hand'){const n=g.s.deck.findIndex(c=>c.key===key);assert(n>=0,key);const c=g.s.deck.splice(n,1)[0];if(zone==='field')g.place(i,c,g.d(c).colors?.[0]);else g.p(i)[zone].push(c);return c;}
 function allow(g){while(g.s.pending?.kind==='counter'){const p=g.s.pending;g.respond(p.responders?.[0]??p.responder,false);}}
 function count(g){return g.s.deck.length+g.s.discard.length+g.s.players.reduce((n,p)=>n+p.hand.length+p.bank.length+p.special.length+p.groups.reduce((n,g)=>n+g.cards.length+!!g.house+!!g.hotel,0),0)+(g.s.pending?.kind==='chance'?g.s.pending.cards.length:0);}
-test('160 cards; new copies and face values match approved list',()=>{assert.equal(deck.reduce((n,d)=>n+d.copies,0),160);for(const[key,n,value]of[['go_to_jail',2,4],['expansion_property',4,0],['free_parking',1,3],['chance',2,2],['community_chest',3,2],['empire_rent',2,3]]){const d=deck.find(d=>d.key===key);assert.equal(d.copies,n);assert.equal(d.value,value);}for(const d of deck.filter(d=>d.type==='rent'&&d.key!=='empire_rent'))assert.equal(d.copies,d.any?4:3);});
+test('160 cards; new copies and face values match approved list',()=>{assert.equal(deck.reduce((n,d)=>n+d.copies,0),160);for(const[key,n,value]of[['go_to_jail',2,4],['expansion_property',4,0],['free_parking',1,3],['chance',2,2],['community_chest',3,2],['empire_rent',2,3]]){const d=deck.find(d=>d.key===key);assert.equal(d.copies,n);assert.equal(d.value,value);}for(const d of deck.filter(d=>d.type==='rent'&&!['empire_rent','silver_rent'].includes(d.key)))assert.equal(d.copies,d.any?4:3);});
 test('Go to Jail is counterable and waits until the target turn; skipped turn draws nothing',()=>{const g=fresh(),c=give(g,0,'go_to_jail');give(g,1,'just_say_no');g.play(0,c.id,'play',{target:1});assert(!g.p(1).jailed);g.respond(1,true);g.respond(0,false);assert(!g.p(1).jailed);const j=give(g,0,'go_to_jail');g.play(0,j.id,'play',{target:1});allow(g);assert(g.p(1).jailed);assert(!g.s.pending);g.end(0);assert.equal(g.s.pending.kind,'jail');const size=g.p(1).hand.length;g.jail(1,false);assert.equal(g.s.turn,2);assert.equal(g.p(1).hand.length,size);assert(!g.p(1).jailed);});
 test('Bail discards at least10M; no partial bail or IOU; normal start effects occur afterward',()=>{const g=fresh();g.s.turn=1;g.p(1).jailed=true;give(g,1,'emergency_treasury','special');const a=give(g,1,'money_5m','bank'),b=give(g,1,'money_5m','bank');const iou=give(g,1,'i_owe_you');g.begin();assert.equal(g.p(1).bank.length,2);assert.equal(g.p(1).hand.length,1);g.jail(1,true);assert.throws(()=>g.pay(1,[a.id]),/10M/);assert.throws(()=>g.owe(1,iou.id),/another player/);g.pay(1,[a.id,b.id]);assert(!g.p(1).jailed);assert(g.s.discard.some(c=>c.id===a.id));assert.equal(g.p(1).bank[0].key,'money_3m');assert.equal(g.p(1).hand.length,3);});
 test('Private Vault only refills an empty hand at turn start; Treasury pays even with an existing bank',()=>{const g=fresh();give(g,0,'private_vault','special');give(g,0,'emergency_treasury','special');give(g,0,'money_1m','bank');g.begin();assert.equal(g.p(0).hand.length,7);assert.equal(g.p(0).bank.at(-1).key,'money_3m');assert.equal(g.handLimit(0),9);const events=g.s.events.filter(e=>e.type==='special_trigger');assert(events.some(e=>e.key==='private_vault'));assert(events.some(e=>e.key==='emergency_treasury'));});
@@ -79,4 +79,49 @@ test('Eviction Notice blocks the specific card for the current turn only', () =>
  g.end(0);
  g.play(1, property.id, 'play', {color: 'Brown'});
  assert(g.find(1, property.id));
+});
+
+test('Silver wilds follow normal placement rules and Silver rent requires properties', () => {
+ for (const [key, expected] of [['silver_rent',10],['rent_any_color',10],['empire_rent',6]]) {
+  const g = fresh();
+  const silver = give(g,0,'silver_avenue','field');
+  const group = g.find(0,silver.id).group;
+  assert.equal(g.rent(0,group),2);
+  give(g,0,'sterling_square','field');
+  assert.equal(g.rent(0,group),3);
+  give(g,0,'platinum_place','field');
+  assert(g.full(group));
+  assert.equal(g.rent(0,group),5);
+  const rent = give(g,0,key);
+  const double = give(g,0,'double_the_rent');
+  const money = give(g,1,'money_10m','bank');
+  const property = give(g,1,'baltic_avenue','field');
+  const iou = give(g,1,'i_owe_you');
+  g.play(0,rent.id,'play',{group:group.id,target:1,doubleIds:[double.id]});
+  allow(g);
+  const effect = g.s.pending.e;
+  assert.equal(effect.amount,expected);
+  if (key === 'empire_rent') {
+   assert(g.payable(1,effect).some(item => item.id === money.id));
+  } else {
+   assert.deepEqual(g.payable(1,effect).map(item => item.id),[property.id]);
+   assert.throws(() => g.owe(1,iou.id),/only be paid with properties/);
+   assert.throws(() => g.pay(1,[money.id]),/Invalid payment/);
+   g.pay(1,[property.id]);
+   assert(g.find(0,property.id));
+  }
+ }
+ assert.equal(deck.find(card => card.key === 'multicolor_wildcard').copies,2);
+});
+
+test('All-Color and Expansion wilds can join an existing Silver set', () => {
+ const g = fresh();
+ const natural = give(g,0,'silver_avenue','field');
+ const group = g.find(0,natural.id).group;
+ for (const key of ['multicolor_wildcard','expansion_property']) {
+  const card = give(g,0,key);
+  g.play(0,card.id,'play',{color:'Silver',group:group.id});
+  assert.equal(g.find(0,card.id).group.id,group.id);
+ }
+ assert(g.full(group));
 });

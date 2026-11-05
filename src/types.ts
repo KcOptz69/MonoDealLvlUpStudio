@@ -84,6 +84,7 @@ export interface PendingAction {
     target: number;
     key: string;
     cardKey?: string;
+    propertyOnly?: boolean;
     amount?: number;
     property?: string;
     own?: string;

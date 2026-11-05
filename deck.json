@@ -564,7 +564,7 @@
   {
     "key": "multicolor_wildcard",
     "name": "Multicolor Wildcard",
-    "copies": 6,
+    "copies": 2,
     "value": 0,
     "text": "Any property color. Cannot be banked or used as payment.",
     "type": "wild",
@@ -578,7 +578,8 @@
       "Green",
       "Dark Blue",
       "Railroad",
-      "Utility"
+      "Utility",
+      "Silver"
     ]
   },
   {
@@ -741,7 +742,8 @@
       "Green",
       "Dark Blue",
       "Railroad",
-      "Utility"
+      "Utility",
+      "Silver"
     ],
     "text": "Join an existing color set with space. Its color locks while you own it; a new owner chooses an existing set. Discard if no non-Expansion property of its color remains."
   },
@@ -793,5 +795,49 @@
     "value": 1,
     "type": "action",
     "text": "Take one action card from your bank into your hand. This is a free action."
+  },
+  {
+    "key": "silver_avenue",
+    "name": "Silver Avenue",
+    "copies": 1,
+    "value": 2,
+    "text": "This color’s rent only accepts properties as payment.",
+    "type": "property",
+    "colors": [
+      "Silver"
+    ]
+  },
+  {
+    "key": "sterling_square",
+    "name": "Sterling Square",
+    "copies": 1,
+    "value": 2,
+    "text": "This color’s rent only accepts properties as payment.",
+    "type": "property",
+    "colors": [
+      "Silver"
+    ]
+  },
+  {
+    "key": "platinum_place",
+    "name": "Platinum Place",
+    "copies": 1,
+    "value": 2,
+    "text": "This color’s rent only accepts properties as payment.",
+    "type": "property",
+    "colors": [
+      "Silver"
+    ]
+  },
+  {
+    "key": "silver_rent",
+    "name": "Silver Rent",
+    "copies": 1,
+    "value": 1,
+    "text": "Every other player pays rent for one of your Silver sets. Pay with properties only.",
+    "type": "rent",
+    "colors": [
+      "Silver"
+    ]
   }
 ]

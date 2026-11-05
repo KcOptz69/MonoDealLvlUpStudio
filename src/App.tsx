@@ -614,7 +614,7 @@ export const App: React.FC = () => {
     if(zone==='bank'||(zone==='play'&&def.type==='money'))return !property&&(used<limit||freeBank);
     if(zone==='field'&&!property)return false;
     if(setup&&!property)return false;
-    if(used>=limit&&!['community_chest','chance'].includes(c.key))return false;
+    if(used>=limit&&!['community_chest','chance','bank_withdrawal'].includes(c.key))return false;
     if(color){const group=p.groups.find(g=>g.id===gid);if(!group||group.color!==color||group.cards.length>=COLORS[color]?.size||!def.colors?.includes(color))return false;if(c.locked&&c.locked!==color)return false;}
     if(c.key==='expansion_property')return p.groups.some(g=>(!gid||g.id===gid)&&g.cards.length<COLORS[g.color]?.size&&g.cards.some(x=>x.key!=='expansion_property')&&(!c.locked||c.locked===g.color)&&(!(c.expansionOwner===0&&c.expansionColor)||c.expansionColor===g.color));
     return true;
@@ -1092,7 +1092,30 @@ export const App: React.FC = () => {
       )}
 
       {/* Interactive Action Wizard Modal */}
-      {wizardCard && gameState && (
+      {wizardCard?.key === 'bank_withdrawal' && gameState && (
+        <div className="overlay">
+          <section className="modal payment-modal" role="dialog" aria-modal="true" aria-label="Bank Withdrawal">
+            <div className="modalhead">
+              <h2>Bank Withdrawal</h2>
+              <button className="quiet" onClick={() => setWizardCard(null)}>Cancel</button>
+            </div>
+            <p>Choose an action card to return from your bank to your hand. Free action.</p>
+            <div className="payment-modal-groups">
+              <div className="choices payment-card-row">
+                {gameState.players[0].bank.filter(card => ['action', 'rent', 'building'].includes(getCardDef(card).type)).map(card => (
+                  <button key={card.id} type="button" className="choice" onClick={() => executePlay(wizardCard.id, {bankCard: card.id})}>
+                    <img src={getCardArt(card)} alt={getCardDef(card).name} />
+                    <strong>{getCardDef(card).name}</strong>
+                  </button>
+                ))}
+              </div>
+              {!gameState.players[0].bank.some(card => ['action', 'rent', 'building'].includes(getCardDef(card).type)) &&
+                <p>There are no action cards in your bank.</p>}
+            </div>
+          </section>
+        </div>
+      )}
+      {wizardCard && wizardCard.key !== 'bank_withdrawal' && gameState && (
         <React.Fragment>{usesBoardTarget(wizardCard)?<BoardTarget card={wizardCard} state={gameState} onConfirm={args=>executePlay(wizardCard.id,args)} onCancel={()=>setWizardCard(null)}/>:<TargetingWizard
           card={wizardCard}
           state={gameState}
