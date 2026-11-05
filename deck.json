@@ -392,7 +392,7 @@
     "name": "Eviction Notice",
     "copies": 2,
     "value": 3,
-    "text": "Return one opponent property to their hand, including from a complete set.",
+    "text": "Return one opponent property to their hand, including from a complete set. That card cannot be played again this turn.",
     "type": "action"
   },
   {
@@ -564,7 +564,7 @@
   {
     "key": "multicolor_wildcard",
     "name": "Multicolor Wildcard",
-    "copies": 2,
+    "copies": 6,
     "value": 0,
     "text": "Any property color. Cannot be banked or used as payment.",
     "type": "wild",
@@ -785,5 +785,13 @@
     "value": 3,
     "type": "action",
     "text": "Choose an opponent and that player discards 3M per 10M in their bank."
+  },
+  {
+    "key": "bank_withdrawal",
+    "name": "Bank Withdrawal",
+    "copies": 4,
+    "value": 1,
+    "type": "action",
+    "text": "Take one action card from your bank into your hand. This is a free action."
   }
 ]

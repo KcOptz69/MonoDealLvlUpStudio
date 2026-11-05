@@ -244,7 +244,7 @@ class Game {
         }
     }
     freeBank(i) { return !this.isSetup() && this.has(i, 'free_parking') && !this.p(i).freeBankUsed; }
-    freePlay(c, mode) { return mode !== 'bank' && ['community_chest', 'chance'].includes(c.key); }
+    freePlay(c, mode) { return mode !== 'bank' && ['community_chest', 'chance', 'bank_withdrawal'].includes(c.key); }
     doubleIds(a) { return a.doubleIds || (a.doubleId ? [a.doubleId] : []); }
     choose(i, value) {
         const p = this.s.pending;
@@ -444,6 +444,14 @@ class Game {
         }
         this.s.discard.push(c);
         this.log(this.p(i).name + ' played ' + d.name + '.');
+        if (c.key === 'bank_withdrawal') {
+            const player = this.p(i);
+            const index = player.bank.findIndex((card) => card.id === args.bankCard);
+            const [recovered] = player.bank.splice(index, 1);
+            player.hand.push(recovered);
+            this.log(player.name + ' returned ' + this.d(recovered).name + ' from the bank to their hand.');
+            return;
+        }
         if (c.key === 'community_chest') {
             this.s.players.forEach((p, j) => { if (!p.forfeited)
                 this.draw(j, j === i ? 2 : 1); });
@@ -533,6 +541,7 @@ class Game {
         this.nextEffect();
     }
     validate(i, c, mode, a) {
+        if (c.evictedTurn === (this.s.turnSerial || 0)) throw Error('An evicted property cannot be played again this turn.');
         const d = this.d(c);
         if (this.isSetup() && mode !== 'bank' && !['property', 'wild', 'special'].includes(d.type)) {
             throw Error('Setup allows banking and property placement only.');
@@ -554,6 +563,12 @@ class Game {
                 const g = this.group(i, a.group);
                 if (!g || g.color !== color || g.cards.length >= exports.COLORS[color].size)
                     throw Error('Set is full or color does not match.');
+            }
+            return;
+        }
+        if (c.key === 'bank_withdrawal') {
+            if (!this.p(i).bank.some((card) => card.id === a.bankCard && this.category(card) === 'action')) {
+                throw Error('Choose an action card from your bank.');
             }
             return;
         }
@@ -768,6 +783,7 @@ class Game {
             }
             if (e.key === 'eviction_notice') {
                 const c = this.removeProp(t, e.property);
+                c.evictedTurn = this.s.turnSerial || 0;
                 p.hand.push(c);
                 this.event('transfer', { actor: t, target: t, destination: 'hand', cards: [{ ...c }] });
                 this.insurance(t, 1, ins);
@@ -1196,6 +1212,7 @@ class Game {
         const push = (c, a = {}, score = 1, mode = 'play') => { if (this.used(i) < this.limit(i) || this.freePlay(c, mode) || (mode === 'bank' && this.freeBank(i)))
             out.push({ id: c.id, mode, args: a, score }); };
         for (const c of p.hand) {
+            if (c.evictedTurn === (this.s.turnSerial || 0)) continue;
             const d = this.d(c);
             if (!['property', 'wild', 'special'].includes(d.type)) {
                 push(c, {}, (c.key === 'just_say_no' ? -0.5 : d.value * 0.6), 'bank');
@@ -1219,6 +1236,13 @@ class Game {
                 push(c, {}, 4);
             if (['community_chest', 'chance'].includes(c.key))
                 push(c, {}, 10);
+            if (c.key === 'bank_withdrawal') {
+                for (const banked of p.bank) {
+                    if (this.category(banked) === 'action' && banked.key !== 'bank_withdrawal') {
+                        push(c, { bankCard: banked.id }, 5);
+                    }
+                }
+            }
             if (['house', 'hotel'].includes(c.key)) {
                 for (const g of p.groups) {
                     if (this.full(g) && !['Railroad', 'Utility'].includes(g.color) && !g[c.key] && (c.key !== 'hotel' || g.house)) {
@@ -1326,6 +1350,10 @@ class Game {
             return this.propertyUtility(i, c) + (c.key === 'corporate_headquarters' && !this.isSetup() ? 3 : 0);
         if (c.key === 'pass_go')
             return p.hand.length < 3 ? 7 : 2;
+        if (c.key === 'bank_withdrawal') {
+            const recovered = p.bank.find((card) => card.id === a.bankCard);
+            return recovered && !p.botFreeSeen?.includes(c.id) ? this.keep(i, recovered) - this.d(recovered).value : -5;
+        }
         if (['community_chest', 'chance'].includes(c.key))
             return this.p(i).botFreeSeen?.includes(c.id) ? -5 : 10;
         if (['house', 'hotel'].includes(c.key))
