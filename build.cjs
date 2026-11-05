@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path');
 process.chdir(__dirname);
 module.exports=(async()=>{
  const deck=JSON.parse(fs.readFileSync('deck.json','utf8')),art={},imagePaths={};
- if(deck.reduce((n,c)=>n+c.copies,0)!==150)throw Error('Expected 150 cards');
+ if(deck.reduce((n,c)=>n+c.copies,0)!==152)throw Error('Expected 152 cards');
  const mime={'.webp':'webp','.png':'png','.jpg':'jpeg','.svg':'svg+xml'};
  for(const file of fs.readdirSync('public/artwork').sort((a,b)=>{const order={'.svg':0,'.png':1,'.jpg':2,'.webp':3};return (order[path.extname(a)]??0)-(order[path.extname(b)]??0)||a.localeCompare(b)})){
   const ext=path.extname(file);if(!mime[ext])continue;

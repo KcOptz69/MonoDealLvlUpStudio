@@ -396,7 +396,8 @@ export class Game {
         target: args.target,
         key: c.key,
         ...args,
-        amount: c.key === 'debt_collector' ? 5 : c.key === 'compulsory_purchase' ? 5 : 0
+        amount: c.key === 'income_tax' ? this.incomeTax(args.target) :
+          ['debt_collector', 'compulsory_purchase'].includes(c.key) ? 5 : 0
       }];
     }
 
@@ -486,6 +487,11 @@ export class Game {
     if (c.key === 'tough_luck' && !['property', 'action', 'money'].includes(a.category)) throw Error('Choose a card category.');
   }
 
+  incomeTax(target: number) {
+    const bankValue = this.p(target).bank.reduce((sum: number, card: any) => sum + this.d(card).value, 0);
+    return 3 * Math.floor(bankValue / 10);
+  }
+
   rent(i: number, g: any) {
     return COLORS[g.color].rent[Math.min(g.cards.length, COLORS[g.color].size) - 1] + (g.house ? 3 : 0) + (g.hotel ? 4 : 0);
   }
@@ -500,7 +506,7 @@ export class Game {
       return;
     }
     const e = this.s.queue.shift();
-    if (['rent', 'luxury_tax'].includes(e.key) && e.amount === 0) {
+    if (['rent', 'luxury_tax', 'income_tax'].includes(e.key) && e.amount === 0) {
       this.log(this.p(e.target).name + ' owes 0M.');
       return this.nextEffect();
     }
@@ -584,7 +590,7 @@ export class Game {
       this.nextEffect();
       return;
     }
-    if (['rent', 'debt_collector', 'its_my_birthday', 'compulsory_purchase', 'luxury_tax'].includes(e.key)) {
+    if (['rent', 'debt_collector', 'its_my_birthday', 'compulsory_purchase', 'luxury_tax', 'income_tax'].includes(e.key)) {
       if(e.approved&&this.s.queue.length){
         const effects=[e,...this.s.queue.splice(0)];
         const payable=effects.filter((x:any)=>this.payable(x.target,x).length&&x.amount>0);
@@ -706,7 +712,7 @@ export class Game {
     const ins = this.has(i, 'insurance_agency');
     if(e.key==='rent'&&this.has(i,'rent_controlled_residence'))this.trigger(i,'rent_controlled_residence','Rent reduced by 2M',2);
     let lost = 0;
-    const receiver = ['luxury_tax','jail_bail'].includes(e.key) ? null : e.actor;
+    const receiver = ['luxury_tax','income_tax','jail_bail'].includes(e.key) ? null : e.actor;
     for (const x of picked) {
       const c = x.card;
       if (x.zone === 'bank') this.p(i).bank = this.p(i).bank.filter((c: any) => c.id !== x.id);
@@ -736,7 +742,7 @@ export class Game {
   owe(i: number, id: string) {
     const p = this.s.pending;
     const payment=p?.kind==='payment'?(p.payments?.find((e:any)=>e.target===i)||(p.responder===i?p.e:null)):null;
-    if(!payment||['luxury_tax','jail_bail'].includes(payment.key))throw Error('I Owe You replaces payments to another player only.');
+    if(!payment||['luxury_tax','income_tax','jail_bail'].includes(payment.key))throw Error('I Owe You replaces payments to another player only.');
     const c=this.p(i).hand.find((c:any)=>c.id===id&&c.key==='i_owe_you');
     if(!c)throw Error('I Owe You must be in your hand.');
     // Validate before changing the simultaneous payment queue.
@@ -1010,6 +1016,7 @@ export class Game {
       for (const target of others) {
         const danger = this.p(target).defending ? 12 : 0;
         if (c.key === 'debt_collector') push(c, { target }, 4);
+        if (c.key === 'income_tax' && this.incomeTax(target)>0) push(c, { target }, this.incomeTax(target));
         if(c.key==='go_to_jail'&&!this.p(target).jailed)push(c,{target},7+danger);
         if (c.key === 'compulsory_purchase' && this.allProps(target).some((c: any) => this.d(c).value > 0)) {
           push(c, { target }, 8 + danger);
@@ -1085,6 +1092,7 @@ export class Game {
     const threat = this.threat(t);
     const f: any = a.property ? this.find(t, a.property) : null;
     if(c.key==='go_to_jail')return this.p(t).jailed?-5:7+threat*.7;
+    if (c.key === 'income_tax') return this.incomeTax(t) * 0.65 + (this.incomeTax(t)>0 ? threat * 0.25 : 0) - 1;
     if (c.key === 'debt_collector') return Math.min(5, this.assetValue(t)) * 0.9 - 1 + (bank < 3 ? 1 : 0) + (this.assetValue(t) ? threat * 0.15 : 0);
     if (c.key === 'compulsory_purchase') {
       const props = this.allProps(t).filter((c: any) => this.d(c).value > 0);
@@ -1195,7 +1203,7 @@ export class Game {
         const card = this.p(i).hand.find((c: any) => c.key === 'i_owe_you');
         const ownEffect=p.payments?.find((e:any)=>e.target===i)||p.e;
         const ids = this.autoPayment(i, ownEffect);
-        if (card && !['luxury_tax','jail_bail'].includes(ownEffect.key) && (ownEffect.amount >= 5 || ids.some((id: string) => this.find(i, id)))) this.owe(i, card.id);
+        if (card && !['luxury_tax','income_tax','jail_bail'].includes(ownEffect.key) && (ownEffect.amount >= 5 || ids.some((id: string) => this.find(i, id)))) this.owe(i, card.id);
         else this.pay(i, ids);
         return;
       }

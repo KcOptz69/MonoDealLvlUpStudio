@@ -1,3 +1,4 @@
+import {ReserveTimer} from './OnlineClock';
 import {ProtectedEstateField} from './ProtectedEstate';
 import {completeSetCount} from '../boardSelection';
 import {defenseFragile} from '../boardSelection';
@@ -54,7 +55,7 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
     <div className="opponents">
       {state.players.slice(1).map((p, idx) => {
         const playerIndex = idx + 1;
-        if(isSetup)return <section className="opponent setup-concealed" key={playerIndex} data-player={playerIndex} aria-label={p.name+' setup field'}><div className="ophead"><PlayerToken index={p.tokenIndex??playerIndex}/><strong>{p.name}</strong></div><small>{p.setupDone?'Ready':'Setting up'} · {p.setupPlayed||0}/3 actions</small><div className="setup-cardbacks">{Array.from({length:p.setupPlayed||0},(_,i)=><img key={i} src={STATIC_ART.card_back} alt="Hidden setup card"/>)}</div><small>Revealed when everyone is ready</small></section>;
+        if(isSetup)return <section className="opponent setup-concealed" key={playerIndex} data-player={playerIndex} aria-label={p.name+' setup field'}><div className="ophead"><PlayerToken index={p.tokenIndex??playerIndex}/><strong>{p.name}</strong>{p.reserveTimer&&<ReserveTimer timer={p.reserveTimer}/>}</div><small>{p.setupDone?'Ready':'Setting up'} · {p.setupPlayed||0}/3 actions</small><div className="setup-cardbacks">{Array.from({length:p.setupPlayed||0},(_,i)=><img key={i} src={STATIC_ART.card_back} alt="Hidden setup card"/>)}</div><small>Revealed when everyone is ready</small></section>;
 
         const isActive = isSetup ? !p.setupDone : state.turn === playerIndex;
         const setsCount = completeSetCount(p);
@@ -78,7 +79,7 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
                 onClick={() => onViewPlayer(playerIndex)}
               >
                 <PlayerToken index={p.tokenIndex ?? playerIndex}/>
-                <strong>{p.name}</strong>
+                <strong>{p.name}</strong>{p.reserveTimer&&<ReserveTimer timer={p.reserveTimer}/>}
                 <span className="opponent-desktop-state">
                   {p.forfeited?'In lobby':state.pending?.responders?.includes(playerIndex)||state.pending?.payments?.some(e=>e.target===playerIndex)||state.pending?.responder===playerIndex
                     ? state.pending.kind==='payment'?'Paying':state.pending.kind==='counter'?'Responding':state.pending.kind==='estate'?'Choosing purchase':'Choosing'

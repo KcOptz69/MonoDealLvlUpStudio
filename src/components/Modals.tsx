@@ -264,9 +264,7 @@ export const PaymentModal: React.FC<{
   for (const g of player.groups) {
     for (const c of g.cards) {
       const v = getCardDef(c).value;
-      if (v > 0) {
-        items.push({ id: c.id, card: c, zone: 'property', value: v, color: g.color });
-      }
+      items.push({ id: c.id, card: c, zone: 'property', value: v, color: g.color });
     }
     if (e.key !== 'compulsory_purchase') {
       if (g.house) items.push({ id: g.house.id, card: g.house, zone: 'house', value: 3, color: g.color });
@@ -308,7 +306,7 @@ export const PaymentModal: React.FC<{
   const iouCards = (player.hand || []).filter((c) => c.key === 'i_owe_you');
 
   const handleSuggest = () => {
-    setSelectedIds(suggestPayment(items,amountOwed,e.key==='luxury_tax'));
+    setSelectedIds(suggestPayment(items.filter(item=>item.value>0),amountOwed,e.key==='luxury_tax'));
   };
 
   items.sort((a,b)=>a.value-b.value);
@@ -339,7 +337,7 @@ export const PaymentModal: React.FC<{
             : e.key==='jail_bail'?'Discard at least 10M to take your turn. No I Owe You.'
             : e.key === 'luxury_tax'
             ? 'Pay your bank first, then properties. Payment goes to discard.'
-            : 'Choose bank cards or properties. No change is given.'}
+            : e.key==='income_tax'?'Discard bank cards or properties to cover the tax. No change is given.': 'Choose bank cards or properties. No change is given.'}
         </p>
 
         <div id="selectionTotal">
@@ -394,6 +392,8 @@ export const PaymentModal: React.FC<{
                       className={`choice ${isChecked ? 'checked' : ''}`}
                       aria-label={`${def.name} · ${x.value}M`}
                       aria-pressed={isChecked}
+                      disabled={x.value<=0}
+                      title={x.value<=0?'Cannot be used as payment':undefined}
                       onClick={() => toggleItem(x.id)}
                     >
                       <img src={getCardArt(x.card)} alt={def.name} />
@@ -410,7 +410,7 @@ export const PaymentModal: React.FC<{
         </div>
 
         <div className="payment-modal-footer">
-          {!['luxury_tax','jail_bail'].includes(e.key) && onOfferIOU && iouCards.length > 0 && (
+          {!['luxury_tax','income_tax','jail_bail'].includes(e.key) && onOfferIOU && iouCards.length > 0 && (
             <button className="iou-pay" onClick={() => onOfferIOU(iouCards[0].id)}>
               <img src={getCardArt(iouCards[0])} alt="I Owe You" />
               <span>

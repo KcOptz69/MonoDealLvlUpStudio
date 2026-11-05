@@ -27,6 +27,7 @@ export interface PropertyGroup {
 }
 
 export interface PlayerState {
+  reserveTimer?:{remaining:number;running:boolean;serverTime:number};
   protectedEstate?:CardInstance;
   estatePurchased?:boolean;
   defenseRemaining?:number|null;
@@ -141,6 +142,7 @@ export interface SeatInfo {
 export interface ChatMessage {id:number;name:string;text:string;time:number;senderSeat?:number;}
 
 export interface OnlineRoomView {
+  decisionClocksPaused?:boolean;
   paused?:boolean;
   pausedAt?:number;
   clock?:{remaining:number;limit:number;running:boolean};

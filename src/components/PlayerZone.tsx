@@ -1,3 +1,4 @@
+import {ReserveTimer} from './OnlineClock';
 import {ProtectedEstateField} from './ProtectedEstate';
 import {completeSetCount} from '../boardSelection';
 import {defenseFragile} from '../boardSelection';
@@ -101,7 +102,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
       <div className="center">
         <div className="property-area" data-hand-drop="field">
           <div className="sectionhead">
-            <span className="desktop-player-identity"><PlayerToken index={player?.tokenIndex??0}/><span title={player?.name}>{player?.name}</span></span>
+            <span className="desktop-player-identity"><PlayerToken index={player?.tokenIndex??0}/><span title={player?.name}>{player?.name}</span>{player.reserveTimer&&<ReserveTimer timer={player.reserveTimer}/>}</span>
             <strong>YOUR FIELD · {setsCount} / 3 SETS</strong>
             {player?.defending && <span className="defense">DEFENDING</span>}
             {canArrange&&<button type="button" className={arranging?'gold arrange-toggle':'quiet arrange-toggle'} aria-pressed={arranging} onClick={()=>setArrange(!arranging)}>{arranging?'Done':'Arrange'}</button>}

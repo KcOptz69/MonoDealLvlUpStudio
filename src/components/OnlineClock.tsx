@@ -17,3 +17,10 @@ export function TurnClock({room}:{room:OnlineRoomView}){
  const seconds=Math.max(0,Math.ceil((clock.remaining-(clock.running?Math.max(0,now-(room.serverTime??now)):0))/1000));
  return <time className={'online-turn-clock'+(seconds<=10?' urgent':'')} title={`${clock.limit/60000}-minute turn${!clock.running?' · clock paused':''}`} aria-label={`${seconds} seconds left in turn`}>{String(Math.floor(seconds/60)).padStart(2,'0')}:{String(seconds%60).padStart(2,'0')}{!clock.running?' Ⅱ':''}</time>;
 }
+
+export function ReserveTimer({timer}:{timer:NonNullable<import('../types').PlayerState['reserveTimer']>}){
+ const now=useServerNow(timer.serverTime,timer.running?undefined:timer.serverTime);
+ const seconds=Math.max(0,Math.ceil((timer.remaining-Math.max(0,now-timer.serverTime))/1000));
+ const label=Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');
+ return <time className={'player-reserve-clock'+(timer.running?' active':'')} title="Reserve time" aria-label={label+' reserve time remaining'}>{label}</time>;
+}

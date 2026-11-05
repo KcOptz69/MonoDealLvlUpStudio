@@ -5,3 +5,7 @@
 .mobile-device .opponent-move-counter{font-size:8px;line-height:12px;padding:0 5px}.mobile-device .played-panel-heading{gap:4px}.mobile-device .played-panel-heading h3{font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mobile-device .host-pause-banner{top:36px;padding:5px 10px;font-size:11px;gap:8px;max-width:95vw;white-space:nowrap}.mobile-device .online-turn-clock{font-size:10px}.mobile-device .host-pause{font-size:9px;padding:2px 4px}.mobile-device .online-deadline{font-size:10px}.mobile-device .tough-luck-result{max-height:calc(100dvh - 14px)}.mobile-device .tough-luck-result .modalhead h2{font-size:15px}.mobile-device .tough-luck-result p{font-size:11px;margin:4px 0}.mobile-device .tough-luck-cards{max-height:calc(100dvh - 100px)}.mobile-device .tough-luck-cards img{height:calc(100dvh - 120px)}
 
 .host-pause-shortcut{position:fixed;z-index:100301;top:5px;right:8px;padding:5px 10px;background:#0b3036;border:1px solid #c9ae6e;color:#ffe5a4;font-size:11px}
+
+.player-reserve-clock{flex:none;margin-inline-start:4px;color:#dbcda6;font-size:.85em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.player-reserve-clock.active{color:#ffd472;font-weight:700}
+.payment-card-row .choice:disabled{opacity:.56;cursor:default}

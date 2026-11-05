@@ -1137,7 +1137,7 @@ export const App: React.FC = () => {
             pending={{...gameState.pending,e:gameState.pending.payments?.find(e=>e.target===0)||gameState.batch?.effects?.find((e:any)=>gameState.pending?.responders?.includes(0)&&e.target===0)||gameState.pending.e}}
             state={gameState}
             serverTime={onlineView?.serverTime}
-            frozenAt={onlineView?.paused?onlineView.pausedAt:undefined}
+            frozenAt={onlineView?.decisionClocksPaused?onlineView.serverTime:undefined}
             onPay={handlePay}
             onOfferIOU={handleOfferIOU}
             onSkipJail={()=>runChoice('jail',[false])}
@@ -1153,7 +1153,7 @@ export const App: React.FC = () => {
       {gameState?.pending &&
         gameState.pending.responder === 0 &&
         gameState.pending.kind === 'discard' && (
-          <><Deadline label="Discard" deadline={gameState.pending.deadline} serverTime={onlineView?.serverTime} frozenAt={onlineView?.paused?onlineView.pausedAt:undefined}/><DiscardModal
+          <><Deadline label="Discard" deadline={gameState.pending.deadline} serverTime={onlineView?.serverTime} frozenAt={onlineView?.decisionClocksPaused?onlineView.serverTime:undefined}/><DiscardModal
             hand={gameState.players[0].hand}
             handLimit={
               gameState.players[0].special.some((c) => c.key === 'private_vault')

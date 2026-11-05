@@ -1,3 +1,4 @@
+import {ReserveTimer} from './OnlineClock';
 import {completeSetCount} from '../boardSelection';
 import {installMobileHandScrolling} from '../mobileHandScrolling';
 import {PlayerToken} from './PlayerToken';
@@ -35,7 +36,7 @@ export const MobilePlayerPanels:React.FC<Props>=(props)=>{
  useEffect(()=>{const closeHand=()=>setPanel(null);document.addEventListener('deal-hand-dropped',closeHand);return()=>document.removeEventListener('deal-hand-dropped',closeHand);},[]);
  return <>
   <nav className="mobile-player-dock" aria-label="Your cards and turn controls">
-   <div className="mobile-player-identity"><PlayerToken index={player.tokenIndex ?? 0}/><strong title={player.name}>{player.name}</strong></div>
+   <div className="mobile-player-identity"><PlayerToken index={player.tokenIndex ?? 0}/><strong title={player.name}>{player.name}</strong>{player.reserveTimer&&<ReserveTimer timer={player.reserveTimer}/>}</div>
    <button className="quiet" aria-haspopup="dialog" aria-expanded={panel==='hand'} onClick={()=>setPanel('hand')}>Hand · {player.hand.length}</button>
    <button className="quiet mobile-field-trigger" aria-haspopup="dialog" aria-expanded={panel==='field'} onClick={()=>setPanel('field')}>Your Field · {sets}/3</button>
    {props.onSendChat&&<button className="quiet mobile-chat-trigger" aria-haspopup="dialog" aria-expanded={panel==='chat'} onClick={()=>setPanel('chat')}>Chat{unread>0&&<span className="mobile-chat-unread" aria-label={`${unread} unread messages`}>{unread>99?'99+':unread}</span>}</button>}

@@ -357,7 +357,7 @@
   },
   {
     "key": "its_my_birthday",
-    "name": "It\u2019s My Birthday",
+    "name": "It’s My Birthday",
     "copies": 3,
     "value": 2,
     "text": "Every other player pays you 2M.",
@@ -675,7 +675,7 @@
     "copies": 1,
     "value": 3,
     "type": "special",
-    "text": "Add 1M to each opponent\u2019s rent bill."
+    "text": "Add 1M to each opponent’s rent bill."
   },
   {
     "key": "rent_controlled_residence",
@@ -777,5 +777,13 @@
     "type": "rent",
     "any": true,
     "text": "One opponent pays 1M for each property on your field, including special properties."
+  },
+  {
+    "key": "income_tax",
+    "name": "Income Tax",
+    "copies": 2,
+    "value": 3,
+    "type": "action",
+    "text": "Choose an opponent and that player discards 3M per 10M in their bank."
   }
 ]

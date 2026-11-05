@@ -19,56 +19,147 @@ function expireTurn(g){
   else break;
  }
 }
-function syncClock(r,now=Date.now()){
- const g=r.game;if(!g){r.onlineClock=null;return;}
- const key=g.isSetup()||g.s.winner!==null?null:g.s.turnSerial+':'+g.s.turn;
- let c=r.onlineClock;
- if(!c||c.key!==key){c=r.onlineClock={key,remaining:g.s.turnRefill?120000:60000,limit:g.s.turnRefill?120000:60000,last:now,running:false,suspendedPayments:new Map()};}
- // Account for the phase that was active since the previous snapshot, before processing a new action.
- if(c.running&&!r.paused)c.remaining=Math.max(0,c.remaining-Math.max(0,now-c.last));
- c.last=now;
- // Jail bail can postpone the start-of-turn refill until after this turn key was first observed.
- if(g.s.turnRefill&&c.limit===60000){c.remaining+=60000;c.limit=120000;}
- let p=g.s.pending;
- const active=p?.kind==='payment'?(p.payments||[p.e]):[];
- for(const e of [...(g.s.queue||[]),g.s.iou?.payment].filter(Boolean))if(e.paymentDeadline&&!active.includes(e)&&!c.suspendedPayments.has(e))c.suspendedPayments.set(e,now);
- for(const [e,started] of c.suspendedPayments)if(active.includes(e)){e.paymentDeadline+=Math.max(0,now-started);c.suspendedPayments.delete(e);}
+const RESERVE_MS = 5 * 60 * 1000;
 
- if(p?.kind==='discard'){
-  if(!p.deadline)p.deadline=now+30000;
-  if(!r.paused&&p.deadline<=now){const hand=[...g.p(p.responder).hand];for(let i=hand.length-1;i>0;i--){const j=Math.floor(g.random()*(i+1));[hand[i],hand[j]]=[hand[j],hand[i]];}g.log(g.p(p.responder).name+' discard timer expired. Excess cards discarded automatically.');g.discard(p.responder,hand.slice(0,Math.max(0,hand.length-g.handLimit(p.responder))).map(c=>c.id));}
+function obligations(pending) {
+ if (pending?.kind === 'discard') {
+  return [{ owner: pending.responder, entry: pending, field: 'deadline', duration: 30000 }];
  }
- if(p?.kind==='payment'){
-  for(const e of p.payments||[p.e])if(!e.paymentDeadline)e.paymentDeadline=now+15000;
-  p.deadline=Math.min(...(p.payments||[p.e]).map(e=>e.paymentDeadline));
-  if(!r.paused){
-   const due=(p.payments||[p.e]).filter(e=>e.paymentDeadline<=now);
-   for(const e of due){
-    const current=g.s.pending;if(current?.kind!=='payment'||!(current.payments||[current.e]).includes(e))continue;
-    g.log(g.p(e.target).name+' payment timed out. Paying automatically from the bank first.');
-    if(e.key==='jail_bail'&&g.assetValue(e.target)<10)g.jail(e.target,false);
-    else g.pay(e.target,randomPayment(g,e.target,e));
+ if (pending?.kind === 'payment') {
+  return (pending.payments || [pending.e]).map(effect => ({
+   owner: effect.target, entry: effect, field: 'paymentDeadline', duration: 15000
+  }));
+ }
+ return [];
+}
+
+function syncClock(room, now = Date.now()) {
+ const game = room.game;
+ if (!game) {
+  room.onlineClock = null;
+  room.reserveGame = null;
+  return;
+ }
+ if (room.reserveGame !== game) {
+  room.reserveGame = game;
+  room.onlineClock = null;
+  room.reserve = game.s.players.map(() => RESERVE_MS);
+ }
+ const key = game.isSetup() || game.s.winner !== null ? null : game.s.turnSerial + ':' + game.s.turn;
+ let clock = room.onlineClock;
+ if (clock) {
+  const elapsed = Math.max(0, now - clock.last);
+  if (clock.running) {
+   const overtime = Math.max(0, elapsed - clock.remaining);
+   clock.remaining = Math.max(0, clock.remaining - elapsed);
+   room.reserve[clock.owner] = Math.max(0, room.reserve[clock.owner] - overtime);
+  }
+  for (const {owner, entry, field} of clock.obligations) {
+   if (clock.frozen) entry[field] += elapsed;
+   else {
+    const overtime = Math.max(0, now - Math.max(clock.last, entry[field]));
+    room.reserve[owner] = Math.max(0, room.reserve[owner] - overtime);
    }
   }
+  clock.last = now;
  }
- if(key&&!r.paused&&!g.s.pending&&!g.s.cooperation&&c.remaining<=0)expireTurn(g);
- else if(key&&!r.paused&&c.remaining<=0&&g.s.pending&&!['counter','payment','discard'].includes(g.s.pending.kind)&&!g.s.cooperation)expireTurn(g);
- const nextKey=g.isSetup()||g.s.winner!==null?null:g.s.turnSerial+':'+g.s.turn;
- if(nextKey!==key)return syncClock(r,now);
- if(g.s.pending?.kind==='discard'&&!g.s.pending.deadline)g.s.pending.deadline=now+30000;
- c.running=!!key&&!r.paused&&!g.s.cooperation&&!['counter','payment','discard'].includes(g.s.pending?.kind);
- return c;
-}
-function pauseClock(r,paused,now=Date.now()){
- if(paused===!!r.paused)return;
- if(paused){r.paused=true;r.pausedAt=now;if(r.onlineClock)r.onlineClock.running=false;}
- else{
-  const delta=Math.max(0,now-r.pausedAt);const p=r.game?.s.pending;
-  if(p?.deadline)p.deadline+=delta;
-  if(p?.kind==='payment')for(const e of p.payments||[p.e])if(e.paymentDeadline)e.paymentDeadline+=delta;
-  if(r.game?.s.cooperation)r.game.s.cooperation.deadline+=delta;
-  if(r.motionUntil)r.motionUntil+=delta;
-  r.paused=false;r.pausedAt=null;if(r.onlineClock)r.onlineClock.last=now;syncClock(r,now);
+ if (!clock || clock.key !== key || clock.owner !== game.s.turn) {
+  const limit = game.s.turnRefill ? 120000 : 60000;
+  clock = room.onlineClock = {
+   key, remaining: limit, limit, last: now, running: false,
+   owner: game.s.turn, frozen: false, obligations: [], suspendedPayments: new Map()
+  };
  }
+ if (game.s.turnRefill && clock.limit === 60000) {
+  clock.remaining += 60000;
+  clock.limit = 120000;
+ }
+
+ const pending = game.s.pending;
+ const active = obligations(pending);
+ const activePayments = active.filter(item => item.field === 'paymentDeadline').map(item => item.entry);
+ for (const effect of [...(game.s.queue || []), game.s.iou?.payment].filter(Boolean)) {
+  if (effect.paymentDeadline && !activePayments.includes(effect) && !clock.suspendedPayments.has(effect)) {
+   clock.suspendedPayments.set(effect, now);
+  }
+ }
+ for (const effect of activePayments) {
+  if (!clock.suspendedPayments.has(effect)) continue;
+  effect.paymentDeadline += now - clock.suspendedPayments.get(effect);
+  clock.suspendedPayments.delete(effect);
+ }
+ for (const {entry, field, duration} of active) {
+  if (entry[field] === undefined) entry[field] = now + duration;
+ }
+ if (pending?.kind === 'payment') pending.deadline = Math.min(...activePayments.map(effect => effect.paymentDeadline));
+
+ clock.frozen = !!room.paused || game.s.players.some(player => player.defending && !player.forfeited);
+ clock.obligations = active;
+ clock.running = !!key && !clock.frozen && !game.s.cooperation &&
+  !['counter', 'payment', 'discard'].includes(pending?.kind);
+
+ if (!clock.frozen && game.s.winner === null) {
+  for (const {owner, entry, field} of active) {
+   if (entry[field] > now || room.reserve[owner] > 0) continue;
+   const current = game.s.pending;
+   if (current === pending && pending.kind === 'discard') {
+    const hand = [...game.p(owner).hand];
+    game.shuffle(hand);
+    game.log(game.p(owner).name + ' ran out of discard time. Excess cards discarded automatically.');
+    game.discard(owner, hand.slice(0, Math.max(0, hand.length - game.handLimit(owner))).map(card => card.id));
+   } else if (current?.kind === 'payment' && (current.payments || [current.e]).includes(entry)) {
+    game.log(game.p(owner).name + ' ran out of payment time. Paying automatically from the bank first.');
+    if (entry.key === 'jail_bail' && game.assetValue(owner) < 10) game.jail(owner, false);
+    else game.pay(owner, randomPayment(game, owner, entry));
+   }
+  }
+  if (clock.running && clock.remaining === 0 && room.reserve[clock.owner] === 0) expireTurn(game);
+ }
+ if (game.s.pending !== pending || game.s.turn !== clock.owner || (key && game.s.winner !== null)) {
+  return syncClock(room, now);
+ }
+ return clock;
 }
-module.exports={syncClock,pauseClock,randomPayment,expireTurn};
+
+function clockWake(room, now = Date.now()) {
+ const clock = room.onlineClock;
+ if (!clock || clock.frozen || room.game.s.winner !== null) return null;
+ const waits = clock.obligations.map(({owner, entry, field}) =>
+  entry[field] > clock.last ? entry[field] - now : room.reserve[owner] - (now - clock.last));
+ if (clock.running) waits.push((clock.remaining || room.reserve[clock.owner]) - (now - clock.last));
+ return waits.length ? Math.max(1, Math.min(...waits)) : null;
+}
+
+function reserveView(room, now) {
+ const clock = room.onlineClock;
+ if (!clock || !room.reserve) return [];
+ return room.reserve.map((remaining, owner) => {
+  if (clock.frozen) return { remaining, running: false };
+  const deadlines = clock.obligations
+   .filter(item => item.owner === owner)
+   .map(item => item.entry[item.field]);
+  if (clock.running && clock.owner === owner) deadlines.push(clock.last + clock.remaining);
+  const starts = Math.min(...deadlines);
+  const overtime = Math.max(0, now - Math.max(clock.last, starts));
+  return { remaining: Math.max(0, remaining - overtime), running: starts <= now && remaining > overtime };
+ });
+}
+
+function pauseClock(room, paused, now = Date.now()) {
+ if (paused === !!room.paused) return;
+ syncClock(room, now);
+ if (paused) {
+  room.paused = true;
+  room.pausedAt = now;
+ } else {
+  const elapsed = Math.max(0, now - room.pausedAt);
+  const pending = room.game?.s.pending;
+  if (pending?.kind === 'counter' && pending.deadline) pending.deadline += elapsed;
+  if (room.game?.s.cooperation) room.game.s.cooperation.deadline += elapsed;
+  if (room.motionUntil) room.motionUntil += elapsed;
+  room.paused = false;
+  room.pausedAt = null;
+ }
+ syncClock(room, now);
+}
+module.exports = {syncClock, pauseClock, randomPayment, expireTurn, clockWake, reserveView};
