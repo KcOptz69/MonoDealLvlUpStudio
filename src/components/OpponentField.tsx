@@ -125,7 +125,10 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
                         style={{ '--c': colInfo.hex } as React.CSSProperties}
                       >
                         <div className="grouphead">
-                          <span>{g.color}</span>
+                          <span className="opponent-set-label">{g.color}
+                            {g.house && <span className="opponent-building-badge" role="img" aria-label="House" title="House">🏠</span>}
+                            {g.hotel && <span className="opponent-building-badge" role="img" aria-label="Hotel" title="Hotel">🏨</span>}
+                          </span>
                           <span className="set-summary">
                             <span>{isFull ? 'FULL SET' : `${g.cards.length} / ${colInfo.size}`}</span>
                             <SetRentBadge group={g} owner={p}/>{defenseFragile(p,g)&&<span className="defense-risk-mark" title="Losing a property from this set may cancel defense" aria-label="Defense at risk">!</span>}
@@ -154,12 +157,6 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
                               </button>
                             );
                           })}
-                        </div>
-                        <div className="grouprent">
-                          <span>
-                            {g.house && <span className="building">House </span>}
-                            {g.hotel && <span className="building">Hotel</span>}
-                          </span>
                         </div>
                       </section>
                     );

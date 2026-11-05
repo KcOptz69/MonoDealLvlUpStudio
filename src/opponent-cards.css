@@ -11,3 +11,18 @@ html:not(.mobile-device) .opponent-field>.specialgroup,
 html:not(.mobile-device) .opponent-field>.specialgroup>.groupcards,
 .mobile-device .opponent-field>.specialgroup>.groupcards{display:flex;flex-wrap:nowrap;max-width:none;width:max-content;flex-shrink:0;overflow:visible}
 .player-zone .specialgroup>.groupcards>.card{flex-shrink:0}
+
+.opponent-set-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.opponent-building-badge {
+  display: inline-grid;
+  place-items: center;
+  padding: 0 2px;
+  border-radius: 4px;
+  background: #10282e;
+  font-size: 11px;
+  line-height: 1.25;
+}
