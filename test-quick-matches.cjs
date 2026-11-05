@@ -43,3 +43,30 @@ for(let n=2;n<=5;n++){
  const options=g.options(0).filter(o=>o.id===card.id);assert(options.length);assert(options.every(o=>o.args.color==='Brown'));for(const option of options)g.validate(0,card,option.mode,option.args);
 }
 console.log('PASS seven-card setup; 2-turn/full-rotation defense; defense break; optional round-10 boundary and forfeits; scoring, ties and hand exclusion; free out-of-turn donations and privacy; host-only options and reconnect projections');
+
+for (const n of [4,5]) {
+ for (const outcome of ['pay','decline','break set']) {
+  const g=fresh(n);
+  sets(g,0);
+  const bankCard=take(g,'money_10m');
+  g.p(0).bank.push(bankCard);
+  g.finishTurn(0);
+  g.p(0).jailed=true;
+  g.finishTurn(1);
+  assert.equal(g.s.pending,null);
+  g.finishTurn(2);
+  assert.equal(g.s.winner,null);
+  assert.equal(g.s.pending.responder,0);
+  assert.equal(g.s.pending.e.defenseBail,true);
+  if(outcome==='decline')g.jail(0,false);
+  else{
+   g.jail(0,true);
+   const ids=[bankCard.id];
+   if(outcome==='break set')ids.push(g.p(0).groups[0].cards[0].id);
+   g.pay(0,ids);
+  }
+  assert.equal(g.s.winner,outcome==='pay'?0:null);
+  if(outcome!=='pay')assert.equal(g.s.turn,3);
+ }
+}
+console.log('PASS jailed defense claims require bail and three surviving sets in four- and five-player games');

@@ -232,10 +232,18 @@ class Game {
     jail(i, bail) {
         if (!(this.s.pending?.kind === 'jail' || this.s.pending?.kind === 'payment' && this.s.pending.e.key === 'jail_bail') || this.s.pending.responder !== i)
             throw Error('No jail decision requested.');
+        const decision = this.s.pending.e;
         if (bail) {
             if (this.assetValue(i) < 10)
                 throw Error('Bail requires at least 10M.');
-            this.s.pending = { kind: 'payment', responder: i, e: { actor: i, target: i, key: 'jail_bail', amount: 10 } };
+            this.s.pending = { kind: 'payment', responder: i, e: decision };
+        }
+        else if (decision.defenseBail) {
+            this.s.pending = null;
+            this.p(i).defending = false;
+            this.p(i).defenseRemaining = null;
+            this.log(this.p(i).name + ' did not post bail and lost their defense claim.');
+            this.finishTurn(this.s.turn, i + 1);
         }
         else {
             this.p(i).jailed = false;
@@ -930,7 +938,10 @@ class Game {
         if (e.key === 'jail_bail') {
             this.p(i).jailed = false;
             this.s.pending = null;
-            this.startTurn(i);
+            if (e.defenseBail) {
+                if (!this.p(i).forfeited && this.sets(i) >= 3) this.winDefense(i);
+                else this.finishTurn(this.s.turn, i + 1);
+            } else this.startTurn(i);
             return;
         }
         const remaining = pending.payments?.filter((e) => e.target !== i);
@@ -1144,7 +1155,12 @@ class Game {
         this.s.pending = null;
         this.completeEnd(i);
     }
-    finishTurn(i = this.s.turn) {
+    winDefense(i) {
+        this.s.winner = i;
+        this.s.endReason = 'defense';
+        this.log(this.p(i).name + ' defended three sets through two opponents’ turns and wins!');
+    }
+    finishTurn(i = this.s.turn, firstDefender = 0) {
         if (this.isSetup()) {
             this.p(i).setupDone = true;
             this.s.setupTurnsLeft = this.s.players.filter((p) => !p.setupDone).length;
@@ -1161,14 +1177,14 @@ class Game {
         }
         this.check();
         // Existing defenders count this opponent's completed turn. A new defense starts afterward.
-        for (let j = 0; j < this.s.players.length; j++) {
+        for (let j = firstDefender; j < this.s.players.length; j++) {
             const defender = this.p(j);
-            if (j !== i && !this.p(i).forfeited && defender.defending && defender.defenseRemaining != null && this.sets(j) >= 3) {
+            if (j !== i && !this.p(i).forfeited && !defender.forfeited && defender.defending && defender.defenseRemaining != null && this.sets(j) >= 3) {
                 defender.defenseRemaining = Math.max(0, defender.defenseRemaining - 1);
                 if (defender.defenseRemaining === 0) {
-                    this.s.winner = j;
-                    this.s.endReason = 'defense';
-                    this.log(defender.name + ' defended three sets through two opponents’ turns and wins!');
+                    if (defender.jailed) {
+                        this.s.pending = {kind: 'jail', responder: j, e: {actor: j, target: j, key: 'jail_bail', amount: 10, defenseBail: true}};
+                    } else this.winDefense(j);
                     return;
                 }
             }

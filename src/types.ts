@@ -85,6 +85,7 @@ export interface PendingAction {
     key: string;
     cardKey?: string;
     propertyOnly?: boolean;
+    defenseBail?: boolean;
     amount?: number;
     property?: string;
     own?: string;

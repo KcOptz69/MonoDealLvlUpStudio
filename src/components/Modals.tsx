@@ -335,7 +335,7 @@ export const PaymentModal: React.FC<{
         <p>
           {e.propertyOnly || e.key === 'compulsory_purchase'
             ? 'Properties only. You choose what to surrender.'
-            : e.key==='jail_bail'?'Discard at least 10M to take your turn. No I Owe You.'
+            : e.key==='jail_bail'?(e.defenseBail?'Discard at least 10M and keep three complete sets to win.':'Discard at least 10M to take your turn. No I Owe You.')
             : e.key === 'luxury_tax'
             ? 'Pay your bank first, then properties. Payment goes to discard.'
             : e.key==='income_tax'?'Discard bank cards or properties to cover the tax. No change is given.': 'Choose bank cards or properties. No change is given.'}
@@ -423,7 +423,7 @@ export const PaymentModal: React.FC<{
           )}
 
           <div className="dock-buttons">
-            {e.key==='jail_bail'&&<button className="quiet" onClick={onSkipJail}>Skip turn instead</button>}
+            {e.key==='jail_bail'&&<button className="quiet" onClick={onSkipJail}>{e.defenseBail?'Decline victory claim':'Skip turn instead'}</button>}
             <button className="quiet" onClick={handleSuggest}>
               Suggest
             </button>
