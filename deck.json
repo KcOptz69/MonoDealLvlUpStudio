@@ -392,7 +392,7 @@
     "name": "Eviction Notice",
     "copies": 2,
     "value": 3,
-    "text": "Return one opponent property to their hand, including from a complete set.",
+    "text": "Return one opponent property to their hand, including from a complete set. That card cannot be played again this turn.",
     "type": "action"
   },
   {
