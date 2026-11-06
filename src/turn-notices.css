@@ -12,3 +12,39 @@
 .defense-failed-notice .player-token{border-color:#f29a87;box-shadow:0 0 30px #ef765433}
 .defense-failed-notice small{color:#ffd8b9}
 .defense-failed-notice p{color:#f5d9d3}
+
+.illustrated-turn {
+  position: relative;
+  width: min(720px, calc(100vw - 24px));
+  container-type: inline-size;
+  animation: turnArrival 3s both;
+}
+.illustrated-turn > img { display: block; width: 100%; height: auto; aspect-ratio: 3; }
+.turn-notice .illustrated-turn > .player-token {
+  position: absolute;
+  left: 14.6%;
+  top: 50.4%;
+  transform: translate(-50%, -50%);
+  width: 9%;
+  height: auto;
+  aspect-ratio: 1;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+.illustrated-turn-name {
+  position: absolute;
+  left: 30%;
+  top: 63.5%;
+  transform: translateY(-50%);
+  width: 40%;
+  text-align: center;
+  color: #fff1c7;
+  font: bold 3.5cqw Georgia, serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (prefers-reduced-motion: reduce) {
+  .illustrated-turn { animation: none; }
+}

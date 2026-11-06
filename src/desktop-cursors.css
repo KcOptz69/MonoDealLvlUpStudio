@@ -1,0 +1,22 @@
+@media (any-pointer: fine) {
+  html {
+    --cursor-arrow: url('/ui/cursors/arrow.png') 5 2, default;
+    --cursor-glove: url('/ui/cursors/glove.png') 15 2, pointer;
+    --cursor-stack: url('/ui/cursors/cards.png') 15 15, grabbing;
+    cursor: var(--cursor-arrow);
+  }
+  body, #root, .app, .table, .opponent, button:disabled {
+    cursor: var(--cursor-arrow);
+  }
+  :is(button:enabled, a[href], [role='button'], label[for], select, summary,
+      .hand .card[draggable='true'], .card[data-prop], .board-target-valid) {
+    cursor: var(--cursor-glove) !important;
+  }
+  input:not([type]), input:is([type='text'], [type='search'], [type='email']), textarea {
+    cursor: text;
+  }
+  .card[draggable='true']:active,
+  html.hand-dragging * {
+    cursor: var(--cursor-stack) !important;
+  }
+}
