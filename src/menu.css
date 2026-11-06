@@ -9,3 +9,7 @@
 .home-room-form{grid-template-columns:minmax(0,1fr) minmax(90px,130px) minmax(0,1fr);align-items:end;gap:10px}.home-room-form>button{min-width:0;white-space:nowrap;padding:8px 10px}.home-room-form label{min-width:0}.home-room-form input{height:44px;padding:8px 10px}@media(max-width:950px){.home-room-form{grid-template-columns:minmax(0,1fr) minmax(76px,110px) minmax(0,1fr);gap:6px}.home-room-form>button{font-size:11px;padding:6px}.home-room-form input{font-size:13px}}
 
 .match-limit-option{display:flex;align-items:flex-start;gap:9px;padding:10px 0;color:#f7e7bd;font-size:12px}.match-limit-option input{flex:none;width:18px;height:18px;margin:0}.match-limit-option span{display:flex;flex-direction:column;gap:4px}.match-limit-option small{font-size:10px;color:#becfc5}
+
+.home-menu {
+  background: linear-gradient(#06251c33, #06251c55), url('/ui/menu-emerald.webp') center / cover no-repeat, #08291e;
+}

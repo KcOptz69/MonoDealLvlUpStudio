@@ -128,18 +128,31 @@ export const SettingsModal: React.FC<{
 
 // 4. Winner celebration
 export const WinnerModal: React.FC<{
- protectedEstate?:boolean;winner:number;winnerName:string;winnerToken:number;sets:PropertyGroup[];round:number;logCount:number;endReason?:string;shortDefense?:boolean;scoreResults?:{name:string;token:number;bank:number;field:number;total:number;winner:boolean}[];onMenu:()=>void|Promise<void>;
-}> = ({winner,winnerName,winnerToken,sets,onMenu,endReason,protectedEstate=false,shortDefense=false,scoreResults=[]}) => {
+ protectedEstate?:boolean;winner:number;winnerName:string;winnerToken:number;sets:PropertyGroup[];round:number;logCount:number;endReason?:string;shortDefense?:boolean;scoreResults?:{name:string;token:number;bank:number;field:number;total:number;winner:boolean}[];onMenu:()=>void|Promise<void>;onReplay?:()=>void|Promise<void>;
+}> = ({winner,winnerName,winnerToken,sets,onMenu,onReplay,endReason,protectedEstate=false,shortDefense=false,scoreResults=[]}) => {
  const [leaving,setLeaving]=useState(false);
  const [error,setError]=useState('');
+ const finish=async(action:()=>void|Promise<void>)=>{
+   setLeaving(true);
+   setError('');
+   try { await action(); }
+   catch { setError('Could not complete that action. Please try again.'); setLeaving(false); }
+ };
  const full=sets.filter(g=>g.cards.length===COLORS[g.color]?.size&&g.cards.some(c=>getCardDef(c).value>0));
- const colors=[...new Map(full.map(g=>[g.color,g])).values(),...(protectedEstate?[{color:'Protected Estate'}]:[])].slice(0,3);
+ const colors=[...new Map(full.map(g=>[g.color,g])).values(),...(protectedEstate?[{color:'Protected Estate',cards:[]}]:[])].slice(0,3);
  return <div className="overlay victory-overlay"><section className="modal victory-dialog" role="dialog" aria-modal="true" aria-labelledby="victory-title">
  <div className="victory-rays" aria-hidden="true"/>
  <img className="victory-logo" src={STATIC_ART.logo} alt="Monopoly Deal Lvl. Up — made by Kaze"/>
- <div className="victory-crown" aria-hidden="true">♛</div><h1 id="victory-title">{scoreResults.filter(r=>r.winner).length>1?'SHARED VICTORY!':'VICTORY!'}</h1>
- {endReason==='round-limit'?<><div className="score-winners">{scoreResults.filter(r=>r.winner).map((row,i)=><div className="victory-identity" key={i}><PlayerToken index={row.token}/><strong>{row.name}</strong></div>)}</div><p>Round 10 complete · Highest bank + field value wins</p><table className="victory-scores"><thead><tr><th>Player</th><th>Bank</th><th>Field</th><th>Total</th></tr></thead><tbody>{[...scoreResults].sort((a,b)=>b.total-a.total).map((row,i)=><tr key={i} className={row.winner?'score-winner':''}><td>{row.name}</td><td>{row.bank}M</td><td>{row.field}M</td><td>{row.total}M</td></tr>)}</tbody></table></>:<><div className="victory-identity"><PlayerToken index={winnerToken}/><div><small>WINNER</small><strong>{winnerName}</strong></div></div><p>{shortDefense?'Three complete sets. Defended through two opponents’ turns.':'Three complete sets. Defended for a full rotation.'}</p><div className="victory-sets">{colors.map(g=><div key={g.color} style={{'--set':COLORS[g.color]?.hex||'#d6b354'} as React.CSSProperties}>{g.color}<small>COMPLETE · DEFENDED</small></div>)}</div></>}
- <button className="gold victory-menu" disabled={leaving} onClick={async()=>{setLeaving(true);setError('');try{await onMenu();}catch{setError('Could not return. Please try again.');setLeaving(false);}}}>{leaving?'Returning…':'Back to Menu'}</button>
+ <div className="victory-plaque">
+ <img src="/ui/victory-plaque.webp" alt=""/>
+ <h1 id="victory-title" className="victory-accessible">{scoreResults.filter(r=>r.winner).length>1?'Shared victory':'Victory'}</h1>
+ {endReason!=='round-limit'&&<><div className="victory-token"><PlayerToken index={winnerToken}/></div><strong className="victory-name">{winnerName}</strong></>}
+ </div>
+ {endReason==='round-limit'?<><div className="score-winners">{scoreResults.filter(r=>r.winner).map((row,i)=><div className="victory-identity" key={i}><PlayerToken index={row.token}/><strong>{row.name}</strong></div>)}</div><p>Round 10 complete · Highest bank + field value wins</p><table className="victory-scores"><thead><tr><th>Player</th><th>Bank</th><th>Field</th><th>Total</th></tr></thead><tbody>{[...scoreResults].sort((a,b)=>b.total-a.total).map((row,i)=><tr key={i} className={row.winner?'score-winner':''}><td>{row.name}</td><td>{row.bank}M</td><td>{row.field}M</td><td>{row.total}M</td></tr>)}</tbody></table></>:<><p>{shortDefense?'Three complete sets. Defended through two opponents’ turns.':'Three complete sets. Defended for a full rotation.'}</p><div className="victory-sets">{colors.map(g=><div key={g.color} style={{'--set':COLORS[g.color]?.hex||'#d6b354'} as React.CSSProperties}><strong>{g.color}</strong><div className="victory-property-cards">{g.cards.length?g.cards.map(card=><img key={card.id} className={isCardInverted(card,g.color)?'victory-inverted':undefined} src={getCardArt(card)} alt={getCardDef(card).name}/>):<img src={getCardArt('protected_estate')} alt="Protected Estate"/>}</div></div>)}</div></>}
+ <div className="victory-actions">
+ {onReplay&&<button className="gold victory-menu" disabled={leaving} onClick={()=>finish(onReplay)}>Play Again</button>}
+ <button className="quiet victory-return" disabled={leaving} onClick={()=>finish(onMenu)}>Back to Menu</button>
+ </div>
  {error&&<p role="alert">{error}</p>}
  </section></div>;
 };

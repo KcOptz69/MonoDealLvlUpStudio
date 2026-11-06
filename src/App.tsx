@@ -1221,6 +1221,12 @@ export const App: React.FC = () => {
           scoreResults={gameState.scoreResults?.map(row=>({...row,name:gameState.players[row.player]?.name||'Player',token:gameState.players[row.player]?.tokenIndex??row.player,winner:!!gameState.winners?.includes(row.player)}))}
           round={gameState.round}
           logCount={gameState.log.length}
+          onReplay={!onlineSession?()=>handleStartLocal(gameState.players.length-1):onlineView?.host?async()=>{
+            await roomRequest({...onlineSession,cmd:'stop'});
+            setGameState(null);
+            setGame(null);
+            setView('lobby');
+          }:undefined}
           onMenu={async()=>{if(onlineSession){if(onlineView?.host){await roomRequest({...onlineSession,cmd:'stop'});setGameState(null);setGame(null);setView('lobby');}else await handleLeaveRoom();}else await handleExitGame(false);}}
         />
       )}

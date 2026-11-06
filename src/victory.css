@@ -3,3 +3,79 @@
 .mobile-device .panel-field.transfer-enabled .groupcards .card{touch-action:none;user-select:none;-webkit-user-select:none}.mobile-device .panel-field .hand-field-toggle{font-size:10px}.mobile-device .transfer-hint{font-size:11px;color:#ecd297;margin:0 6px 5px}.mobile-device .panel-field .group.move-target{outline:2px solid #f0d18d}
 
 .victory-scores{width:100%;border-collapse:collapse;font-size:12px;text-align:left;margin:12px 0}.victory-scores th,.victory-scores td{padding:7px;border-bottom:1px solid #d8bc7344}.victory-scores th:not(:first-child),.victory-scores td:not(:first-child){text-align:right}.victory-scores .score-winner{color:#ffe3a3;background:#d8bc7314}.score-winners{display:flex;justify-content:center;flex-wrap:wrap;gap:14px}.score-winners .victory-identity{margin:8px 0}.mobile-device .victory-scores{font-size:10px;margin:5px 0}.mobile-device .victory-scores th,.mobile-device .victory-scores td{padding:4px}
+
+.victory-dialog .victory-champion {
+  padding: 8px 16px;
+  border: 1px solid #d8ad56;
+  border-radius: 14px;
+  background: linear-gradient(115deg, #092c34, #235354);
+}
+.victory-champion > .player-token {
+  border: 2px solid #ffe1a0;
+  box-shadow: 0 0 18px #e9c37555;
+}
+.victory-champion > div { min-width: 0; }
+.victory-champion strong { overflow-wrap: anywhere; }
+
+/* Keep the original layout usable on short landscape screens. */
+.modal.victory-dialog {
+  box-sizing: border-box;
+  overscroll-behavior: contain;
+}
+.victory-scores td:first-child { overflow-wrap: anywhere; }
+.mobile-device .victory-dialog .score-winners,
+.mobile-device .victory-dialog .victory-scores { grid-column: 1 / -1; }
+.mobile-device .score-winners > .victory-identity { min-width: 0; }
+.mobile-device .victory-dialog .victory-champion { padding: 6px 10px; }
+.mobile-device .victory-dialog > p[role="alert"] { margin-bottom: 0; }
+
+@media (max-height: 400px) {
+  .mobile-device .victory-dialog {
+    grid-template-columns: minmax(0, 135px) minmax(0, 1fr);
+    gap: 4px 14px;
+    padding: 12px 16px;
+  }
+  .mobile-device .victory-logo { width: 100%; height: 80px; }
+  .mobile-device .victory-dialog h1 { font-size: 24px; letter-spacing: 2px; }
+  .mobile-device .victory-identity strong { font-size: 19px; }
+  .mobile-device .victory-identity > .player-token { width: 40px; height: 40px; }
+  .mobile-device .victory-sets > div { padding: 6px 4px; }
+}
+
+.modal.victory-dialog {
+  display: block;
+  width: min(730px, calc(100vw - 24px));
+  padding: 12px clamp(12px, 2.5vw, 28px) 18px;
+}
+.victory-dialog > .victory-logo { height: clamp(60px, 14vh, 118px); }
+.victory-plaque { position: relative; width: min(100%, 590px); margin: -4px auto 0; }
+.victory-plaque > img { display: block; width: 100%; }
+.victory-accessible { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.victory-token {
+  position: absolute; left: 14.5%; top: 47%; width: 12%; aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+}
+.victory-token .player-token { width: 100%; height: 100%; background: transparent; border: 0; }
+.victory-name {
+  position: absolute; top: 62%; left: 30%; width: 41%; transform: translateY(-50%);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: 700 clamp(11px, 2.7vh, 25px) Georgia, serif; color: #ffe9aa;
+}
+.victory-dialog .victory-sets { margin: 8px 0 12px; }
+.victory-property-cards { display: flex; justify-content: center; gap: 4px; margin-top: 6px; }
+.victory-property-cards img {
+  display: block; width: min(30%, 60px); height: auto; aspect-ratio: 2 / 3; object-fit: contain;
+}
+.victory-property-cards .victory-inverted { transform: rotate(180deg); }
+.victory-actions { display: flex; justify-content: center; gap: 10px; }
+.victory-dialog .victory-actions button { width: auto; flex: 1; min-height: 40px; }
+.victory-dialog .victory-return { border: 1px solid #d8ad56; color: #ffe8b2; }
+
+@media (max-height: 480px) and (orientation: landscape) {
+  .modal.victory-dialog { padding: 5px 14px 8px; }
+  .victory-dialog > .victory-logo { height: 46px; }
+  .victory-plaque { width: min(100%, 105dvh); }
+  .victory-dialog > p { margin: 2px 0; }
+  .victory-dialog .victory-sets { margin: 4px 0 6px; }
+  .victory-property-cards img { width: min(28%, 14dvh); }
+}
