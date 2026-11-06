@@ -807,7 +807,13 @@ class Game {
             else if (e.key === 'sly_deal') {
                 const color = f.group?.color;
                 const c = this.removeProp(t, e.property);
-                this.place(i, c, color);
+                if (c.key === 'expansion_property') {
+                  c.expansionOwner = i;
+                  c.expansionColor = color;
+                  const matching = this.expansionGroups(i).find(g => g.color === color);
+                  if (matching) this.place(i, c, color, matching.id);
+                  else this.p(i).hand.push(c);
+                } else this.place(i, c, color);
                 this.event('transfer', { actor: t, target: i, cards: [{ ...c }] });
                 this.insurance(t, 1);
             }
@@ -837,9 +843,6 @@ class Game {
                     if (c.key === 'expansion_property') {
                         c.expansionOwner = i;
                         c.expansionColor = g.color;
-                        const colors = [...new Set(this.expansionGroups(i, c.id).map((g) => g.color))];
-                        if (!c.locked)
-                            (this.s.expansionChoices || (this.s.expansionChoices = [])).push({ player: i, card: { ...c }, colors });
                     }
                 this.event('transfer', {
                     actor: t,
@@ -870,7 +873,7 @@ class Game {
         if (!e.propertyOnly && e.key !== 'compulsory_purchase') {
             items.push(...p.bank.map((c) => ({ id: c.id, card: c, zone: 'bank', value: this.d(c).value })));
         }
-        items.push(...this.allProps(i).filter((c) => this.d(c).value > 0).map((c) => ({ id: c.id, card: c, zone: 'property', value: this.d(c).value })));
+        items.push(...this.allProps(i).filter((c) => this.d(c).value > 0 || (c.key === 'expansion_property' && e.actor !== i && !['luxury_tax','income_tax','jail_bail'].includes(e.key))).map((c) => ({ id: c.id, card: c, zone: 'property', value: this.d(c).value })));
         if (!e.propertyOnly && e.key !== 'compulsory_purchase') {
             for (const g of p.groups) {
                 for (const key of ['house', 'hotel']) {
@@ -974,6 +977,7 @@ class Game {
         if (!Number.isInteger(target) || target < 0 || target >= this.s.players.length || target === i || this.p(target).forfeited || this.p(i).forfeited)
             throw Error('Choose another active player.');
         const card = this.takeHand(i, id);
+        delete card.evictedTurn;
         this.p(target).hand.push(card);
         this.event('donation', { actor: i, target, cards: [{ ...card }], destination: 'hand' });
         this.log(this.p(i).name + ' donated a card to ' + this.p(target).name + '.');
@@ -1019,7 +1023,7 @@ class Game {
         return score;
     }
     autoPayment(i, e) {
-        let all = this.payable(i, e);
+        let all = this.payable(i, e).filter(x => x.value > 0);
         const total = all.reduce((s, x) => s + x.value, 0);
         if (total <= e.amount)
             return all.map((x) => x.id);

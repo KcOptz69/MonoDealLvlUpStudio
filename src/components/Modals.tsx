@@ -385,6 +385,7 @@ export const PaymentModal: React.FC<{
               <div className="choices payment-card-row">
                 {groupItems.map((x) => {
                   const def = getCardDef(x.card);
+                  const canPay = x.value > 0 || (x.card.key === 'expansion_property' && e.actor !== 0 && !['luxury_tax','income_tax','jail_bail'].includes(e.key));
                   const isChecked = selectedIds.includes(x.id);
                   return (
                     <button
@@ -393,8 +394,8 @@ export const PaymentModal: React.FC<{
                       className={`choice ${isChecked ? 'checked' : ''}`}
                       aria-label={`${def.name} · ${x.value}M`}
                       aria-pressed={isChecked}
-                      disabled={x.value<=0}
-                      title={x.value<=0?'Cannot be used as payment':undefined}
+                      disabled={!canPay}
+                      title={!canPay?'Cannot be used as payment':undefined}
                       onClick={() => toggleItem(x.id)}
                     >
                       <img src={getCardArt(x.card)} alt={def.name} />

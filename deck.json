@@ -745,7 +745,7 @@
       "Utility",
       "Silver"
     ],
-    "text": "Join an existing color set with space. Its color locks while you own it; a new owner chooses an existing set. Discard if no non-Expansion property of its color remains."
+    "text": "Join an existing color set with space. Stolen cards keep their color. When paid to an opponent, they choose an eligible set. Discard if no non-Expansion property of its color remains."
   },
   {
     "key": "free_parking",

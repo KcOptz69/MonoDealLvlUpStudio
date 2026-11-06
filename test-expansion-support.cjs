@@ -16,9 +16,27 @@ function expansion(g,i,color){const c=give(g,i,'expansion_property');g.s.turn=i;
  const g=fresh();const def=deck.find(d=>d.type==='wild'&&d.key!=='expansion_property'&&d.colors.includes('Red')&&d.colors.includes('Yellow'));const wild=give(g,0,def.key,'Red');const x=expansion(g,0,'Red');give(g,0,'atlantic_avenue','Yellow');g.s.turn=0;g.s.played=0;g.move(0,wild.id,'Yellow',g.p(0).groups.find(group=>group.color==='Yellow').id);assert(g.s.discard.some(c=>c.id===x.id));
 }
 {
- const g=fresh();give(g,0,'kentucky_avenue','Red');const x=expansion(g,0,'Red');give(g,1,'oriental_avenue','Light Blue');g.s.turn=1;g.s.played=0;const sly=give(g,1,'sly_deal');g.play(1,sly.id,'play',{target:0,property:x.id});g.respond(0,false);g.choose(1,'Light Blue');assert.equal(g.find(1,x.id).group.color,'Light Blue');assert(g.find(1,x.id).group.cards.some(c=>c.key!=='expansion_property'));assert.equal(x.expansionOwner,1);
+ const g=fresh();give(g,0,'kentucky_avenue','Red');const x=expansion(g,0,'Red');give(g,1,'oriental_avenue','Light Blue');g.s.turn=1;g.s.played=0;const sly=give(g,1,'sly_deal');g.play(1,sly.id,'play',{target:0,property:x.id});g.respond(0,false);assert.equal(g.s.pending,null);assert(g.p(1).hand.includes(x));assert.equal(x.expansionColor,'Red');assert.equal(x.expansionOwner,1);
 }
 {
  const g=fresh();const def=deck.find(d=>d.type==='wild'&&d.key!=='expansion_property'&&d.colors.includes('Red')&&d.colors.includes('Yellow'));const wild=give(g,0,def.key,'Red');const x=expansion(g,0,'Red');give(g,0,'atlantic_avenue','Yellow');const insurance=give(g,0,'insurance_agency');g.takeHand(0,insurance.id);g.place(0,insurance);g.s.phase='setup';g.s.turn=0;const before=g.p(0).hand.length;g.move(0,wild.id,'Yellow',g.p(0).groups.find(group=>group.color==='Yellow').id);assert(g.s.discard.some(c=>c.id===x.id));assert.equal(g.p(0).hand.length,before,'setup does not grant passive Insurance draws');
 }
 console.log('PASS unsupported Expansions discard together; unsupported discards grant no Insurance draws; atomic swaps preserve support; recoloring removes support; transfers connect to eligible sets or return to hand');
+{
+ const g=fresh();
+ give(g,1,'kentucky_avenue','Red');
+ give(g,1,'indiana_avenue','Red');
+ const attached=expansion(g,1,'Red');
+ const stolen=g.find(1,attached.id).group;
+ give(g,0,'atlantic_avenue','Yellow');
+ g.s.turn=0;
+ const breaker=give(g,0,'deal_breaker');
+ g.play(0,breaker.id,'play',{target:1,group:stolen.id});
+ while(g.s.pending?.kind==='counter')g.respond(g.s.pending.responder,false);
+ assert.equal(g.s.pending,null);
+ assert.equal(g.find(0,attached.id).group,stolen);
+ assert(g.full(stolen));
+ assert.equal(attached.expansionOwner,0);
+ assert.equal(attached.expansionColor,'Red');
+}
+console.log('PASS Deal Breaker keeps Expansion Property attached to the stolen set');

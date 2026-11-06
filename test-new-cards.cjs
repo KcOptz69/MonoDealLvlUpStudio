@@ -10,7 +10,25 @@ test('Bail discards at least10M; no partial bail or IOU; normal start effects oc
 test('Private Vault only refills an empty hand at turn start; Treasury pays even with an existing bank',()=>{const g=fresh();give(g,0,'private_vault','special');give(g,0,'emergency_treasury','special');give(g,0,'money_1m','bank');g.begin();assert.equal(g.p(0).hand.length,7);assert.equal(g.p(0).bank.at(-1).key,'money_3m');assert.equal(g.handLimit(0),9);const events=g.s.events.filter(e=>e.type==='special_trigger');assert(events.some(e=>e.key==='private_vault'));assert(events.some(e=>e.key==='emergency_treasury'));});
 test('Free Parking banks once without an AP, works at zero AP and resets per turn; cannot bank properties',()=>{const g=fresh();give(g,0,'free_parking','special');const a=give(g,0,'money_1m'),b=give(g,0,'money_2m'),prop=give(g,0,'baltic_avenue');g.s.played=3;assert.throws(()=>g.play(0,prop.id,'bank'),/Properties/);assert(!g.p(0).freeBankUsed);g.play(0,a.id,'bank');assert.equal(g.s.played,3);assert(g.p(0).freeBankUsed);assert.throws(()=>g.play(0,b.id,'bank'),/No card plays/);g.s.turn=0;g.begin();assert(g.freeBank(0));});
 test('Community Chest and Chance cost zeroAP; Chance reveals3, keeps1, discards2 without losing cards',()=>{const g=fresh();const chest=give(g,0,'community_chest'),chance=give(g,0,'chance');g.s.played=3;const before=g.p(0).hand.length;g.play(0,chest.id,'play');assert.equal(g.s.played,3);assert.equal(g.p(0).hand.length,before+1);assert.equal(g.p(1).hand.length,1);assert.equal(g.p(2).hand.length,1);g.play(0,chance.id,'play');assert.equal(g.s.played,3);assert.equal(g.s.pending.kind,'chance');assert.equal(g.s.pending.cards.length,3);assert.equal(count(g),160);const chosen=g.s.pending.cards[1];assert.throws(()=>g.choose(1,chosen.id),/not requested/);g.choose(0,chosen.id);assert(g.p(0).hand.some(c=>c.id===chosen.id));assert.equal(count(g),160);});
-test('Expansion Property requires existing color, cannot be paid/banked, locks for owner and can change after transfer',()=>{const g=fresh(),c=give(g,0,'expansion_property');assert.throws(()=>g.play(0,c.id,'play',{color:'Red'}),/existing/);give(g,0,'kentucky_avenue','field');g.play(0,c.id,'play',{color:'Red'});assert.equal(c.expansionColor,'Red');assert.throws(()=>g.move(0,c.id,'Blue'),/fixed/);assert(!g.payable(0,{key:'debt_collector'}).some(x=>x.id===c.id));give(g,1,'oriental_avenue','field');g.s.turn=1;g.s.played=0;const sly=give(g,1,'sly_deal');g.play(1,sly.id,'play',{target:0,property:c.id});allow(g);assert.equal(g.s.pending.kind,'expansion');g.choose(1,'Light Blue');assert.equal(g.find(1,c.id).group.color,'Light Blue');assert.equal(c.expansionOwner,1);assert.equal(count(g),160);});
+test('Expansion Property can accompany payment at 0M and the recipient chooses its color',()=>{
+ const g=fresh(), c=give(g,0,'expansion_property');
+ assert.throws(()=>g.play(0,c.id,'play',{color:'Red'}),/existing/);
+ give(g,0,'kentucky_avenue','field');
+ g.play(0,c.id,'play',{color:'Red'});
+ assert.throws(()=>g.move(0,c.id,'Blue'),/fixed/);
+ give(g,1,'indiana_avenue','field');
+ give(g,1,'oriental_avenue','field');
+ const money=give(g,0,'money_5m','bank');
+ const e={key:'debt_collector',actor:1,target:0,amount:5};
+ g.s.pending={kind:'payment',responder:0,e};
+ assert.deepEqual(g.autoPayment(0,e),[money.id]);
+ g.pay(0,[money.id,c.id]);
+ assert.equal(g.s.pending.kind,'expansion');
+ g.choose(1,'Light Blue');
+ assert.equal(g.find(1,c.id).group.color,'Light Blue');
+ assert.equal(c.expansionOwner,1);
+ assert.equal(count(g),160);
+});
 test('Incoming Expansion with no existing color returns to hand for later legal placement',()=>{const g=fresh();give(g,0,'kentucky_avenue','field');const c=give(g,0,'expansion_property');g.play(0,c.id,'play',{color:'Red'});const sly=give(g,1,'sly_deal');g.s.turn=1;g.s.played=0;g.play(1,sly.id,'play',{target:0,property:c.id});allow(g);assert(g.p(1).hand.some(x=>x.id===c.id));assert(!g.find(1,c.id));assert.equal(count(g),160);});
 test('Empire Rent counts wilds and specials, excludes buildings, supports stacked doubling with AP validation',()=>{const g=fresh();give(g,0,'mediterranean_avenue','field');give(g,0,'multicolor_wildcard','field');give(g,0,'free_parking','special');give(g,0,'insurance_agency','special');const r=give(g,0,'empire_rent'),a=give(g,0,'double_the_rent'),b=give(g,0,'double_the_rent');give(g,1,'money_10m','bank');g.s.played=1;assert.throws(()=>g.play(0,r.id,'play',{target:1,doubleIds:[a.id,b.id]}),/available plays/);g.s.played=0;g.play(0,r.id,'play',{target:1,doubleIds:[a.id,b.id]});assert.equal(g.s.played,3);assert.equal(g.s.pending.e.amount,16);assert.equal(g.s.pending.e.target,1);});
 test('Forced Deal cannot offer a property from your own complete set',()=>{const g=fresh();give(g,0,'mediterranean_avenue','field');const own=give(g,0,'baltic_avenue','field');const target=give(g,1,'kentucky_avenue','field');const c=give(g,0,'forced_deal');assert.throws(()=>g.play(0,c.id,'play',{target:1,own:own.id,property:target.id}),/outside a complete set/);});
@@ -79,6 +97,19 @@ test('Eviction Notice blocks the specific card for the current turn only', () =>
  g.end(0);
  g.play(1, property.id, 'play', {color: 'Brown'});
  assert(g.find(1, property.id));
+});
+
+test('Donating an evicted property lets the recipient play it immediately', () => {
+ const g = fresh();
+ g.s.players.push({...g.p(2), hand: [], groups: [], special: [], bank: []});
+ const property = give(g, 1, 'baltic_avenue', 'field');
+ const eviction = give(g, 0, 'eviction_notice');
+ g.play(0, eviction.id, 'play', {target: 1, property: property.id});
+ allow(g);
+ g.p(2).defending = true;
+ g.donate(1, property.id, 0);
+ g.play(0, property.id, 'play', {color: 'Brown'});
+ assert(g.find(0, property.id));
 });
 
 test('Silver wilds follow normal placement rules and Silver rent requires properties', () => {
