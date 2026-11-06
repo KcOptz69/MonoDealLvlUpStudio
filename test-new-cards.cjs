@@ -206,3 +206,15 @@ test('Named bot styles apply different priorities without removing banking optio
  assert.equal(g.bot(0,true).mode,'play');
  assert.equal(g.paymentOpportunity(1,2,true,'deal-maker'),0);
 });
+
+test('Bank Withdrawal retrieves every Rent card at zero remaining plays', () => {
+ for(const rent of deck.filter(card=>card.type==='rent')){
+  const g=fresh();
+  const withdrawal=give(g,0,'bank_withdrawal');
+  const banked=give(g,0,rent.key,'bank');
+  g.s.played=g.limit(0);
+  g.play(0,withdrawal.id,'play',{bankCard:banked.id});
+  assert(g.p(0).hand.includes(banked));
+  assert(!g.p(0).bank.includes(banked));
+ }
+});

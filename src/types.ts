@@ -146,6 +146,7 @@ export interface ChatMessage {id:number;name:string;text:string;time:number;send
 export interface OnlineRoomView {
   decisionClocksPaused?:boolean;
   paused?:boolean;
+  hostDisconnected?:boolean;
   pausedAt?:number;
   clock?:{remaining:number;limit:number;running:boolean};
   serverTime?:number;

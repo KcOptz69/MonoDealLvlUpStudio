@@ -932,7 +932,7 @@ export const App: React.FC = () => {
             onOpenMenu={() => setShowExit(true)}
           />
 
-          {onlineSession&&onlineView?.paused&&<div className="host-pause-banner" role="status">Game paused by host {onlineView.host&&<button className="gold" onClick={async()=>{try{await roomRequest({...onlineSession,cmd:'pause',data:{paused:false}});}catch(err:any){showToast(err.message);}}}>Resume game</button>}</div>}
+          {onlineSession&&onlineView?.paused&&<div className="host-pause-banner" role="status">{onlineView.hostDisconnected?'Game paused · waiting for the host to reconnect':'Game paused by host'} {onlineView.host&&!onlineView.hostDisconnected&&<button className="gold" onClick={async()=>{try{await roomRequest({...onlineSession,cmd:'pause',data:{paused:false}});}catch(err:any){showToast(err.message);}}}>Resume game</button>}</div>}
           <ToughLuckResult key={onlineSession?.code||'local'} state={gameState} hidden={!!onlineSession&&hideHand&&!mobile}/>
           <div className="game">
             <main className="table">
@@ -1094,14 +1094,14 @@ export const App: React.FC = () => {
       {/* Interactive Action Wizard Modal */}
       {wizardCard?.key === 'bank_withdrawal' && gameState && (
         <div className="overlay">
-          <section className="modal payment-modal" role="dialog" aria-modal="true" aria-label="Bank Withdrawal">
+          <section className="modal bank-withdrawal-modal" role="dialog" aria-modal="true" aria-label="Bank Withdrawal">
             <div className="modalhead">
               <h2>Bank Withdrawal</h2>
               <button className="quiet" onClick={() => setWizardCard(null)}>Cancel</button>
             </div>
-            <p>Choose an action card to return from your bank to your hand. Free action.</p>
-            <div className="payment-modal-groups">
-              <div className="choices payment-card-row">
+            <p>Choose a banked action card, including Rent, to return to your hand. Free action.</p>
+            <div className="bank-withdrawal-list">
+              <div className="choices">
                 {gameState.players[0].bank.filter(card => ['action', 'rent', 'building'].includes(getCardDef(card).type)).map(card => (
                   <button key={card.id} type="button" className="choice" onClick={() => executePlay(wizardCard.id, {bankCard: card.id})}>
                     <img src={getCardArt(card)} alt={getCardDef(card).name} />

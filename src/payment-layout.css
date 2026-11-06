@@ -19,3 +19,19 @@
 .mobile-device .payment-modal{display:flex;flex-direction:column;max-height:calc(100dvh - 12px);overflow:hidden;box-sizing:border-box}
 .mobile-device .payment-modal .payment-modal-groups{flex:1;max-height:none}
 .mobile-device .payment-modal .modalhead,.mobile-device .payment-modal .payment-modal-footer{flex:none}
+
+.bank-withdrawal-modal .bank-withdrawal-list {
+  min-height: 0;
+  overflow: auto;
+}
+.bank-withdrawal-modal .bank-withdrawal-list .choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 8px;
+}
+.bank-withdrawal-modal .bank-withdrawal-list img {
+  display: block;
+  width: 100%;
+  max-height: 140px;
+  object-fit: contain;
+}
