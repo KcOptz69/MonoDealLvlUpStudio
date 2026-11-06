@@ -178,3 +178,31 @@ test('Insurance Agency covers theft but not swaps, discarded payments, or its ow
  swap.pay(1,[offered.id]);
  assert.equal(swap.p(1).hand.length,0);
 });
+
+test('Bots bank cash and save Birthday until there is something to collect', () => {
+ const g = fresh();
+ const birthday = give(g,0,'its_my_birthday');
+ const cash = give(g,0,'money_2m');
+ assert.equal(g.bot(0,true).id,cash.id);
+ g.bot(0);
+ assert.equal(g.bot(0,true),null);
+ give(g,1,'money_2m','bank');
+ assert.equal(g.bot(0,true).id,birthday.id);
+ assert.equal(g.bot(0,true).mode,'play');
+});
+
+test('Named bot styles apply different priorities without removing banking options', () => {
+ const g=fresh();
+ for(const [name,style] of Object.entries({Trixie:'builder',Nica:'builder',Karl:'banker',Alvin:'banker',Kenneth:'deal-maker',Steph:'deal-maker',Dian:'disruptor',Anren:'disruptor',Poala:'balanced'})){
+  g.p(0).name=name+' Bot';
+  assert.equal(g.botStyle(0),style);
+ }
+ const birthday=give(g,0,'its_my_birthday');
+ g.p(0).name='Karl Bot';
+ assert.equal(g.bot(0,true).mode,'bank');
+ give(g,1,'money_2m','bank');
+ give(g,2,'money_2m','bank');
+ assert.equal(g.bot(0,true).id,birthday.id);
+ assert.equal(g.bot(0,true).mode,'play');
+ assert.equal(g.paymentOpportunity(1,2,true,'deal-maker'),0);
+});

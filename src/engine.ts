@@ -23,8 +23,8 @@ export const COLORS: Record<string, { size: number; rent: number[]; hex: string 
 };
 
 export const BOT_NAMES = [
-  'Dian Bot', 'Karl Bot', 'Anren Bot', 'Steph Bot', 'Trix Bot',
-  'Poala Bot', 'Alvin Bot', 'Ken Bot', 'Nica Bot'
+  'Dian Bot', 'Karl Bot', 'Anren Bot', 'Steph Bot', 'Trixie Bot',
+  'Poala Bot', 'Alvin Bot', 'Kenneth Bot', 'Nica Bot'
 ];
 
 export class Game {
@@ -1111,24 +1111,47 @@ export class Game {
     return this.p(i).defending ? 100 : this.sets(i) * 10 + this.p(i).groups.filter((g: any) => g.cards.length === COLORS[g.color].size - 1).length;
   }
 
+  botStyle(i: number) {
+    const name = this.p(i).name.replace(/ Bot$/, '');
+    if (['Trixie', 'Trix', 'Nica'].includes(name)) return 'builder';
+    if (['Karl', 'Alvin'].includes(name)) return 'banker';
+    if (['Kenneth', 'Ken', 'Steph'].includes(name)) return 'deal-maker';
+    if (['Dian', 'Anren'].includes(name)) return 'disruptor';
+    return 'balanced';
+  }
+
+  paymentOpportunity(target: number, amount: number, propertyOnly: boolean, style: string) {
+    const assets = this.payable(target, { key: 'rent', propertyOnly });
+    const total = assets.reduce((sum, item) => sum + item.value, 0);
+    const safe = assets.reduce((sum, item) => {
+      const group = item.zone === 'property' ? this.find(target, item.id)?.group : null;
+      return sum + (group && this.full(group) ? 0 : item.value);
+    }, 0);
+    const collectible = Math.min(amount, total);
+    const pressure = collectible > safe ? this.threat(target) * (style === 'disruptor' ? 0.35 : 0.2) : 0;
+    return collectible + pressure;
+  }
+
   scoreMove(i: number, o: any) {
     const c = this.p(i).hand.find((c: any) => c.id === o.id);
     const d = this.d(c);
     const p = this.p(i);
     const a = o.args;
     const bank = p.bank.reduce((n: number, c: any) => n + this.d(c).value, 0);
-    const reserve = this.isSetup() ? 3 : 5;
+    const style = this.botStyle(i);
+    const reserve = (this.isSetup() ? 3 : 5) + (style === 'banker' ? 3 : 0);
 
     if (o.mode === 'bank') {
-      const precious = ['just_say_no', 'deal_breaker', 'i_owe_you'].includes(c.key);
+      const valuable = ['its_my_birthday', 'just_say_no', 'deal_breaker', 'i_owe_you'].includes(c.key) || this.freePlay(c, 'play');
+      const emergency = bank < d.value && (this.sets(i) >= 2 || style === 'banker');
       const useful = d.type === 'rent' && p.groups.some((g: any) => d.any || d.colors.includes(g.color));
-      const score = (bank < reserve ? 4 + d.value * 0.6 : d.value * 0.12) - (precious ? 12 : 0) - (useful ? 3 : 0);
-      return this.isSetup() ? Math.max(0.1, score) : score;
+      const score = (bank < reserve ? 4 + d.value * 0.6 : d.value * 0.12) - (useful ? 3 : 0) - (valuable ? (emergency ? 3 : 7) : 0) + (style === 'banker' && d.type === 'money' && bank < reserve ? 2 : 0);
+      return this.isSetup() && !valuable ? Math.max(0.1, score) : score;
     }
     if (['property', 'wild'].includes(d.type)) {
       const utility = this.propertyUtility(i, c, a.color);
       const natural = p.hand.filter((x: any) => x.id !== c.id && this.d(x).type === 'property' && this.d(x).colors.includes(a.color)).length;
-      return utility + Math.min(2, natural) * 1.2;
+      return utility * (style === 'builder' ? 1.25 : 1) + Math.min(2, natural) * 1.2;
     }
     if (d.type === 'special') return this.propertyUtility(i, c) + (c.key === 'corporate_headquarters' && !this.isSetup() ? 3 : 0);
     if (c.key === 'pass_go') return p.hand.length < 3 ? 7 : 2;
@@ -1142,15 +1165,16 @@ export class Game {
       const g = this.group(i, a.group);
       const base = (c.key==='empire_rent'?this.fieldPropertyCount(i):this.rent(i,g))*2**this.doubleIds(a).length + (this.has(i, 'luxury_district') ? 1 : 0);
       const targets = d.any ? [a.target] : this.s.players.map((_: any, j: number) => j).filter((j: number) => j !== i && !this.p(j).forfeited);
-      const gain = targets.reduce((n: number, j: number) => n + Math.min(this.assetValue(j), Math.max(0, base - (this.has(j, 'rent_controlled_residence') ? 2 : 0))), 0);
-      return gain * (a.doubleId ? 0.65 : 0.85) - 1 + (bank < 3 ? 1 : 0) + (d.any && this.assetValue(a.target) > 0 ? this.threat(a.target) * 0.3 : 0);
+      const propertyOnly = c.key !== 'empire_rent' && g?.color === 'Silver';
+      const gain = targets.reduce((n: number, j: number) => n + this.paymentOpportunity(j, Math.max(0, base - (this.has(j, 'rent_controlled_residence') ? 2 : 0)), propertyOnly, style), 0);
+      return gain * (style === 'deal-maker' ? 1.15 : 1) / (1 + this.doubleIds(a).length * 0.45) - 1;
     }
-    if (c.key === 'its_my_birthday') return this.s.players.reduce((n: number, _: any, j: number) => n + (j === i ? 0 : Math.min(2, this.assetValue(j))), 0) * 0.8 - 1;
+    if (c.key === 'its_my_birthday') return this.s.players.reduce((n: number, _: any, j: number) => n + (j === i || this.p(j).forfeited ? 0 : this.paymentOpportunity(j, 2, false, style)), 0) - 1;
     if (c.key === 'luxury_tax') return this.s.players.reduce((n: number, _: any, j: number) => n + (j === i ? 0 : Math.min(this.assetValue(j), this.sets(j) * 5) * 0.45 + (this.p(j).defending && this.p(j).bank.reduce((n: number, c: any) => n + this.d(c).value, 0) < this.sets(j) * 5 ? 30 : 0)), 0) - 1;
     const t = a.target;
     const foe = this.p(t);
     if (!foe) return -5;
-    const threat = this.threat(t);
+    const threat = this.threat(t) * (style === 'disruptor' ? 1.35 : 1);
     const f: any = a.property ? this.find(t, a.property) : null;
     if(c.key==='go_to_jail')return this.p(t).jailed?-5:7+threat*.7;
     if (c.key === 'income_tax') return this.incomeTax(t) * 0.65 + (this.incomeTax(t)>0 ? threat * 0.25 : 0) - 1;
@@ -1170,10 +1194,14 @@ export class Game {
     const loss = f.special ? 4 : breaks ? 8 : f.group.cards.length * 1.5;
     if (c.key === 'eviction_notice') return loss + (breaks ? threat : threat * 0.1) - 1;
     if (c.key === 'forced_rezoning') return f.group.color === a.color ? -5 : loss + (breaks ? threat : 0) - 1;
-    if (c.key === 'sly_deal') return this.propertyUtility(i, f.card, f.group?.color) + loss + threat * 0.6;
+    if (c.key === 'sly_deal') return this.propertyUtility(i, f.card, f.group?.color) + loss + threat * 0.6 + (style === 'deal-maker' ? 3 : 0);
     if (c.key === 'forced_deal') {
       const own: any = this.find(i, a.own);
-      return own ? this.propertyUtility(i, f.card, f.group?.color) - this.propertyUtility(i, own.card, own.group?.color) * 0.7 + loss + threat * 0.6 : -5;
+      if (!own) return -5;
+      const color = own.card.locked || own.group?.color;
+      const completesRivalSet = color && foe.groups.some((g: any) => g.color === color && g.cards.length - Number(g === f.group) === COLORS[color].size - 1);
+      return this.propertyUtility(i, f.card, f.group?.color) - this.propertyUtility(i, own.card, own.group?.color) * 0.7 + loss + threat * 0.6
+        + (style === 'deal-maker' ? 3 : 0) - (completesRivalSet ? (this.sets(t) >= 2 ? 45 : 14) : 0);
     }
     return o.score;
   }
