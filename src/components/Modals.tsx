@@ -201,6 +201,8 @@ export const ReactionModal: React.FC<{
   frozenAt?:number;
   onRespond: (useJustSayNo: boolean) => void;
 }> = ({ pending, state, onRespond,serverTime,frozenAt }) => {
+  const [inspection, setInspection] = useState<'field' | 'bank' | null>(null);
+  const [bankFromField, setBankFromField] = useState(false);
   const now=useServerNow(serverTime,frozenAt);
   const seconds=Math.max(0,Math.ceil(((pending.deadline||now+10000)-now)/1000));
   const e = pending.e;
@@ -210,6 +212,10 @@ export const ReactionModal: React.FC<{
 
   const cardKey = e.cardKey || (e.key === 'rent' ? 'rent_any_color' : e.key);
   const def = getCardDef(cardKey);
+
+  const player = state.players[0];
+  if (inspection === 'field') return <FieldView state={state} index={0} onClose={()=>setInspection(null)} onBank={()=>{setBankFromField(true);setInspection('bank');}}/>;
+  if (inspection === 'bank') return <BankViewerModal title="Your bank" bank={player.bank} onClose={()=>setInspection(bankFromField?'field':null)}/>;
 
   return (
     <div className="overlay">
@@ -247,6 +253,10 @@ export const ReactionModal: React.FC<{
                 ? 'The action is currently blocked. Counter with Just Say No to restore it.'
                 : 'Let the action resolve, or block it with Just Say No.'}
             </p>
+            <div className="row">
+          <button type="button" className="quiet" onClick={()=>setInspection('field')}>View your field</button>
+          <button type="button" className="quiet" onClick={()=>{setBankFromField(false);setInspection('bank');}}>View your bank</button>
+        </div>
             <p className="muted">{def.text}</p>
           </div>
         </div>
@@ -294,8 +304,6 @@ export const PaymentModal: React.FC<{
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [minimized, setMinimized] = useState(false);
-  const [inspection, setInspection] = useState<'field' | 'bank' | null>(null);
-  const [bankFromField, setBankFromField] = useState(false);
 
   const toggleItem = (id: string) => {
     setSelectedIds((prev) =>
@@ -337,9 +345,6 @@ export const PaymentModal: React.FC<{
     propGroups[col].push(p);
   }
 
-  if (inspection === 'field') return <FieldView state={state} index={0} onClose={()=>setInspection(null)} onBank={()=>{setBankFromField(true);setInspection('bank');}}/>;
-  if (inspection === 'bank') return <BankViewerModal title="Your bank" bank={player.bank} onClose={()=>setInspection(bankFromField?'field':null)}/>;
-
   if (minimized) return createPortal(<button type="button" className="payment-restore-tab" onClick={()=>{document.dispatchEvent(new Event('deal-close-artwork'));setMinimized(false);}} aria-label={`Restore payment selection, ${selectedTotal}M selected of ${amountOwed}M owed`}><span>↗ Resume payment · {amountOwed}M</span><small>{selectedTotal}M selected</small><Deadline label="Pay" deadline={e.paymentDeadline} serverTime={serverTime} frozenAt={frozenAt}/></button>,document.body);
 
   return (
@@ -358,11 +363,6 @@ export const PaymentModal: React.FC<{
             ? 'Pay your bank first, then properties. Payment goes to discard.'
             : e.key==='income_tax'?'Discard bank cards or properties to cover the tax. No change is given.': 'Choose bank cards or properties. No change is given.'}
         </p>
-
-        <div className="row">
-          <button type="button" className="quiet" onClick={()=>setInspection('field')}>View your field</button>
-          <button type="button" className="quiet" onClick={()=>{setBankFromField(false);setInspection('bank');}}>View your bank</button>
-        </div>
 
         <div id="selectionTotal">
           {selectedTotal}M selected / {amountOwed}M owed
