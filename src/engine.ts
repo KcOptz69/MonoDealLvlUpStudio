@@ -157,7 +157,6 @@ export class Game {
         p.groups=p.groups.filter((g:any)=>g.cards.length);this.s.discard.push(...lost);
         this.event('discard',{actor:i,cards:lost.map(c=>({...c})),message:'Expansion Property lost its matching-color support'});
         this.log(p.name+' discarded '+lost.length+' unsupported Expansion '+(lost.length===1?'Property.':'Properties.'));
-        this.insurance(i,lost.length,!this.isSetup()&&this.has(i,'insurance_agency'));
       }
     }
     for (let i = 0; i < this.s.players.length; i++) {
@@ -591,8 +590,8 @@ export class Game {
     this.resolve(p.e);
   }
 
-  insurance(i: number, n: number, active: boolean) {
-    if (n && active) {
+  insurance(i: number, n: number) {
+    if (n && this.has(i, 'insurance_agency')) {
       this.draw(i, n);
       this.log(this.p(i).name + ' drew ' + n + ' with Insurance Agency.');
       this.trigger(i,'insurance_agency','Drew '+n+' for lost properties',n);
@@ -603,7 +602,6 @@ export class Game {
     const i = e.actor;
     const t = e.target;
     const p = this.p(t);
-    const ins = this.has(t, 'insurance_agency');
     if(e.key==='go_to_jail'){p.jailed=true;this.log(p.name+' must pay 10M bail or skip their next turn.');this.nextEffect();return;}
     if (e.key === 'i_owe_you') {
       const debt = this.s.iou;
@@ -639,7 +637,6 @@ export class Game {
         c.evictedTurn = this.s.turnSerial || 0;
         p.hand.push(c);
         this.event('transfer', { actor: t, target: t, destination: 'hand', cards: [{ ...c }] });
-        this.insurance(t,1,ins);
       } else if (e.key === 'forced_rezoning') {
         const same = f.group.color === e.color;
         const old = f.group.id;
@@ -653,10 +650,9 @@ export class Game {
         const c = this.removeProp(t, e.property);
         this.place(i, c, color);
         this.event('transfer', { actor: t, target: i, cards: [{ ...c }] });
-        this.insurance(t, 1, ins);
+        this.insurance(t, 1);
       } else {
         const own: any = this.find(i, e.own);
-        const insI = this.has(i, 'insurance_agency');
         if (own) {
           const ca = f.group?.color;
           const cb = own.group?.color;
@@ -667,8 +663,6 @@ export class Game {
           this.clean(i);this.clean(t);
           this.event('transfer', { actor: t, target: i, cards: [{ ...a }] });
           this.event('transfer', { actor: i, target: t, cards: [{ ...b }] });
-          this.insurance(t, 1, ins);
-          this.insurance(i, 1, insI);
         }
       }
     }
@@ -685,7 +679,7 @@ export class Game {
           destination: 'field',
           cards: [...g.cards, g.house, g.hotel].filter(Boolean).map((c: any) => ({ ...c }))
         });
-        this.insurance(t, g.cards.length, ins);
+        this.insurance(t, g.cards.length);
       }
     }
     if (e.key === 'tough_luck') {
@@ -735,7 +729,6 @@ export class Game {
     if (e.key === 'luxury_tax' && picked.some(x => x.zone !== 'bank') && all.some(x => x.zone === 'bank' && !ids.includes(x.id))) {
       throw Error('Luxury Tax uses bank cards before properties.');
     }
-    const ins = this.has(i, 'insurance_agency');
     if(e.key==='rent'&&this.has(i,'rent_controlled_residence'))this.trigger(i,'rent_controlled_residence','Rent reduced by 2M',2);
     let lost = 0;
     const receiver = ['luxury_tax','income_tax','jail_bail'].includes(e.key) ? null : e.actor;
@@ -756,7 +749,7 @@ export class Game {
       else this.p(receiver).bank.push(c);
     }
     this.clean(i);
-    this.insurance(i,lost,ins);
+    if (receiver !== null && receiver !== i) this.insurance(i, lost);
     this.log(this.p(i).name + ' paid ' + sum + 'M' + (receiver === null ? ' to the discard pile.' : ' to ' + this.p(receiver).name + '.'));
     this.event('payment', { actor: i, target: receiver, key: e.key, amount: sum, owed: e.amount, cards: picked.map(x => ({ ...x.card })) });
     if(e.key==='jail_bail'){this.p(i).jailed=false;this.s.pending=null;

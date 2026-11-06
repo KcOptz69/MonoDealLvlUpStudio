@@ -700,7 +700,7 @@
     "copies": 1,
     "value": 3,
     "type": "special",
-    "text": "Draw 1 card per property taken or surrendered to pay another player, after resolution. Includes special properties."
+    "text": "Draw 1 per field property stolen by an opponent or paid to an opponent. Insurance Agency must remain in your field after the effect."
   },
   {
     "key": "i_owe_you",

@@ -19,7 +19,7 @@ test('Special trigger timing matches all eight approved rules',()=>{
  const g=fresh();give(g,0,'corporate_headquarters','special');give(g,0,'private_vault','special');give(g,0,'investment_office','special');give(g,0,'emergency_treasury','special');g.begin();const triggers=()=>g.s.events.filter(e=>e.type==='special_trigger');assert(triggers().some(e=>e.key==='private_vault'));assert(triggers().some(e=>e.key==='investment_office'));assert(triggers().some(e=>e.key==='emergency_treasury'));g.s.played=3;const c=give(g,0,'money_1m');g.play(0,c.id,'bank');assert(triggers().some(e=>e.key==='corporate_headquarters'));
  while(g.p(0).hand.length<8)give(g,0,'money_1m');g.end(0);assert(triggers().filter(e=>e.key==='private_vault').some(e=>e.message.includes('9 cards')));
  const h=fresh();give(h,0,'mediterranean_avenue','field');give(h,0,'luxury_district','special');give(h,1,'rent_controlled_residence','special');give(h,1,'insurance_agency','special');const cash=give(h,1,'money_1m','bank');const r=give(h,0,'empire_rent');h.play(0,r.id,'play',{target:1});assert(h.s.events.some(e=>e.type==='special_trigger'&&e.key==='luxury_district'));assert(!h.s.events.some(e=>e.type==='special_trigger'&&e.key==='rent_controlled_residence'));allow(h);h.pay(1,[cash.id]);assert(h.s.events.some(e=>e.type==='special_trigger'&&e.key==='rent_controlled_residence'));
- const k=fresh();const ins=give(k,1,'insurance_agency','special'),ev=give(k,0,'eviction_notice');k.play(0,ev.id,'play',{target:1,property:ins.id});allow(k);assert(k.s.events.some(e=>e.type==='special_trigger'&&e.key==='insurance_agency'));
+ const k=fresh();const ins=give(k,1,'insurance_agency','special'),ev=give(k,0,'eviction_notice');k.play(0,ev.id,'play',{target:1,property:ins.id});allow(k);assert(!k.s.events.some(e=>e.type==='special_trigger'&&e.key==='insurance_agency'));
  const parking=fresh();give(parking,0,'free_parking','special');const money=give(parking,0,'money_1m');parking.play(0,money.id,'bank');assert(parking.s.events.some(e=>e.type==='special_trigger'&&e.key==='free_parking'));
 });
 test('Shared passive events are visible to every online seat with the right player mapping',()=>{const rooms=new Rooms();const a=rooms.create('A'),b=rooms.join(a.code,'B');rooms.command(a.code,a.token,'ready',{ready:true});rooms.command(a.code,b.token,'ready',{ready:true});rooms.command(a.code,a.token,'start');const r=rooms.get(a.code,a.token).r,g=r.game;g.s.phase='play';g.s.turn=0;for(const p of g.s.players){g.s.deck.push(...p.hand);p.hand=[];}give(g,0,'emergency_treasury','special');g.begin();for(const seat of[0,1]){const v=rooms.view(r,seat);const event=v.state.events.findLast(e=>e.type==='special_trigger'&&e.key==='emergency_treasury');assert(event);assert.equal(event.actor,(0-r.gameSeats.indexOf(seat)+g.s.players.length)%g.s.players.length);assert.equal(event.message,'+3M added to bank');}rooms.close();});
@@ -124,4 +124,26 @@ test('All-Color and Expansion wilds can join an existing Silver set', () => {
   assert.equal(g.find(0,card.id).group.id,group.id);
  }
  assert(g.full(group));
+});
+
+test('Insurance Agency covers theft but not swaps, discarded payments, or its own loss', () => {
+ const theft=fresh();
+ const policy=give(theft,1,'insurance_agency','special');
+ const property=give(theft,1,'baltic_avenue','field');
+ theft.resolve({key:'sly_deal',actor:0,target:1,property:property.id});
+ assert.equal(theft.p(1).hand.length,1);
+ theft.resolve({key:'sly_deal',actor:0,target:1,property:policy.id});
+ assert.equal(theft.p(1).hand.length,1);
+ assert.equal(theft.p(0).hand.length,0);
+
+ const swap=fresh();
+ give(swap,1,'insurance_agency','special');
+ const received=give(swap,1,'baltic_avenue','field');
+ const offered=give(swap,0,'kentucky_avenue','field');
+ swap.resolve({key:'forced_deal',actor:0,target:1,property:received.id,own:offered.id});
+ assert.equal(swap.p(1).hand.length,0);
+ const effect={key:'income_tax',actor:0,target:1,amount:2};
+ swap.s.pending={kind:'payment',responder:1,e:effect};
+ swap.pay(1,[offered.id]);
+ assert.equal(swap.p(1).hand.length,0);
 });
