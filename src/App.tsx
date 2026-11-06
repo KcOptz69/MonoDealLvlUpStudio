@@ -83,6 +83,7 @@ export const App: React.FC = () => {
   const [donationCard,setDonationCard]=useState<CardInstance|null>(null);
   const [donationPicker,setDonationPicker]=useState(false);
   const [roundLimit,setRoundLimit]=useState(false);
+  const [fullRotationDefense,setFullRotationDefense]=useState(false);
   const [fastBots,setFastBots]=useState(()=>{try{return localStorage.getItem('deal_fast_bots')==='true';}catch{return false;}});
   // Selected card & previews
   const [selectedCard, setSelectedCard] = useState<CardInstance | null>(null);
@@ -183,7 +184,7 @@ export const App: React.FC = () => {
     setOnlineSession(null);
     setOnlineView(null);
 
-    const g = new Game(DECK, botCount + 1,Math.random,{roundLimit:roundLimit?10:null,fastBots});
+    const g = new Game(DECK, botCount + 1,Math.random,{roundLimit:roundLimit?10:null,fastBots,fullRotationDefense});
     g.p(0).name=playerName.trim()||'Player';g.p(0).tokenIndex=playerToken;
     g.s.log=g.s.log.map((text:string)=>text.replace(/\bYou\b/g,g.p(0).name));
     setGame(g);
@@ -377,6 +378,17 @@ export const App: React.FC = () => {
       }
     };
 
+    es.addEventListener('kicked', () => {
+      if (eventSourceRef.current !== es) return;
+      es.close();
+      eventSourceRef.current = null;
+      setOnlineSession(null);
+      setOnlineView(null);
+      setView('lobby');
+      try { localStorage.removeItem('kaze_online_session'); } catch {}
+      showToast('The host removed you from the lobby.');
+    });
+
     es.onerror = () => {
       showToast('Connection interrupted. Reconnecting…');
     };
@@ -391,7 +403,7 @@ export const App: React.FC = () => {
       try {
         localStorage.setItem('kaze_online_session', JSON.stringify(session));
       } catch {}
-      await roomRequest({...session,cmd:'options',data:{roundLimit:roundLimit?10:null,fastBots}});
+      await roomRequest({...session,cmd:'options',data:{roundLimit:roundLimit?10:null,fastBots,fullRotationDefense}});
       connectOnlineStream(session);
       setView('lobby');
     } catch (err: any) {
@@ -867,7 +879,7 @@ export const App: React.FC = () => {
   const defendingMusic = view==='game' && gameState?.winner===null && gameState?.players.some(p=>p.defending);
   useEffect(() => { setMusicScene(view==='game' ? (gameState?.winner!=null?'victory':defendingMusic?'defending':'game') : 'menu'); }, [view,defendingMusic,gameState?.winner]);
 
-  const canDonate=!!gameState&&gameState.phase!=='setup'&&gameState.winner===null&&gameState.players.length>=4&&gameState.players.length<=5&&!gameState.players[0].forfeited&&gameState.players.some(p=>p.defending&&!p.forfeited);
+  const canDonate=!!gameState&&!gameState.fullRotationDefense&&gameState.phase!=='setup'&&gameState.winner===null&&gameState.players.length>=4&&gameState.players.length<=5&&!gameState.players[0].forfeited&&gameState.players.some(p=>p.defending&&!p.forfeited);
   useEffect(()=>{if(!canDonate){setDonationCard(null);setDonationPicker(false);}},[canDonate]);
   return (
     <>
@@ -891,6 +903,8 @@ export const App: React.FC = () => {
           onStartLocal={handleStartLocal}
           roundLimit={roundLimit}
           onRoundLimitChange={setRoundLimit}
+          fullRotationDefense={fullRotationDefense}
+          onFullRotationDefenseChange={setFullRotationDefense}
           onResume={handleResume}
           hasResume={hasResume}
           onOpenRules={() => setShowRules(true)}
@@ -909,6 +923,11 @@ export const App: React.FC = () => {
           onToggleReady={handleToggleReady}
           onAddBot={handleAddBot}
           onRemoveBot={handleRemoveBot}
+          onKickPlayer={async (slot) => {
+            if (!onlineSession) return;
+            try { await roomRequest({...onlineSession, cmd:'kick', data:{slot}}); }
+            catch (err:any) { showToast(err.message); }
+          }}
           onStartGame={handleStartOnlineGame}
           onOptionsChange={async(options)=>{if(!onlineSession)return;try{const v=await roomRequest({...onlineSession,cmd:'options',data:options});setOnlineView(v);}catch(err:any){showToast(err.message);}}}
           onLeaveRoom={handleLeaveRoom}
@@ -1198,7 +1217,7 @@ export const App: React.FC = () => {
           sets={gameState.players[gameState.winner]?.groups??[]}
           protectedEstate={!!gameState.players[gameState.winner]?.protectedEstate}
           endReason={gameState.endReason}
-          shortDefense={gameState.players.length>=4}
+          shortDefense={!gameState.fullRotationDefense&&gameState.players.length>=4}
           scoreResults={gameState.scoreResults?.map(row=>({...row,name:gameState.players[row.player]?.name||'Player',token:gameState.players[row.player]?.tokenIndex??row.player,winner:!!gameState.winners?.includes(row.player)}))}
           round={gameState.round}
           logCount={gameState.log.length}

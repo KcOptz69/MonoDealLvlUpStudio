@@ -52,3 +52,28 @@ try {
  } finally {rooms.close();}
  console.log('PASS host disconnect pauses, reconnect resumes, and manual pause survives');
 }
+
+{
+ const rooms=new Rooms();
+ try {
+  const host=rooms.create('Host'),guest=rooms.join(host.code,'Guest');
+  const slot=rooms.get(host.code,guest.token).seat;
+  assert.throws(()=>rooms.command(host.code,guest.token,'kick',{slot:0}),/Only the host/);
+  assert.throws(()=>rooms.command(host.code,host.token,'kick',{slot:0}),/another player/);
+  const {EventEmitter}=require('node:events');
+  const stream=new EventEmitter();
+  let kicked='';
+  stream.write=()=>true;
+  stream.end=(message)=>{kicked=message;stream.emit('close');};
+  rooms.subscribe(host.code,guest.token,stream);
+  const view=rooms.command(host.code,host.token,'kick',{slot});
+  assert.equal(view.seats[slot],null);
+  assert.match(kicked,/event: kicked/);
+  assert.throws(()=>rooms.get(host.code,guest.token));
+  const replacement=rooms.join(host.code,'Replacement');
+  for(const player of [host,replacement])rooms.command(host.code,player.token,'ready',{ready:true});
+  rooms.command(host.code,host.token,'start');
+  assert.throws(()=>rooms.command(host.code,host.token,'kick',{slot}),/before the match/);
+ } finally {rooms.close();}
+ console.log('PASS host-only lobby kick revokes the seat and notifies the removed player');
+}

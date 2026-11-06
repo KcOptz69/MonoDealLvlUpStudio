@@ -42,7 +42,7 @@ export const RulesModal: React.FC<{ onClose: () => void }> = ({onClose}) => {
         <div id="rules-panel-quick" role="tabpanel" aria-labelledby="rules-tab-quick" hidden={tab!=='quick'}>
           <article className="rules-step"><figure className="rules-illustration"><div className="rules-hand-spread">{Array.from({length:7},(_,i)=><img key={i} src={STATIC_ART.card_back} alt={i===0?'Seven starting cards':''} draggable={false} style={{transform:`rotate(${(i-3)*4}deg) translateY(${Math.abs(i-3)*2}px)`}}/>)}</div><figcaption>7 CARDS · 3 ACTIONS</figcaption></figure><div className="rules-copy"><h3><span className="rules-step-number">1</span>Set up together</h3><p>Start with <strong>7 cards</strong>. Everyone gets <strong>3 actions</strong> to bank cards or place properties. Press <strong>Ready</strong> when finished.</p></div></article>
           <article className="rules-step"><figure className="rules-illustration"><div className="rules-card-examples"><span>{art('money_5m','5M money card')}<small>Bank</small></span><span>{art('mediterranean_avenue','Mediterranean Avenue property')}<small>Property</small></span><span>{art('pass_go','Pass Go action card')}<small>Action</small></span></div></figure><div className="rules-copy"><h3><span className="rules-step-number">2</span>Take your turn</h3><p>Draw <strong>2 cards</strong>, or <strong>5 if your hand starts empty</strong>. Use up to <strong>3 actions</strong> to:</p><ul><li>Bank money or action cards.</li><li>Place properties.</li><li>Play action cards.</li></ul><p>When ending your turn, you may draw <strong>1 card per unused action</strong>. Finish with <strong>7 cards or fewer</strong>. Special cards can change these limits.</p></div></article>
-          <article className="rules-step"><figure className="rules-illustration"><div className="rules-complete-sets">{[{color:'Brown',keys:['mediterranean_avenue','baltic_avenue']},{color:'Dark Blue',keys:['park_place','boardwalk']},{color:'Utility',keys:['electric_company','water_works']}].map(set=><div key={set.color} className="rules-mini-set" style={{'--set-color':COLORS[set.color].hex} as React.CSSProperties} aria-label={'Complete '+set.color+' set'}><div>{set.keys.map(key=><img key={key} src={getCardArt(key)} alt={getCardDef(key).name} loading="lazy" draggable={false}/>)}</div><b aria-hidden="true">✓</b></div>)}</div><figcaption>3 COMPLETE SETS</figcaption></figure><div className="rules-copy"><h3><span className="rules-step-number">3</span>Build and defend</h3><p>Finish your turn with <strong>3 complete sets of different colors</strong>.</p><ul><li><strong>2–3 players:</strong> defend for one full rotation.</li><li><strong>4–5 players:</strong> defend through two opponents’ turns.</li></ul><p>Dropping below three complete sets cancels your defense.</p></div></article>
+          <article className="rules-step"><figure className="rules-illustration"><div className="rules-complete-sets">{[{color:'Brown',keys:['mediterranean_avenue','baltic_avenue']},{color:'Dark Blue',keys:['park_place','boardwalk']},{color:'Utility',keys:['electric_company','water_works']}].map(set=><div key={set.color} className="rules-mini-set" style={{'--set-color':COLORS[set.color].hex} as React.CSSProperties} aria-label={'Complete '+set.color+' set'}><div>{set.keys.map(key=><img key={key} src={getCardArt(key)} alt={getCardDef(key).name} loading="lazy" draggable={false}/>)}</div><b aria-hidden="true">✓</b></div>)}</div><figcaption>3 COMPLETE SETS</figcaption></figure><div className="rules-copy"><h3><span className="rules-step-number">3</span>Build and defend</h3><p>Finish your turn with <strong>3 complete sets of different colors</strong>.</p><ul><li><strong>2–3 players:</strong> defend for one full rotation.</li><li><strong>4–5 players:</strong> defend through two opponents’ turns by default. Full Rotation Defense lasts until your next turn and disables donations.</li></ul><p>Dropping below three complete sets cancels your defense.</p></div></article>
         </div>
         <div id="rules-panel-payments" role="tabpanel" aria-labelledby="rules-tab-payments" hidden={tab!=='payments'}>
           <article className="rules-step"><figure className="rules-illustration"><div className="rules-card-examples rules-payment-art"><span>{art('money_5m','Money in your bank')}</span><span>{art('park_place','Property in your field')}</span><span>{art('i_owe_you','I Owe You payment replacement card')}</span></div></figure><div className="rules-copy"><h3>Pay from your bank or field.</h3><p>Overpayments receive no change. If you cannot cover the bill, pay all eligible assets. <strong>I Owe You</strong> can replace a payment.</p></div></article>
@@ -281,6 +281,8 @@ export const PaymentModal: React.FC<{
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [minimized, setMinimized] = useState(false);
+  const [inspection, setInspection] = useState<'field' | 'bank' | null>(null);
+  const [bankFromField, setBankFromField] = useState(false);
 
   const toggleItem = (id: string) => {
     setSelectedIds((prev) =>
@@ -322,6 +324,9 @@ export const PaymentModal: React.FC<{
     propGroups[col].push(p);
   }
 
+  if (inspection === 'field') return <FieldView state={state} index={0} onClose={()=>setInspection(null)} onBank={()=>{setBankFromField(true);setInspection('bank');}}/>;
+  if (inspection === 'bank') return <BankViewerModal title="Your bank" bank={player.bank} onClose={()=>setInspection(bankFromField?'field':null)}/>;
+
   if (minimized) return createPortal(<button type="button" className="payment-restore-tab" onClick={()=>{document.dispatchEvent(new Event('deal-close-artwork'));setMinimized(false);}} aria-label={`Restore payment selection, ${selectedTotal}M selected of ${amountOwed}M owed`}><span>↗ Resume payment · {amountOwed}M</span><small>{selectedTotal}M selected</small><Deadline label="Pay" deadline={e.paymentDeadline} serverTime={serverTime} frozenAt={frozenAt}/></button>,document.body);
 
   return (
@@ -340,6 +345,11 @@ export const PaymentModal: React.FC<{
             ? 'Pay your bank first, then properties. Payment goes to discard.'
             : e.key==='income_tax'?'Discard bank cards or properties to cover the tax. No change is given.': 'Choose bank cards or properties. No change is given.'}
         </p>
+
+        <div className="row">
+          <button type="button" className="quiet" onClick={()=>setInspection('field')}>View your field</button>
+          <button type="button" className="quiet" onClick={()=>{setBankFromField(false);setInspection('bank');}}>View your bank</button>
+        </div>
 
         <div id="selectionTotal">
           {selectedTotal}M selected / {amountOwed}M owed

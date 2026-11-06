@@ -48,3 +48,29 @@
 @media (prefers-reduced-motion: reduce) {
   .illustrated-turn { animation: none; }
 }
+
+.illustrated-defense > img { aspect-ratio: auto; }
+.illustrated-defense-instruction {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  margin: 0;
+  text-align: center;
+  font-weight: 600;
+  color: #fff1cf;
+  text-shadow: 0 1px 3px #000;
+}
+.turn-notice .illustrated-defense > .player-token {
+  left: 13.2%;
+  top: 55%;
+  width: 9%;
+}
+.illustrated-defense > .illustrated-turn-name {
+  left: 29%;
+  top: 70.6%;
+  width: 39%;
+  font-size: 3cqw;
+}
+.turn-notice .illustrated-defense-failed > .player-token { top: 51.1%; }
+.illustrated-defense-failed > .illustrated-turn-name { top: 66.5%; }

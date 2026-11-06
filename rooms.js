@@ -16,6 +16,19 @@ class Rooms{
  get(code,t){let r=this.rooms.get(String(code).toUpperCase());if(!r)throw Error('Room not found.');if(typeof t!=='string'||t.length!==48)throw Error('Invalid room session.');let seat=r.seats.findIndex(s=>s&&s.token===t);if(seat<0)throw Error('Invalid room session.');r.updated=Date.now();return{r,seat}}
  join(code,name,tokenIndex=0){let r=this.rooms.get(String(code).toUpperCase());if(!r)throw Error('Room not found.');if(r.game)throw Error('This game has already started.');let i=r.seats.findIndex(s=>!s);if(i<0)throw Error('Room is full.');let t=token();r.seats[i]={name:this.name(name),token:t,ready:false,bot:false,tokenIndex:Number.isInteger(tokenIndex)&&tokenIndex>=0&&tokenIndex<TOKEN_COUNT?tokenIndex:0};this.broadcast(r);return{code:r.code,token:t}}
  command(code,t,cmd,data={}){let{r,seat}=this.get(code,t),host=t===r.host;const beforeClock=r.game?.s.eventSeq,beforePending=r.game?.s.pending,beforeTurn=r.game?.s.turnSerial;this.syncClocks(r);if(beforeClock!==r.game?.s.eventSeq||beforePending!==r.game?.s.pending||beforeTurn!==r.game?.s.turnSerial){this.broadcast(r);this.schedule(r);}if(cmd==='leave'){if(r.game)throw Error('Your match seat is reserved. Disconnect and reconnect to resume.');r.seats[seat]=null;for(const [id,x]of r.streams)if(x.seat===seat){r.streams.delete(id);x.res.end()}if(host){const next=r.seats.find(s=>s&&!s.bot);if(next){r.host=next.token;for(const s of r.seats)if(s&&!s.bot)s.ready=false}else{r.closed=true;clearTimeout(r.timer);this.rooms.delete(r.code);return{left:true}}}this.broadcast(r);return{left:true}}
+ if(cmd==='kick'){
+  if(!host||r.game)throw Error('Only the host can remove players before the match starts.');
+  const slot=data.slot,target=r.seats[slot];
+  if(!Number.isInteger(slot)||!target||target.bot||target.token===r.host)throw Error('Choose another player in the lobby.');
+  r.seats[slot]=null;
+  for(const [id,stream] of r.streams){
+   if(stream.seat!==slot)continue;
+   r.streams.delete(id);
+   stream.res.end('event: kicked\ndata: {}\n\n');
+  }
+  this.broadcast(r);
+  return this.view(r,seat);
+ }
  if(cmd==='pause'){if(!host)throw Error('Only the host can pause the match.');if(!r.game||r.game.s.winner!==null)throw Error('No active match to pause.');if(typeof data.paused!=='boolean')throw Error('Invalid pause state.');if(r.hostDisconnected)throw Error('Reconnect before changing the pause state.');this.setPaused(r,data.paused);this.broadcast(r);this.schedule(r);return this.view(r,seat);}
  if(r.paused&&['action','cooperation-skip'].includes(cmd))throw Error(r.hostDisconnected?'Waiting for the host to reconnect.':'The host paused the game.');
  if(cmd==='cooperation-skip'){if(!r.game||r.seats[seat]?.forfeited)throw Error('No active match seat.');if(this.syncCooperation(r)){this.broadcast(r);this.schedule(r);}voteCooperationSkip(r.game,r.gameSeats.indexOf(seat),data.id);this.broadcast(r);this.schedule(r);return this.view(r,seat)}
@@ -28,11 +41,13 @@ class Rooms{
   if(!host)throw Error('Only the host can change match options.');
   r.options||(r.options={roundLimit:null,fastBots:false});
   if('roundLimit' in data){if(r.game)throw Error('Choose the round limit before starting.');if(data.roundLimit!==null&&data.roundLimit!==10)throw Error('Round limit must be 10 or off.');}
+  if('fullRotationDefense' in data&&(r.game||typeof data.fullRotationDefense!=='boolean'))throw Error('Choose Full Rotation Defense before starting.');
   if('fastBots' in data&&typeof data.fastBots!=='boolean')throw Error('Invalid bot pace.');
-  const roundChanged='roundLimit' in data&&data.roundLimit!==r.options.roundLimit;
+  const rulesChanged=('roundLimit' in data&&data.roundLimit!==r.options.roundLimit)||('fullRotationDefense' in data&&data.fullRotationDefense!==!!r.options.fullRotationDefense);
+  if('fullRotationDefense' in data)r.options.fullRotationDefense=data.fullRotationDefense;
   if('roundLimit' in data)r.options.roundLimit=data.roundLimit;
   if('fastBots' in data){r.options.fastBots=data.fastBots;if(r.game)r.game.s.fastBots=data.fastBots;clearTimeout(r.timer);r.timer=null;r.reveal=null;r.parallel?.clear();}
-  if(roundChanged)for(const profile of r.seats)if(profile&&!profile.bot)profile.ready=false;
+  if(rulesChanged)for(const profile of r.seats)if(profile&&!profile.bot)profile.ready=false;
   this.broadcast(r);this.schedule(r);return this.view(r,seat);
  }
  if(cmd==='ready'){if(r.game)throw Error('Game already started.');r.seats[seat].ready=!!data.ready}

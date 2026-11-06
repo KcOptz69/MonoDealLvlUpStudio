@@ -1,7 +1,7 @@
 export const COOPERATION_MS=30000;
 export interface CooperationWindow {id:string;actor:number;deadline:number;eligible:number[];votes:number[]}
 const turnKey=(g:any)=>`${g.s.turnSerial||0}:${g.s.turn}`;
-const activeDefense=(g:any)=>g.s.phase!=='setup'&&g.s.winner===null&&g.s.players.length>=4&&g.s.players.length<=5&&g.s.players.some((p:any)=>p.defending&&!p.forfeited);
+const activeDefense=(g:any)=>!g.s.fullRotationDefense&&g.s.phase!=='setup'&&g.s.winner===null&&g.s.players.length>=4&&g.s.players.length<=5&&g.s.players.some((p:any)=>p.defending&&!p.forfeited);
 // Opponents who can still complete a turn before this defender wins.
 export function interventionOrder(g:any,defender:number):number[]{
  let left=g.p(defender).defenseRemaining??g.s.players.length-1;const order:number[]=[];

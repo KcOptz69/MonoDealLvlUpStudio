@@ -103,6 +103,7 @@ export interface GameState {
   cooperationTurn?:string;
   botDonationTurn?:string;
   roundLimit?:number|null;
+  fullRotationDefense?:boolean;
   fastBots?:boolean;
   roundCompleted?:number[];
   winners?:number[];
@@ -150,7 +151,7 @@ export interface OnlineRoomView {
   pausedAt?:number;
   clock?:{remaining:number;limit:number;running:boolean};
   serverTime?:number;
-  options?:{roundLimit:number|null;fastBots:boolean};
+  options?:{roundLimit:number|null;fastBots:boolean;fullRotationDefense?:boolean};
   matchActive?:boolean;
   chat?: ChatMessage[];
   code: string;

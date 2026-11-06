@@ -11,6 +11,18 @@ export function TurnNotices({state}:{state:GameState}){
  if(!queue.length)return null;
  const n=queue[0];
  const opponent=n.title==='OPPONENT’S TURN';
+ if(n.failed||n.defending){
+   const instruction=n.failed?'Rebuild three complete sets to defend again':
+     !state.fullRotationDefense&&state.players.length>=4?'Hold three sets through two opponents’ turns':'Hold three sets until your next turn';
+   return <div className="turn-notice" aria-live="polite">
+     <div className={'illustrated-turn illustrated-defense'+(n.failed?' illustrated-defense-failed':'')} key={n.title+n.name}>
+       <img src={n.failed?'/ui/defense-failed.webp':'/ui/defending-phase.webp'} alt={n.title}/>
+       <PlayerToken index={n.token}/>
+       <strong className="illustrated-turn-name" title={n.name}>{n.name}</strong>
+       <p className="illustrated-defense-instruction">{instruction}</p>
+     </div>
+   </div>;
+ }
  if(opponent||n.title==='YOUR TURN'){
    return <div className="turn-notice" aria-live="polite">
      <div className="illustrated-turn" key={n.title+n.name}>
@@ -19,5 +31,5 @@ export function TurnNotices({state}:{state:GameState}){
      </div>
    </div>;
  }
- return <div className={'turn-notice'+(n.failed?' defense-failed-notice':n.defending?' defense-notice':'')} aria-live="polite"><section key={n.title+n.name}><PlayerToken index={n.token}/><div><small>{n.name}</small><h2>{n.title}</h2><p>{n.failed?'Rebuild three complete sets to defend again':n.defending?(state.players.length>=4?'Hold three sets through two opponents’ turns':'Three complete sets · Defend for one rotation'):state.phase==='setup'?'Everyone sets up together · 3 actions each':'Build · Steal · Defend'}</p></div></section></div>;
+ return <div className="turn-notice" aria-live="polite"><section key={n.title+n.name}><PlayerToken index={n.token}/><div><small>{n.name}</small><h2>{n.title}</h2><p>Everyone sets up together · 3 actions each</p></div></section></div>;
 }

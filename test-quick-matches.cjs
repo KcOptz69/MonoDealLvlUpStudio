@@ -70,3 +70,19 @@ for (const n of [4,5]) {
  }
 }
 console.log('PASS jailed defense claims require bail and three surviving sets in four- and five-player games');
+
+for (const players of [4,5]) {
+ const g=fresh(players,{fullRotationDefense:true});
+ sets(g,0);
+ const card=take(g,'money_1m');
+ g.p(1).hand.push(card);
+ g.finishTurn(0);
+ assert(g.p(0).defending);
+ assert.throws(()=>g.donate(1,card.id,0),/Donations are disabled/);
+ for(let i=1;i<players;i++){
+  assert.equal(g.s.winner,null);
+  g.finishTurn(i);
+ }
+ assert.equal(g.s.winner,0);
+}
+console.log('PASS optional Full Rotation Defense waits for every opponent and disables donations');

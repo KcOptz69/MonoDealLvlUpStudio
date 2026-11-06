@@ -32,7 +32,7 @@ export class Game {
   random: () => number;
   s: any;
 
-  constructor(defs: any[], n = 3, random = Math.random, options:{roundLimit?:number|null;fastBots?:boolean}={}) {
+  constructor(defs: any[], n = 3, random = Math.random, options:{roundLimit?:number|null;fastBots?:boolean;fullRotationDefense?:boolean}={}) {
     this.defs = defs;
     this.random = random;
     const botNames = [...BOT_NAMES];
@@ -40,6 +40,7 @@ export class Game {
     this.s = {
       version: 1,
       roundLimit:options.roundLimit===10?10:null,
+      fullRotationDefense:options.fullRotationDefense===true,
       fastBots:!!options.fastBots,
       roundCompleted:[],
       players: Array.from({ length: n }, (_, i) => ({
@@ -792,6 +793,7 @@ export class Game {
   }
 
   donate(i:number,id:string,target:number){
+    if(this.s.fullRotationDefense)throw Error('Donations are disabled in Full Rotation Defense.');
     if(this.s.winner!==null||this.isSetup()||this.s.players.length<4||this.s.players.length>5||!this.s.players.some((p:any)=>p.defending&&!p.forfeited))throw Error('Free donations are available only during defense in a 4–5-player game.');
     if(!Number.isInteger(target)||target<0||target>=this.s.players.length||target===i||this.p(target).forfeited||this.p(i).forfeited)throw Error('Choose another active player.');
     const card=this.takeHand(i,id);
@@ -992,8 +994,8 @@ export class Game {
     }
     if (this.sets(i) >= 3 && !this.p(i).defending) {
       this.p(i).defending = true;
-      this.p(i).defenseRemaining=this.s.players.length>=4?2:null;
-      this.log(this.p(i).name + (this.s.players.length>=4?' is defending three sets for two opponents’ turns!':' is defending three sets!'));
+      this.p(i).defenseRemaining=!this.s.fullRotationDefense&&this.s.players.length>=4?2:null;
+      this.log(this.p(i).name + (!this.s.fullRotationDefense&&this.s.players.length>=4?' is defending three sets for two opponents’ turns!':' is defending three sets!'));
     }
     const active=this.s.players.map((p:any,j:number)=>!p.forfeited?j:-1).filter((j:number)=>j>=0);
     if(active.length<=1){this.s.winner=active[0]??null;return;}

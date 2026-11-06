@@ -49,6 +49,7 @@ class Game {
         this.s = {
             version: 1,
             roundLimit: options.roundLimit === 10 ? 10 : null,
+            fullRotationDefense: options.fullRotationDefense === true,
             fastBots: !!options.fastBots,
             roundCompleted: [],
             players: Array.from({ length: n }, (_, i) => ({
@@ -972,6 +973,7 @@ class Game {
         this.log(this.p(i).name + ' offered I Owe You instead of paying.');
     }
     donate(i, id, target) {
+        if (this.s.fullRotationDefense) throw Error('Donations are disabled in Full Rotation Defense.');
         if (this.s.winner !== null || this.isSetup() || this.s.players.length < 4 || this.s.players.length > 5 || !this.s.players.some((p) => p.defending && !p.forfeited))
             throw Error('Free donations are available only during defense in a 4–5-player game.');
         if (!Number.isInteger(target) || target < 0 || target >= this.s.players.length || target === i || this.p(target).forfeited || this.p(i).forfeited)
@@ -1188,8 +1190,8 @@ class Game {
         }
         if (this.sets(i) >= 3 && !this.p(i).defending) {
             this.p(i).defending = true;
-            this.p(i).defenseRemaining = this.s.players.length >= 4 ? 2 : null;
-            this.log(this.p(i).name + (this.s.players.length >= 4 ? ' is defending three sets for two opponents’ turns!' : ' is defending three sets!'));
+            this.p(i).defenseRemaining = !this.s.fullRotationDefense && this.s.players.length >= 4 ? 2 : null;
+            this.log(this.p(i).name + (!this.s.fullRotationDefense && this.s.players.length >= 4 ? ' is defending three sets for two opponents’ turns!' : ' is defending three sets!'));
         }
         const active = this.s.players.map((p, j) => !p.forfeited ? j : -1).filter((j) => j >= 0);
         if (active.length <= 1) {

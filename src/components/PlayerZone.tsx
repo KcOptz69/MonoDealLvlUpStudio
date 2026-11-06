@@ -90,7 +90,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
   const bankTotal = (player?.bank || []).reduce((sum, c) => sum + getCardDef(c).value, 0);
 
   const freeBank=state.phase!=='setup'&&player.special.some(c=>c.key==='free_parking')&&!player.freeBankUsed;
-  const freeSelected=selectedCard&&['community_chest','chance'].includes(selectedCard.key);
+  const freeSelected=selectedCard&&['community_chest','chance','bank_withdrawal'].includes(selectedCard.key);
   const canAct = myTurn && !state.pending && state.winner === null && used < limit;
 
   // Selected card actions
@@ -320,7 +320,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
                     Bank {freeBank?'(FREE)':selectedDef.value+'M'}
                   </button>
                 )}
-                {onDonateCard&&state.players.length>=4&&state.players.length<=5&&state.winner===null&&state.phase!=='setup'&&state.players.some(p=>p.defending&&!p.forfeited)&&<button type="button" className="quiet donate-hand-button" onClick={()=>onDonateCard(selectedCard)}>Donate (FREE)</button>}
+                {onDonateCard&&!state.fullRotationDefense&&state.players.length>=4&&state.players.length<=5&&state.winner===null&&state.phase!=='setup'&&state.players.some(p=>p.defending&&!p.forfeited)&&<button type="button" className="quiet donate-hand-button" onClick={()=>onDonateCard(selectedCard)}>Donate (FREE)</button>}
               </>
             ) : (
               <span className="hand-action-hint">

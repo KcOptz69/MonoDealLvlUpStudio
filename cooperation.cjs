@@ -7,7 +7,7 @@ exports.syncCooperation = syncCooperation;
 exports.voteCooperationSkip = voteCooperationSkip;
 exports.COOPERATION_MS = 30000;
 const turnKey = (g) => `${g.s.turnSerial || 0}:${g.s.turn}`;
-const activeDefense = (g) => g.s.phase !== 'setup' && g.s.winner === null && g.s.players.length >= 4 && g.s.players.length <= 5 && g.s.players.some((p) => p.defending && !p.forfeited);
+const activeDefense = (g) => !g.s.fullRotationDefense && g.s.phase !== 'setup' && g.s.winner === null && g.s.players.length >= 4 && g.s.players.length <= 5 && g.s.players.some((p) => p.defending && !p.forfeited);
 // Opponents who can still complete a turn before this defender wins.
 function interventionOrder(g, defender) {
     let left = g.p(defender).defenseRemaining ?? g.s.players.length - 1;
