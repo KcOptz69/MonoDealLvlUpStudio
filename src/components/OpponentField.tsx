@@ -65,13 +65,13 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
           <section
             key={playerIndex}
             data-player={playerIndex}
-            className={`opponent ${isActive ? 'active' : ''} ${p.defending ? 'opponent-defending' : ''}`}
+            className={`opponent ${isActive ? 'active' : ''} ${p.defending ? 'opponent-defending' : ''} ${p.sanctuary ? 'sanctuary-active' : ''}`}
             aria-label={`${p.name}’s board`}
             tabIndex={0}
             onClick={e=>{if(!(e.target as Element).closest('button'))onViewPlayer(playerIndex);}}
             onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();onViewPlayer(playerIndex);}}}
           >
-            {p.jailed&&<img className="jail-field-icon" src="/ui/jail.png" alt="In Jail"/>}<div className="ophead">
+            {p.jailed&&<img className="jail-field-icon" src="/ui/jail.webp" alt="In Jail"/>}<div className="ophead">
               <button
                 type="button"
                 className="opponent-open"
@@ -85,6 +85,7 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
                     ? state.pending.kind==='payment'?'Paying':state.pending.kind==='counter'?'Responding':state.pending.kind==='estate'?'Choosing purchase':'Choosing'
                     : isSetup ? p.setupDone?'✓ Ready':`${3-(p.setupPlayed||0)} setup actions`
                     : p.defending?`Defending · ${remainingDefense(playerIndex)} turns`
+                    : p.sanctuary?'🛡 Sanctuary'
                     : state.turn===playerIndex?'● Playing':'Waiting'}
                 </span>
               </button>
@@ -100,7 +101,8 @@ export const OpponentField: React.FC<OpponentFieldProps> = ({
             <div className="opmeta">
               <span className="opponent-hand-count"><span className="card-stack-icon" aria-hidden="true"><img src={STATIC_ART.card_back} alt=""/></span>{p.hand.length} cards</span>
               <span>{setsCount} / 3 sets</span>
-              <span className={'opponent-mobile-status'+(p.defending?' defending-status':'')+(state.pending?.responder===playerIndex?' needs-response':'')}>{p.forfeited?'In lobby':state.pending?.responders?.includes(playerIndex)||state.pending?.payments?.some(e=>e.target===playerIndex)||state.pending?.responder===playerIndex ? state.pending.kind==='payment'?'Paying':state.pending.kind==='counter'?'Responding':state.pending.kind==='estate'?'Choosing purchase':'Choosing' : isSetup ? p.setupDone?'Ready':`${3-(p.setupPlayed||0)} setup actions` : p.defending?`Defending · ${remainingDefense(playerIndex)} turns`:state.turn===playerIndex?'● Playing':'Waiting'}</span>
+              {p.sanctuary && <span className="sanctuary-badge" title="Protected from rent and hostile actions until their next turn">SANCTUARY</span>}
+              <span className={'opponent-mobile-status'+(p.defending?' defending-status':'')+(p.sanctuary?' sanctuary-status':'')+(state.pending?.responder===playerIndex?' needs-response':'')}>{p.forfeited?'In lobby':state.pending?.responders?.includes(playerIndex)||state.pending?.payments?.some(e=>e.target===playerIndex)||state.pending?.responder===playerIndex ? state.pending.kind==='payment'?'Paying':state.pending.kind==='counter'?'Responding':state.pending.kind==='estate'?'Choosing purchase':'Choosing' : isSetup ? p.setupDone?'Ready':`${3-(p.setupPlayed||0)} setup actions` : p.defending?`Defending · ${remainingDefense(playerIndex)} turns`:p.sanctuary?'🛡 Sanctuary':state.turn===playerIndex?'● Playing':'Waiting'}</span>
               {p.defending && (
                 <span className="defense">
                   DEFENDING · {remainingDefense(playerIndex)} turns to victory

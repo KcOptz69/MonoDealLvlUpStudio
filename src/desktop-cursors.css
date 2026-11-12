@@ -1,8 +1,8 @@
 @media (any-pointer: fine) {
   html {
-    --cursor-arrow: url('/ui/cursors/arrow.png') 5 2, default;
-    --cursor-glove: url('/ui/cursors/glove.png') 15 2, pointer;
-    --cursor-stack: url('/ui/cursors/cards.png') 15 15, grabbing;
+    --cursor-arrow: url('/ui/cursors/arrow.webp') 5 2, default;
+    --cursor-glove: url('/ui/cursors/glove.webp') 15 2, pointer;
+    --cursor-stack: url('/ui/cursors/cards.webp') 15 15, grabbing;
     cursor: var(--cursor-arrow);
   }
   body, #root, .app, .table, .opponent, button:disabled {

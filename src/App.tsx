@@ -16,10 +16,12 @@ import {TurnNotices} from './components/TurnNotices';
 import './tabletop.css';
 import {GameFeedback} from './GameFeedback';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { GameState, CardInstance, OnlineRoomView } from './types';
 import { Game, DECK, COLORS, getCardDef } from './engineBridge';
 import { isSoundEnabled, setSoundEnabled, playSound } from './audio';
 import { setMusicScene, setMusicEnabled, musicEnabled } from './music';
+import { LoadingScreen } from './components/LoadingScreen';
 import { MainMenu } from './components/MainMenu';
 import { OnlineLobby } from './components/OnlineLobby';
 import { TopBar } from './components/TopBar';
@@ -54,15 +56,22 @@ import {EstatePurchaseModal} from './components/ProtectedEstate';
 import {ToughLuckResult} from './components/ToughLuckResult';
 import {Deadline} from './components/OnlineClock';
 
-type ViewMode = 'menu' | 'lobby' | 'game';
+type ViewMode = 'loading' | 'menu' | 'lobby' | 'game';
 
 export const App: React.FC = () => {
   const {mobile,portrait}=useMobileLayout();
   const PlayerArea=mobile?MobilePlayerPanels:PlayerZone;
   const [hideHand,setHideHand]=useState(false);
-  const [view, setView] = useState<ViewMode>('menu');
+  const [chanceMinimized, setChanceMinimized] = useState(false);
+  const [view, setView] = useState<ViewMode>('loading');
   const [game, setGame] = useState<any>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
+
+  useEffect(() => {
+    if (gameState?.pending?.kind !== 'chance' || gameState?.pending?.responder !== 0) {
+      setChanceMinimized(false);
+    }
+  }, [gameState?.pending?.kind, gameState?.pending?.responder]);
 
   // Online multiplayer state
   const [onlineSession, setOnlineSession] = useState<{ code: string; token: string } | null>(null);
@@ -883,7 +892,6 @@ export const App: React.FC = () => {
   useEffect(()=>{if(!canDonate){setDonationCard(null);setDonationPicker(false);}},[canDonate]);
   return (
     <>
-      {view==='game'&&onlineSession&&onlineView?.host&&gameState?.pending&&<button className="quiet host-pause-shortcut" onClick={async()=>{try{await roomRequest({...onlineSession,cmd:'pause',data:{paused:!onlineView.paused}});}catch(err:any){showToast(err.message);}}}>{onlineView.paused?'Resume game':'Pause game'}</button>}
       {view==='game'&&canDonate&&gameState?.pending&&!donationCard&&!donationPicker&&gameState.players[0].hand.length>0&&<button className="quiet donation-shortcut" onClick={()=>setDonationPicker(true)}>Donate (FREE)</button>}
       {view==='game'&&canDonate&&donationPicker&&gameState&&<DonationHandPicker state={gameState} onClose={()=>setDonationPicker(false)} onPick={card=>{setDonationPicker(false);setDonationCard(card);}}/>}
       <MobileTableOverlays enabled={mobile} portrait={portrait}/>
@@ -894,6 +902,11 @@ export const App: React.FC = () => {
         <div id="notifications" aria-live="polite">
           <div className="toast">{toastMessage}</div>
         </div>
+      )}
+
+      {/* Asset Preloading & Gate Screen */}
+      {view === 'loading' && (
+        <LoadingScreen onPlay={() => setView('menu')} />
       )}
 
       {/* One main menu contains local controls and the online lobby. */}
@@ -1186,9 +1199,60 @@ export const App: React.FC = () => {
           />
         )}
 
-      {gameState?.pending?.responder===0&&['jail','chance'].includes(gameState.pending.kind)&&<div className="overlay"><section className="modal new-rule-choice" role="dialog" aria-modal="true" aria-label="Resolve card effect">
-        {gameState.pending.kind==='jail'?<><img className="jail-choice-art" src="/ui/jail.png" alt="In Jail"/><h2>{gameState.pending.e.defenseBail?'Pay bail to claim victory':'Pay bail or skip your turn'}</h2><p>{gameState.pending.e.defenseBail?'Discard at least 10M from your bank or field and keep three complete sets to win.':'Discard at least 10M from your bank and/or field to take this turn.'}</p><button className="gold" onClick={()=>runChoice('jail',[true])}>Pay 10M bail</button><button className="quiet" onClick={()=>runChoice('jail',[false])}>{gameState.pending.e.defenseBail?'Decline victory claim':'Skip this turn'}</button></>:gameState.pending.kind==='chance'?<><h2>Chance · keep one card</h2><div className="chance-options">{gameState.pending.cards?.map(c=><button key={c.id} onClick={()=>runChoice('choose',[c.id])}><img src={getCardArt(c)} alt={getCardDef(c).name}/></button>)}</div></>:<><h2>Expansion Property · join an existing set</h2>{gameState.pending.colors?.map(color=><button className="quiet" key={color} onClick={()=>runChoice('choose',[color])}>{color}</button>)}</>}
-      </section></div>}
+      {gameState?.pending?.responder === 0 && gameState.pending.kind === 'jail' && (
+        <div className="overlay">
+          <section className="modal new-rule-choice" role="dialog" aria-modal="true" aria-label="Resolve card effect">
+            <img className="jail-choice-art" src="/ui/jail.webp" alt="In Jail"/>
+            <h2>{gameState.pending.e.defenseBail ? 'Pay bail to claim victory' : 'Pay bail or skip your turn'}</h2>
+            <p>{gameState.pending.e.defenseBail ? 'Discard at least 10M from your bank or field and keep three complete sets to win.' : 'Discard at least 10M from your bank and/or field to take this turn.'}</p>
+            <button className="gold" onClick={() => runChoice('jail', [true])}>Pay 10M bail</button>
+            <button className="quiet" onClick={() => runChoice('jail', [false])}>{gameState.pending.e.defenseBail ? 'Decline victory claim' : 'Skip this turn'}</button>
+          </section>
+        </div>
+      )}
+
+      {gameState?.pending?.responder === 0 && gameState.pending.kind === 'chance' && (
+        chanceMinimized ? (
+          createPortal(
+            <button
+              type="button"
+              className="payment-restore-tab chance-restore-tab"
+              onClick={() => {
+                document.dispatchEvent(new Event('deal-close-artwork'));
+                setChanceMinimized(false);
+              }}
+              aria-label="Restore Chance card selection"
+            >
+              <span>↗ Resume Chance · Choose 1 card</span>
+              <small>{gameState.pending.cards?.length || 3} cards available</small>
+            </button>,
+            document.body
+          )
+        ) : (
+          <div className="overlay">
+            <section className="modal new-rule-choice chance-choice-modal" role="dialog" aria-modal="true" aria-label="Resolve Chance card">
+              <div className="modalhead">
+                <h2>Chance · keep one card</h2>
+                <button
+                  type="button"
+                  className="quiet payment-minimize chance-minimize"
+                  onClick={() => setChanceMinimized(true)}
+                  aria-label="Minimize Chance to inspect board"
+                >
+                  − Minimize
+                </button>
+              </div>
+              <div className="chance-options">
+                {gameState.pending.cards?.map((c) => (
+                  <button key={c.id} onClick={() => runChoice('choose', [c.id])} aria-label={`Choose ${getCardDef(c).name}`}>
+                    <img src={getCardArt(c)} alt={getCardDef(c).name} />
+                  </button>
+                ))}
+              </div>
+            </section>
+          </div>
+        )
+      )}
       {gameState?.pending?.kind==='expansion'&&gameState.pending.responder===0&&<ExpansionSelector state={gameState} card={gameState.pending.card!} transferring onSelect={g=>runChoice('choose',[g.id])}/>}
       {view==='game'&&gameState?.pending?.kind==='estate'&&gameState.pending.responder===0&&<EstatePurchaseModal key={gameState.turnSerial} state={gameState} onChoose={async(buy)=>{if(onlineSession){await roomRequest({...onlineSession,cmd:'action',data:{method:'estate',args:[buy]}});}else{game.estate(0,buy);refreshGameState(game);saveLocalGame(game);}}}/>}
       {/* Hand Limit Discard Modal */}

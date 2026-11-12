@@ -34,7 +34,7 @@ export const TargetingWizard: React.FC<TargetingWizardProps> = ({
   // Candidate opponents
   const opponents = state.players
     .map((p, idx) => ({ player: p, index: idx }))
-    .filter(({ index,player }) => index !== 0 && !player.forfeited);
+    .filter(({ index,player }) => index !== 0 && !player.forfeited && !player.sanctuary);
 
   // Tough luck requires an opponent with >= 1 complete set
   const eligibleOpponents = opponents.filter(({ player, index }) => {

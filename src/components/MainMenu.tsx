@@ -1,6 +1,7 @@
 import {PlayerToken,TOKENS} from './PlayerToken';
 import React, { useState } from 'react';
 import { STATIC_ART } from '../cardArt';
+import { useFullscreen } from '../fullscreen';
 import '../menu.css';
 interface MainMenuProps {
   playerName:string;
@@ -24,8 +25,31 @@ interface MainMenuProps {
 export const MainMenu:React.FC<MainMenuProps>=({playerName,playerToken,onNameChange,onTokenChange,profileBusy,onStartLocal,onResume,hasResume,onOpenRules,onOpenAudit,onOpenSettings,onlineContent,inRoom,roundLimit=false,onRoundLimitChange,fullRotationDefense=false,onFullRotationDefenseChange})=>{
  const [botCount,setBotCount]=useState(2);
  const [tokenPicker,setTokenPicker]=useState(false);
+ const { isFullscreen, toggleFullscreen, supported } = useFullscreen();
  return <main className="home-menu">
-  <header className="home-header"><img src={STATIC_ART.logo} alt="Monopoly Deal Lvl. Up — made by Kaze"/></header>
+  <header className="home-header">
+    <img src={STATIC_ART.logo} alt="Monopoly Deal Lvl. Up — made by Kaze"/>
+    {supported && (
+      <button
+        type="button"
+        className={'quiet home-fullscreen-btn' + (isFullscreen ? ' active' : '')}
+        onClick={toggleFullscreen}
+        title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen (hide address bar)'}
+        aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+      >
+        {isFullscreen ? (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+          </svg>
+        ) : (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+          </svg>
+        )}
+        <span>{isFullscreen ? 'Exit Full' : 'Fullscreen'}</span>
+      </button>
+    )}
+  </header>
   <div className="home-columns">
    <nav className="home-actions" aria-label="Main menu">
     <div className="home-player-profile"><button type="button" className="profile-token-button" aria-label="Change your token" onClick={()=>setTokenPicker(true)} disabled={profileBusy}><PlayerToken index={playerToken}/></button><label>Your name<input aria-label="Your player name" maxLength={24} value={playerName} onChange={e=>onNameChange(e.target.value)} placeholder="Your name" autoComplete="nickname"/></label></div>

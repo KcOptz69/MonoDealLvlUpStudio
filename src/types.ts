@@ -29,7 +29,9 @@ export interface PropertyGroup {
 export interface PlayerState {
   reserveTimer?:{remaining:number;running:boolean;serverTime:number};
   protectedEstate?:CardInstance;
+  protectedEstates?:CardInstance[];
   estatePurchased?:boolean;
+  estateCount?:number;
   defenseRemaining?:number|null;
   setupHidden?:boolean;
   jailed?:boolean;
@@ -42,6 +44,7 @@ export interface PlayerState {
   groups: PropertyGroup[];
   special: CardInstance[];
   defending: boolean;
+  sanctuary?: boolean;
   setupPlayed?: number;
   setupDone?: boolean;
 }
@@ -104,6 +107,8 @@ export interface GameState {
   botDonationTurn?:string;
   roundLimit?:number|null;
   fullRotationDefense?:boolean;
+  enduranceMode?:boolean;
+  targetSets?:number;
   fastBots?:boolean;
   roundCompleted?:number[];
   winners?:number[];

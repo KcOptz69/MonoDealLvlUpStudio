@@ -3,7 +3,7 @@
 .mobile-device body{overscroll-behavior:none}
 .mobile-device img{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 .mobile-device .app{height:100dvh;min-height:0;display:grid;grid-template-rows:38px minmax(0,1fr);overflow:hidden;padding:0 max(5px,env(safe-area-inset-right)) 0 max(5px,env(safe-area-inset-left));box-sizing:border-box}
-.mobile-device .topbar{height:38px;min-height:0;padding:2px 5px;gap:6px;overflow:hidden}.mobile-device .header-logo{height:32px;width:100px}.mobile-device .topbar .brand{min-width:0}.mobile-device .topbar button{min-width:34px;min-height:32px;font-size:11px;padding:5px 8px}.mobile-device .topbar .turnbanner{font-size:11px;white-space:nowrap}.mobile-device .topbar>.muted{display:none}
+.mobile-device .topbar{height:38px;min-height:0;padding:2px 5px;gap:6px;overflow:hidden}.mobile-device .header-logo{height:32px;width:100px}.mobile-device .topbar .brand{min-width:0}.mobile-device .topbar button{min-width:34px;min-height:32px;font-size:11px;padding:5px 8px}.mobile-device .topbar-fullscreen{min-width:32px;padding:4px}.mobile-device .topbar .turnbanner{font-size:11px;white-space:nowrap}.mobile-device .topbar>.muted{display:none}
 .mobile-device .game{display:block;min-height:0;height:100%;overflow:hidden;padding:3px 0;box-sizing:border-box}
 .mobile-device .rail{display:none!important}
 .mobile-device .table{height:100%;min-height:0;display:grid;grid-template-areas:'opponents' 'board' 'player';grid-template-rows:minmax(0,.7fr) minmax(0,1fr) minmax(0,1.4fr);gap:4px;overflow:hidden}
@@ -63,8 +63,14 @@
 .mobile-device .panel-hand.hand-field-visible .player-zone{display:flex;flex-direction:column;gap:4px}
 .mobile-device .panel-hand.hand-field-visible .player-zone>.center{display:block;flex:0 0 clamp(85px,29dvh,140px);height:clamp(85px,29dvh,140px);min-height:0;width:100%;overflow:hidden}
 .mobile-device .panel-hand.hand-field-visible .property-area,.mobile-device .panel-hand.hand-field-visible .field-body{height:100%;min-height:0;box-sizing:border-box}
-.mobile-device .panel-hand.hand-field-visible .property-area>.sectionhead,.mobile-device .panel-hand.hand-field-visible .bank-field,.mobile-device .panel-hand.hand-field-visible .new-set-drop{display:none}
-.mobile-device .panel-hand.hand-field-visible .field-body{display:block}
+.mobile-device .panel-hand.hand-field-visible .property-area>.sectionhead,.mobile-device .panel-hand.hand-field-visible .new-set-drop{display:none}
+.mobile-device .panel-hand.hand-field-visible .field-body{display:grid;grid-template-columns:minmax(0,1fr) 74px;gap:5px}
+.mobile-device .panel-hand.hand-field-visible .bank-field{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:0;width:100%;max-width:none;box-sizing:border-box;padding:2px 4px;font-size:7px;border-radius:6px;cursor:pointer;touch-action:manipulation;background:linear-gradient(140deg,#ecdeb8,#c6b481);border:1px solid #ffeac0}
+.mobile-device .panel-hand.hand-field-visible .bank-field>span{font-size:7px;line-height:9px;white-space:nowrap;letter-spacing:0}
+.mobile-device .panel-hand.hand-field-visible .bank-field>b{font-size:15px;line-height:16px;margin:1px 0}
+.mobile-device .panel-hand.hand-field-visible .bank-field .bank-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;width:100%;height:auto;max-height:28px;margin:1px 0;align-items:center;overflow:hidden}
+.mobile-device .panel-hand.hand-field-visible .bank-field .bank-cards img{width:100%;height:auto;max-height:28px;aspect-ratio:2/3;object-fit:contain;border-radius:2px}
+.mobile-device .panel-hand.hand-field-visible .bank-field>small{font-size:7px;line-height:9px;white-space:nowrap}
 .mobile-device .panel-hand.hand-field-visible .groups{display:flex;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;height:100%;gap:7px;padding:3px;box-sizing:border-box;align-items:stretch;touch-action:pan-x}
 .mobile-device .panel-hand.hand-field-visible .group{flex:0 0 auto;min-width:65px;padding:3px;display:flex;flex-direction:column;gap:2px}
 .mobile-device .panel-hand.hand-field-visible .grouphead{font-size:8px;line-height:12px;gap:6px;padding:0 2px;margin:0}

@@ -1,5 +1,4 @@
-(function(root){const exports={};
-"use strict";
+(function(root){const exports={};"use strict";
 /* Monopoly Deal Lvl. Up — rules engine for React */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DealEngine = exports.Game = exports.BOT_NAMES = exports.COLORS = exports.PROTECTED_ESTATE = void 0;
@@ -197,6 +196,7 @@ class Game {
         this.s.turnSerial = (this.s.turnSerial || 0) + 1;
         this.s.played = 0;
         p.freeBankUsed = false;
+        p.sanctuary = false;
         this.s.turnRefill = false;
         p.botFreeSeen = [];
         if (p.jailed) {
@@ -204,6 +204,15 @@ class Game {
             return;
         }
         this.startTurn(i);
+    }
+    canProcSanctuary(i) {
+        if (this.isSetup() || (this.s.round || 1) < 5)
+            return false;
+        const p = this.p(i);
+        if (p.forfeited || p.bank.length > 0 || p.protectedEstate)
+            return false;
+        const standardProps = this.allProps(i).filter((c) => !(this.d(c).type === 'wild' && this.d(c).value === 0));
+        return standardProps.length === 0;
     }
     startTurn(i) {
         const p = this.p(i);
@@ -220,14 +229,27 @@ class Game {
             this.log(p.name + ' gained 3M with Emergency Treasury.');
             this.trigger(i, 'emergency_treasury', '+3M added to bank', 3);
         }
+        const isComeback = this.canProcSanctuary(i);
+        if (isComeback) {
+            p.sanctuary = true;
+            this.log(p.name + ' activated Sanctuary Stimulus Relief! Immunity active and hand refilled to 7 cards.');
+        }
         this.s.turnRefill = p.hand.length === 0;
-        const n = p.hand.length ? (this.has(i, 'investment_office') ? 3 : 2) : (this.has(i, 'private_vault') ? 7 : 5);
+        let n = p.hand.length ? (this.has(i, 'investment_office') ? 3 : 2) : (this.has(i, 'private_vault') ? 7 : 5);
+        if (isComeback && p.hand.length < 7) {
+            n = Math.max(n, 7 - p.hand.length);
+        }
         this.draw(i, n);
         this.log(p.name + ' drew ' + n + ' cards.');
-        if (n === 7)
-            this.trigger(i, 'private_vault', 'Empty hand · drew 7 cards', 7);
-        if (this.has(i, 'investment_office'))
-            this.trigger(i, 'investment_office', n === 3 ? 'Extra draw · drew 3 cards' : 'Start-of-turn draw bonus active', n);
+        if (isComeback) {
+            this.trigger(i, 'sanctuary', 'Sanctuary · drew ' + n + ' cards (Stimulus Relief)', n);
+        }
+        else {
+            if (n === 7)
+                this.trigger(i, 'private_vault', 'Empty hand · drew 7 cards', 7);
+            if (this.has(i, 'investment_office'))
+                this.trigger(i, 'investment_office', n === 3 ? 'Extra draw · drew 3 cards' : 'Start-of-turn draw bonus active', n);
+        }
     }
     jail(i, bail) {
         if (!(this.s.pending?.kind === 'jail' || this.s.pending?.kind === 'payment' && this.s.pending.e.key === 'jail_bail') || this.s.pending.responder !== i)
@@ -494,7 +516,7 @@ class Game {
                 r++;
                 this.trigger(i, 'luxury_district', 'Rent increased by 1M', 1);
             }
-            const ts = d.any ? [args.target] : this.s.players.map((_, j) => j).filter((j) => j !== i && !this.p(j).forfeited);
+            const ts = d.any ? [args.target] : this.s.players.map((_, j) => j).filter((j) => j !== i && !this.p(j).forfeited && !this.p(j).sanctuary);
             this.s.queue = ts.map((t) => ({
                 actor: i,
                 target: t,
@@ -505,7 +527,7 @@ class Game {
             }));
         }
         else if (c.key === 'its_my_birthday') {
-            this.s.queue = this.s.players.map((_, j) => j).filter((j) => j !== i && !this.p(j).forfeited).map((t) => ({
+            this.s.queue = this.s.players.map((_, j) => j).filter((j) => j !== i && !this.p(j).forfeited && !this.p(j).sanctuary).map((t) => ({
                 actor: i, target: t, key: c.key, amount: 2
             }));
         }
@@ -551,7 +573,8 @@ class Game {
         this.nextEffect();
     }
     validate(i, c, mode, a) {
-        if (c.evictedTurn === (this.s.turnSerial || 0)) throw Error('An evicted property cannot be played again this turn.');
+        if (c.evictedTurn === (this.s.turnSerial || 0))
+            throw Error('An evicted property cannot be played again this turn.');
         const d = this.d(c);
         if (this.isSetup() && mode !== 'bank' && !['property', 'wild', 'special'].includes(d.type)) {
             throw Error('Setup allows banking and property placement only.');
@@ -615,6 +638,8 @@ class Game {
             return;
         if (!Number.isInteger(a.target) || a.target === i || (!this.p(a.target) || this.p(a.target).forfeited))
             throw Error('Choose an opponent.');
+        if (this.p(a.target).sanctuary)
+            throw Error(this.p(a.target).name + ' is protected by Sanctuary.');
         if (['sly_deal', 'eviction_notice', 'forced_deal', 'forced_rezoning'].includes(c.key)) {
             const f = this.find(a.target, a.property);
             if (!f)
@@ -809,12 +834,16 @@ class Game {
                 const color = f.group?.color;
                 const c = this.removeProp(t, e.property);
                 if (c.key === 'expansion_property') {
-                  c.expansionOwner = i;
-                  c.expansionColor = color;
-                  const matching = this.expansionGroups(i).find(g => g.color === color);
-                  if (matching) this.place(i, c, color, matching.id);
-                  else this.p(i).hand.push(c);
-                } else this.place(i, c, color);
+                    c.expansionOwner = i;
+                    c.expansionColor = color;
+                    const matching = this.expansionGroups(i).find(g => g.color === color);
+                    if (matching)
+                        this.place(i, c, color, matching.id);
+                    else
+                        this.p(i).hand.push(c);
+                }
+                else
+                    this.place(i, c, color);
                 this.event('transfer', { actor: t, target: i, cards: [{ ...c }] });
                 this.insurance(t, 1);
             }
@@ -840,11 +869,12 @@ class Game {
                 p.groups = p.groups.filter((x) => x !== g);
                 g.id = 'g' + this.s.nextId++;
                 this.p(i).groups.push(g);
-                for (const c of g.cards)
-                    if (c.key === 'expansion_property') {
-                        c.expansionOwner = i;
-                        c.expansionColor = g.color;
-                    }
+                for (const c of g.cards) {
+                    if (c.key !== 'expansion_property')
+                        continue;
+                    c.expansionOwner = i;
+                    c.expansionColor = g.color;
+                }
                 this.event('transfer', {
                     actor: t,
                     target: i,
@@ -874,7 +904,7 @@ class Game {
         if (!e.propertyOnly && e.key !== 'compulsory_purchase') {
             items.push(...p.bank.map((c) => ({ id: c.id, card: c, zone: 'bank', value: this.d(c).value })));
         }
-        items.push(...this.allProps(i).filter((c) => this.d(c).value > 0 || (c.key === 'expansion_property' && e.actor !== i && !['luxury_tax','income_tax','jail_bail'].includes(e.key))).map((c) => ({ id: c.id, card: c, zone: 'property', value: this.d(c).value })));
+        items.push(...this.allProps(i).filter((c) => this.d(c).value > 0 || (c.key === 'expansion_property' && e.actor !== i && !['luxury_tax', 'income_tax', 'jail_bail'].includes(e.key))).map((c) => ({ id: c.id, card: c, zone: 'property', value: this.d(c).value })));
         if (!e.propertyOnly && e.key !== 'compulsory_purchase') {
             for (const g of p.groups) {
                 for (const key of ['house', 'hotel']) {
@@ -929,16 +959,21 @@ class Game {
                 this.p(receiver).bank.push(c);
         }
         this.clean(i);
-        if (receiver !== null && receiver !== i) this.insurance(i, lost);
+        if (receiver !== null && receiver !== i)
+            this.insurance(i, lost);
         this.log(this.p(i).name + ' paid ' + sum + 'M' + (receiver === null ? ' to the discard pile.' : ' to ' + this.p(receiver).name + '.'));
         this.event('payment', { actor: i, target: receiver, key: e.key, amount: sum, owed: e.amount, cards: picked.map(x => ({ ...x.card })) });
         if (e.key === 'jail_bail') {
             this.p(i).jailed = false;
             this.s.pending = null;
             if (e.defenseBail) {
-                if (!this.p(i).forfeited && this.sets(i) >= 3) this.winDefense(i);
-                else this.finishTurn(this.s.turn, i + 1);
-            } else this.startTurn(i);
+                if (!this.p(i).forfeited && this.sets(i) >= 3)
+                    this.winDefense(i);
+                else
+                    this.finishTurn(this.s.turn, i + 1);
+            }
+            else
+                this.startTurn(i);
             return;
         }
         const remaining = pending.payments?.filter((e) => e.target !== i);
@@ -952,9 +987,10 @@ class Game {
     owe(i, id) {
         const p = this.s.pending;
         const payment = p?.kind === 'payment' ? (p.payments?.find((e) => e.target === i) || (p.responder === i ? p.e : null)) : null;
-        if (!payment ||  ['luxury_tax', 'income_tax', 'jail_bail'].includes(payment.key))
+        if (!payment || ['luxury_tax', 'income_tax', 'jail_bail'].includes(payment.key))
             throw Error('I Owe You replaces payments to another player only.');
-        if (payment.propertyOnly) throw Error('Silver rent can only be paid with properties.');
+        if (payment.propertyOnly)
+            throw Error('Silver rent can only be paid with properties.');
         const c = this.p(i).hand.find((c) => c.id === id && c.key === 'i_owe_you');
         if (!c)
             throw Error('I Owe You must be in your hand.');
@@ -973,7 +1009,8 @@ class Game {
         this.log(this.p(i).name + ' offered I Owe You instead of paying.');
     }
     donate(i, id, target) {
-        if (this.s.fullRotationDefense) throw Error('Donations are disabled in Full Rotation Defense.');
+        if (this.s.fullRotationDefense)
+            throw Error('Donations are disabled in Full Rotation Defense.');
         if (this.s.winner !== null || this.isSetup() || this.s.players.length < 4 || this.s.players.length > 5 || !this.s.players.some((p) => p.defending && !p.forfeited))
             throw Error('Free donations are available only during defense in a 4–5-player game.');
         if (!Number.isInteger(target) || target < 0 || target >= this.s.players.length || target === i || this.p(target).forfeited || this.p(i).forfeited)
@@ -1182,8 +1219,10 @@ class Game {
                 defender.defenseRemaining = Math.max(0, defender.defenseRemaining - 1);
                 if (defender.defenseRemaining === 0) {
                     if (defender.jailed) {
-                        this.s.pending = {kind: 'jail', responder: j, e: {actor: j, target: j, key: 'jail_bail', amount: 10, defenseBail: true}};
-                    } else this.winDefense(j);
+                        this.s.pending = { kind: 'jail', responder: j, e: { actor: j, target: j, key: 'jail_bail', amount: 10, defenseBail: true } };
+                    }
+                    else
+                        this.winDefense(j);
                     return;
                 }
             }
@@ -1226,11 +1265,12 @@ class Game {
             return [];
         const out = [];
         const p = this.p(i);
-        const others = this.s.players.map((_, j) => j).filter((j) => j !== i && !this.p(j).forfeited);
+        const others = this.s.players.map((_, j) => j).filter((j) => j !== i && !this.p(j).forfeited && !this.p(j).sanctuary);
         const push = (c, a = {}, score = 1, mode = 'play') => { if (this.used(i) < this.limit(i) || this.freePlay(c, mode) || (mode === 'bank' && this.freeBank(i)))
             out.push({ id: c.id, mode, args: a, score }); };
         for (const c of p.hand) {
-            if (c.evictedTurn === (this.s.turnSerial || 0)) continue;
+            if (c.evictedTurn === (this.s.turnSerial || 0))
+                continue;
             const d = this.d(c);
             if (!['property', 'wild', 'special'].includes(d.type)) {
                 push(c, {}, (c.key === 'just_say_no' ? -0.5 : d.value * 0.6), 'bank');
@@ -1347,26 +1387,28 @@ class Game {
         return this.p(i).defending ? 100 : this.sets(i) * 10 + this.p(i).groups.filter((g) => g.cards.length === exports.COLORS[g.color].size - 1).length;
     }
     botStyle(i) {
-      const name = this.p(i).name.replace(/ Bot$/, '');
-      if (['Trixie', 'Trix', 'Nica'].includes(name)) return 'builder';
-      if (['Karl', 'Alvin'].includes(name)) return 'banker';
-      if (['Kenneth', 'Ken', 'Steph'].includes(name)) return 'deal-maker';
-      if (['Dian', 'Anren'].includes(name)) return 'disruptor';
-      return 'balanced';
+        const name = this.p(i).name.replace(/ Bot$/, '');
+        if (['Trixie', 'Trix', 'Nica'].includes(name))
+            return 'builder';
+        if (['Karl', 'Alvin'].includes(name))
+            return 'banker';
+        if (['Kenneth', 'Ken', 'Steph'].includes(name))
+            return 'deal-maker';
+        if (['Dian', 'Anren'].includes(name))
+            return 'disruptor';
+        return 'balanced';
     }
-
     paymentOpportunity(target, amount, propertyOnly, style) {
-      const assets = this.payable(target, { key: 'rent', propertyOnly });
-      const total = assets.reduce((sum, item) => sum + item.value, 0);
-      const safe = assets.reduce((sum, item) => {
-        const group = item.zone === 'property' ? this.find(target, item.id)?.group : null;
-        return sum + (group && this.full(group) ? 0 : item.value);
-      }, 0);
-      const collectible = Math.min(amount, total);
-      const pressure = collectible > safe ? this.threat(target) * (style === 'disruptor' ? 0.35 : 0.2) : 0;
-      return collectible + pressure;
+        const assets = this.payable(target, { key: 'rent', propertyOnly });
+        const total = assets.reduce((sum, item) => sum + item.value, 0);
+        const safe = assets.reduce((sum, item) => {
+            const group = item.zone === 'property' ? this.find(target, item.id)?.group : null;
+            return sum + (group && this.full(group) ? 0 : item.value);
+        }, 0);
+        const collectible = Math.min(amount, total);
+        const pressure = collectible > safe ? this.threat(target) * (style === 'disruptor' ? 0.35 : 0.2) : 0;
+        return collectible + pressure;
     }
-
     scoreMove(i, o) {
         const c = this.p(i).hand.find((c) => c.id === o.id);
         const d = this.d(c);
@@ -1377,7 +1419,7 @@ class Game {
         const reserve = (this.isSetup() ? 3 : 5) + (style === 'banker' ? 3 : 0);
         if (o.mode === 'bank') {
             const valuable = ['its_my_birthday', 'just_say_no', 'deal_breaker', 'i_owe_you'].includes(c.key) || this.freePlay(c, 'play');
-          const emergency = bank < d.value && (this.sets(i) >= 2 || style === 'banker');
+            const emergency = bank < d.value && (this.sets(i) >= 2 || style === 'banker');
             const useful = d.type === 'rent' && p.groups.some((g) => d.any || d.colors.includes(g.color));
             const score = (bank < reserve ? 4 + d.value * 0.6 : d.value * 0.12) - (useful ? 3 : 0) - (valuable ? (emergency ? 3 : 7) : 0) + (style === 'banker' && d.type === 'money' && bank < reserve ? 2 : 0);
             return this.isSetup() && !valuable ? Math.max(0.1, score) : score;
@@ -1404,7 +1446,7 @@ class Game {
             const base = (c.key === 'empire_rent' ? this.fieldPropertyCount(i) : this.rent(i, g)) * 2 ** this.doubleIds(a).length + (this.has(i, 'luxury_district') ? 1 : 0);
             const targets = d.any ? [a.target] : this.s.players.map((_, j) => j).filter((j) => j !== i && !this.p(j).forfeited);
             const propertyOnly = c.key !== 'empire_rent' && g?.color === 'Silver';
-          const gain = targets.reduce((n, j) => n + this.paymentOpportunity(j, Math.max(0, base - (this.has(j, 'rent_controlled_residence') ? 2 : 0)), propertyOnly, style), 0);
+            const gain = targets.reduce((n, j) => n + this.paymentOpportunity(j, Math.max(0, base - (this.has(j, 'rent_controlled_residence') ? 2 : 0)), propertyOnly, style), 0);
             return gain * (style === 'deal-maker' ? 1.15 : 1) / (1 + this.doubleIds(a).length * 0.45) - 1;
         }
         if (c.key === 'its_my_birthday')
@@ -1446,11 +1488,12 @@ class Game {
             return this.propertyUtility(i, f.card, f.group?.color) + loss + threat * 0.6 + (style === 'deal-maker' ? 3 : 0);
         if (c.key === 'forced_deal') {
             const own = this.find(i, a.own);
-            if (!own) return -5;
-          const color = own.card.locked || own.group?.color;
-          const completesRivalSet = color && foe.groups.some(g => g.color === color && g.cards.length - Number(g === f.group) === exports.COLORS[color].size - 1);
-          return this.propertyUtility(i, f.card, f.group?.color) - this.propertyUtility(i, own.card, own.group?.color) * 0.7 + loss + threat * 0.6
-            + (style === 'deal-maker' ? 3 : 0) - (completesRivalSet ? (this.sets(t) >= 2 ? 45 : 14) : 0);
+            if (!own)
+                return -5;
+            const color = own.card.locked || own.group?.color;
+            const completesRivalSet = color && foe.groups.some((g) => g.color === color && g.cards.length - Number(g === f.group) === exports.COLORS[color].size - 1);
+            return this.propertyUtility(i, f.card, f.group?.color) - this.propertyUtility(i, own.card, own.group?.color) * 0.7 + loss + threat * 0.6
+                + (style === 'deal-maker' ? 3 : 0) - (completesRivalSet ? (this.sets(t) >= 2 ? 45 : 14) : 0);
         }
         return o.score;
     }
@@ -1625,5 +1668,4 @@ class Game {
 exports.Game = Game;
 exports.DealEngine = { Game, COLORS: exports.COLORS, BOT_NAMES: exports.BOT_NAMES, estatePayment, PROTECTED_ESTATE: exports.PROTECTED_ESTATE };
 exports.default = exports.DealEngine;
-
-if(typeof module!=='undefined'&&module.exports)module.exports=exports.DealEngine;else root.DealEngine=exports.DealEngine;})(typeof globalThis!=='undefined'?globalThis:this);
+if(typeof module!=="undefined"&&module.exports){module.exports=exports;}else{root.DealEngine=exports;}})(typeof globalThis!=="undefined"?globalThis:this);

@@ -4,7 +4,6 @@ import {installMobileHandScrolling} from '../mobileHandScrolling';
 import {PlayerToken} from './PlayerToken';
 import React,{useEffect,useRef,useState} from 'react';
 import {PlayerZone} from './PlayerZone';
-import {COLORS,getCardDef} from '../engineBridge';
 
 type Props=React.ComponentProps<typeof PlayerZone>;
 export const MobilePlayerPanels:React.FC<Props>=(props)=>{

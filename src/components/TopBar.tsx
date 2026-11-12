@@ -3,6 +3,7 @@ import {TurnClock} from './OnlineClock';
 import type {OnlineRoomView} from '../types';
 import { STATIC_ART } from '../cardArt';
 import { GameState } from '../types';
+import { useFullscreen } from '../fullscreen';
 
 interface TopBarProps {
   state: GameState;
@@ -21,6 +22,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onOpenSettings,
   onOpenMenu,
 }) => {
+  const { isFullscreen, toggleFullscreen, supported } = useFullscreen();
   const isSetup = state.phase === 'setup';
   const myTurn = !isSetup && state.turn === 0;
 
@@ -53,6 +55,26 @@ export const TopBar: React.FC<TopBarProps> = ({
 
       {isOnline&&room&&<TurnClock room={room}/>}
       {isOnline&&room?.host&&state.winner===null&&<button className="quiet host-pause" onClick={onPause}>{room.paused?'Resume':'Pause'}</button>}
+      {supported && (
+        <button
+          type="button"
+          className={'quiet topbar-fullscreen' + (isFullscreen ? ' active' : '')}
+          onClick={toggleFullscreen}
+          title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen (hide address bar)'}
+          aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+          aria-pressed={isFullscreen}
+        >
+          {isFullscreen ? (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+            </svg>
+          ) : (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+            </svg>
+          )}
+        </button>
+      )}
       <button className="quiet" onClick={onOpenRules}>
         Rules
       </button>

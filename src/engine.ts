@@ -2,10 +2,10 @@
 
 // Purchased endgame set: kept outside transferable property zones.
 export const PROTECTED_ESTATE={key:'protected_estate',name:'Protected Estate',copies:0,value:0,type:'property',colors:[],text:'Counts as one complete set. Cannot be stolen, transferred or used as payment. One per player. Purchase for 20M from round 10.'};
-export function estatePayment(bank:any[],definition:(card:any)=>{value:number}):string[]{
+export function estatePayment(bank:any[],definition:(card:any)=>{value:number},targetAmount=20):string[]{
  const dp=new Map<number,string[]>([[0,[]]]);
  for(const c of bank){const value=definition(c).value;if(value<=0)continue;for(const [sum,ids] of [...dp]){const next=sum+value;if(!dp.has(next)||dp.get(next)!.length>ids.length+1)dp.set(next,[...ids,c.id]);}}
- return [...dp].filter(([sum])=>sum>=20).sort((a,b)=>a[0]-b[0]||a[1].length-b[1].length)[0]?.[1]||[];
+ return [...dp].filter(([sum])=>sum>=targetAmount).sort((a,b)=>a[0]-b[0]||a[1].length-b[1].length)[0]?.[1]||[];
 }
 
 export const COLORS: Record<string, { size: number; rent: number[]; hex: string }> = {
@@ -32,15 +32,18 @@ export class Game {
   random: () => number;
   s: any;
 
-  constructor(defs: any[], n = 3, random = Math.random, options:{roundLimit?:number|null;fastBots?:boolean;fullRotationDefense?:boolean}={}) {
+  constructor(defs: any[], n = 3, random = Math.random, options:{roundLimit?:number|null;fastBots?:boolean;fullRotationDefense?:boolean;enduranceMode?:boolean}={}) {
     this.defs = defs;
     this.random = random;
     const botNames = [...BOT_NAMES];
     this.shuffle(botNames);
+    const endurance = options.enduranceMode === true;
     this.s = {
       version: 1,
       roundLimit:options.roundLimit===10?10:null,
       fullRotationDefense:options.fullRotationDefense===true,
+      enduranceMode:endurance,
+      targetSets:endurance?5:3,
       fastBots:!!options.fastBots,
       roundCompleted:[],
       players: Array.from({ length: n }, (_, i) => ({
@@ -138,10 +141,12 @@ export class Game {
     if (cards.length) this.event('draw', { actor: i, cards });
   }
 
+  targetGoal() { return this.s?.targetSets || (this.s?.enduranceMode ? 5 : 3); }
+  estateCount(i:number) { return this.p(i).protectedEstates?.length ?? (this.p(i).protectedEstate ? 1 : 0); }
   full(g: any) { return g.cards.length === COLORS[g.color].size && g.cards.some((c: any) => this.d(c).value > 0); }
-  sets(i: number) { return new Set(this.p(i).groups.filter((g: any) => this.full(g)).map((g: any) => g.color)).size+(this.p(i).protectedEstate?1:0); }
+  sets(i: number) { return new Set(this.p(i).groups.filter((g: any) => this.full(g)).map((g: any) => g.color)).size + this.estateCount(i); }
 
-  fieldPropertyCount(i:number){return this.allProps(i).length+(this.p(i).protectedEstate?1:0);}
+  fieldPropertyCount(i:number){return this.allProps(i).length + this.estateCount(i);}
 
   check() {
     for(let i=0;i<this.s.players.length;i++){
@@ -160,8 +165,9 @@ export class Game {
         this.log(p.name+' discarded '+lost.length+' unsupported Expansion '+(lost.length===1?'Property.':'Properties.'));
       }
     }
+    const goal = this.targetGoal();
     for (let i = 0; i < this.s.players.length; i++) {
-      if (this.sets(i) < 3 && this.p(i).defending) {
+      if (this.sets(i) < goal && this.p(i).defending) {
         this.p(i).defending = false;
         this.p(i).defenseRemaining=null;
         this.log(this.p(i).name + ' lost their defending status.');
@@ -185,24 +191,46 @@ export class Game {
     this.s.turnSerial = (this.s.turnSerial || 0) + 1;
     this.s.played = 0;
     p.freeBankUsed = false;
+    p.sanctuary = false;
     this.s.turnRefill = false;
     p.botFreeSeen=[];
     if(p.jailed){this.s.pending={kind:'jail',responder:i,e:{actor:i,target:i,key:'jail_bail',amount:10}};return;}
     this.startTurn(i);
   }
 
+  canProcSanctuary(i:number){
+    if(this.isSetup()||(this.s.round||1)<5)return false;
+    const p=this.p(i);
+    if(p.forfeited||p.bank.length>0||this.estateCount(i)>0)return false;
+    const standardProps=this.allProps(i).filter((c:any)=>!(this.d(c).type==='wild'&&this.d(c).value===0));
+    return standardProps.length===0;
+  }
+
   startTurn(i:number){
     const p=this.p(i);
-    if (p.defending && this.sets(i) >= 3 && p.defenseRemaining==null) {this.s.winner=i;this.log(p.name+' held three sets for a full rotation and wins!');return;}
+    const goal=this.targetGoal();
+    if (p.defending && this.sets(i) >= goal && p.defenseRemaining==null) {this.s.winner=i;this.log(p.name+' held '+goal+' complete sets for a full rotation and wins!');return;}
     if(this.has(i,'emergency_treasury')&&p.bank.reduce((sum:number,c:any)=>sum+this.d(c).value,0)<20){
       const c={id:'mint'+this.s.nextId++,key:'money_3m',generated:true};p.bank.push(c);this.s.minted=(this.s.minted||0)+1;
       this.event('bank',{actor:i,card:{...c},passive:true});this.log(p.name+' gained 3M with Emergency Treasury.');this.trigger(i,'emergency_treasury','+3M added to bank',3);
     }
+    const isComeback=this.canProcSanctuary(i);
+    if(isComeback){
+      p.sanctuary=true;
+      this.log(p.name+' activated Sanctuary Stimulus Relief! Immunity active and hand refilled to 7 cards.');
+    }
     this.s.turnRefill = p.hand.length===0;
-    const n=p.hand.length?(this.has(i,'investment_office')?3:2):(this.has(i,'private_vault')?7:5);
+    let n=p.hand.length?(this.has(i,'investment_office')?3:2):(this.has(i,'private_vault')?7:5);
+    if(isComeback&&p.hand.length<7){
+      n=Math.max(n,7-p.hand.length);
+    }
     this.draw(i,n);this.log(p.name+' drew '+n+' cards.');
-    if(n===7)this.trigger(i,'private_vault','Empty hand · drew 7 cards',7);
-    if(this.has(i,'investment_office'))this.trigger(i,'investment_office',n===3?'Extra draw · drew 3 cards':'Start-of-turn draw bonus active',n);
+    if(isComeback){
+      this.trigger(i,'sanctuary','Sanctuary · drew '+n+' cards (Stimulus Relief)',n);
+    } else {
+      if(n===7)this.trigger(i,'private_vault','Empty hand · drew 7 cards',7);
+      if(this.has(i,'investment_office'))this.trigger(i,'investment_office',n===3?'Extra draw · drew 3 cards':'Start-of-turn draw bonus active',n);
+    }
   }
 
   jail(i:number,bail:boolean){
@@ -391,7 +419,7 @@ export class Game {
         const double=this.takeHand(i,id);this.s.discard.push(double);this.event('play',{actor:i,card:{...double},key:double.key});this.s.played++;r*=2;
       }
       if (this.has(i, 'luxury_district')){r++;this.trigger(i,'luxury_district','Rent increased by 1M',1);}
-      const ts = d.any ? [args.target] : this.s.players.map((_: any, j: number) => j).filter((j: number) => j !== i && !this.p(j).forfeited);
+      const ts = d.any ? [args.target] : this.s.players.map((_: any, j: number) => j).filter((j: number) => j !== i && !this.p(j).forfeited && !this.p(j).sanctuary);
       this.s.queue = ts.map((t: number) => ({
         actor: i,
         target: t,
@@ -401,12 +429,12 @@ export class Game {
         amount: Math.max(0, r - (this.has(t, 'rent_controlled_residence') ? 2 : 0))
       }));
     } else if (c.key === 'its_my_birthday') {
-      this.s.queue = this.s.players.map((_: any, j: number) => j).filter((j: number) => j !== i && !this.p(j).forfeited).map((t: number) => ({
+      this.s.queue = this.s.players.map((_: any, j: number) => j).filter((j: number) => j !== i && !this.p(j).forfeited && !this.p(j).sanctuary).map((t: number) => ({
         actor: i, target: t, key: c.key, amount: 2
       }));
     } else if (c.key === 'luxury_tax') {
       this.s.queue = this.s.players.map((_: any, j: number) => j).filter((j: number) => j !== i && !this.p(j).forfeited).map((t: number) => ({
-        actor: i, target: t, key: c.key, amount: 5 * (this.p(t).groups.filter((g: any) => this.full(g)).length+(this.p(t).protectedEstate?1:0))
+        actor: i, target: t, key: c.key, amount: 5 * (this.p(t).groups.filter((g: any) => this.full(g)).length + this.estateCount(t))
       }));
     } else {
       this.s.queue = [{
@@ -493,6 +521,7 @@ export class Game {
     }
     if (['its_my_birthday', 'luxury_tax'].includes(c.key)) return;
     if (!Number.isInteger(a.target) || a.target === i || (!this.p(a.target)||this.p(a.target).forfeited)) throw Error('Choose an opponent.');
+    if (this.p(a.target).sanctuary) throw Error(this.p(a.target).name + ' is protected by Sanctuary.');
     if (['sly_deal', 'eviction_notice', 'forced_deal', 'forced_rezoning'].includes(c.key)) {
       const f: any = this.find(a.target, a.property);
       if (!f) throw Error('Choose an opponent property.');
@@ -765,7 +794,7 @@ export class Game {
     this.event('payment', { actor: i, target: receiver, key: e.key, amount: sum, owed: e.amount, cards: picked.map(x => ({ ...x.card })) });
     if(e.key==='jail_bail'){this.p(i).jailed=false;this.s.pending=null;
       if (e.defenseBail) {
-        if (!this.p(i).forfeited && this.sets(i) >= 3) this.winDefense(i);
+        if (!this.p(i).forfeited && this.sets(i) >= this.targetGoal()) this.winDefense(i);
         else this.finishTurn(this.s.turn, i + 1);
       } else this.startTurn(i);
       return;
@@ -904,24 +933,55 @@ export class Game {
     delete a[key];
   }
 
-  canBuyEstate(i:number){return !this.isSetup()&&this.s.round>=10&&!this.p(i).forfeited&&!this.p(i).estatePurchased&&!this.p(i).protectedEstate&&this.p(i).bank.reduce((n:number,c:any)=>n+this.d(c).value,0)>=20;}
-  estatePayment(i:number){return estatePayment(this.p(i).bank,c=>this.d(c));}
+  estateCost(i:number){
+    const count=this.estateCount(i);
+    return count===0?20:30;
+  }
+  canBuyEstate(i:number){
+    if(this.isSetup()||this.p(i).forfeited)return false;
+    const round=this.s.round||1, count=this.estateCount(i);
+    if(count===0){
+      return round>=10 && this.p(i).bank.reduce((n:number,c:any)=>n+this.d(c).value,0)>=20;
+    }
+    if(this.s.enduranceMode && count===1){
+      return round>=15 && this.p(i).bank.reduce((n:number,c:any)=>n+this.d(c).value,0)>=30;
+    }
+    return false;
+  }
+  estatePayment(i:number){
+    const cost=this.estateCost(i);
+    return estatePayment(this.p(i).bank,c=>this.d(c),cost);
+  }
   completeEnd(i:number){
-    if(this.canBuyEstate(i)){this.s.pending={kind:'estate',responder:i,e:{actor:i,target:i,key:'protected_estate',amount:20}};return;}
+    if(this.canBuyEstate(i)){
+      const amount=this.estateCost(i);
+      const estateNum=this.estateCount(i)+1;
+      this.s.pending={kind:'estate',responder:i,e:{actor:i,target:i,key:'protected_estate',amount,estateNum}};
+      return;
+    }
     this.finishTurn(i);
   }
   estate(i:number,buy:boolean){
     if(this.s.pending?.kind!=='estate'||this.s.pending.responder!==i)throw Error('No Protected Estate purchase requested.');
     if(typeof buy!=='boolean')throw Error('Choose Buy or Pass.');
     if(buy){
-      if(!this.canBuyEstate(i))throw Error('Protected Estate requires round 10+, 20M in the bank and no previous purchase.');
+      if(!this.canBuyEstate(i))throw Error('Protected Estate purchase conditions not met.');
+      const cost=this.estateCost(i);
       const ids=this.estatePayment(i),cards=this.p(i).bank.filter((c:any)=>ids.includes(c.id));
       this.p(i).bank=this.p(i).bank.filter((c:any)=>!ids.includes(c.id));this.s.discard.push(...cards);
-      this.p(i).estatePurchased=true;this.p(i).protectedEstate={id:'estate'+this.s.nextId++,key:'protected_estate'};
+      const newEstate={id:'estate'+this.s.nextId++,key:'protected_estate'};
+      if(!this.p(i).protectedEstates){
+        this.p(i).protectedEstates=this.p(i).protectedEstate?[this.p(i).protectedEstate]:[];
+      }
+      this.p(i).protectedEstates.push(newEstate);
+      this.p(i).protectedEstate=this.p(i).protectedEstates[0];
+      this.p(i).estatePurchased=true;
+      this.p(i).estateCount=this.p(i).protectedEstates.length;
       const paid=cards.reduce((n:number,c:any)=>n+this.d(c).value,0);
+      const ordinal=this.p(i).protectedEstates.length===2?'2nd ':'';
       this.event('discard',{actor:i,cards:cards.map((c:any)=>({...c})),message:'Protected Estate purchase'});
-      this.event('estate_purchase',{actor:i,card:{...this.p(i).protectedEstate}});
-      this.log(this.p(i).name+' purchased Protected Estate for '+paid+'M. It counts as one protected complete set.');
+      this.event('estate_purchase',{actor:i,card:{...newEstate},cost,estateNum:this.p(i).protectedEstates.length});
+      this.log(this.p(i).name+' purchased '+ordinal+'Protected Estate for '+paid+'M. It counts as one protected complete set.');
     }
     this.s.pending=null;this.finishTurn(i);
   }
@@ -960,7 +1020,8 @@ export class Game {
   winDefense(i: number) {
     this.s.winner = i;
     this.s.endReason = 'defense';
-    this.log(this.p(i).name + ' defended three sets through two opponents’ turns and wins!');
+    const goal = this.targetGoal();
+    this.log(this.p(i).name + ' defended ' + goal + ' complete sets through two opponents’ turns and wins!');
   }
 
   finishTurn(i = this.s.turn, firstDefender = 0) {
@@ -979,10 +1040,11 @@ export class Game {
       return;
     }
     this.check();
+    const goal = this.targetGoal();
     // Existing defenders count this opponent's completed turn. A new defense starts afterward.
     for(let j=firstDefender;j<this.s.players.length;j++){
       const defender=this.p(j);
-      if(j!==i&&!this.p(i).forfeited&&!defender.forfeited&&defender.defending&&defender.defenseRemaining!=null&&this.sets(j)>=3){
+      if(j!==i&&!this.p(i).forfeited&&!defender.forfeited&&defender.defending&&defender.defenseRemaining!=null&&this.sets(j)>=goal){
         defender.defenseRemaining=Math.max(0,defender.defenseRemaining-1);
         if (defender.defenseRemaining === 0) {
             if (defender.jailed) {
@@ -992,10 +1054,11 @@ export class Game {
         }
       }
     }
-    if (this.sets(i) >= 3 && !this.p(i).defending) {
+    if (this.sets(i) >= goal && !this.p(i).defending) {
       this.p(i).defending = true;
       this.p(i).defenseRemaining=!this.s.fullRotationDefense&&this.s.players.length>=4?2:null;
-      this.log(this.p(i).name + (!this.s.fullRotationDefense&&this.s.players.length>=4?' is defending three sets for two opponents’ turns!':' is defending three sets!'));
+      const setsWord = goal === 5 ? 'five sets' : 'three sets';
+      this.log(this.p(i).name + (!this.s.fullRotationDefense&&this.s.players.length>=4?` is defending ${setsWord} for two opponents’ turns!`:` is defending ${setsWord}!`));
     }
     const active=this.s.players.map((p:any,j:number)=>!p.forfeited?j:-1).filter((j:number)=>j>=0);
     if(active.length<=1){this.s.winner=active[0]??null;return;}
@@ -1016,7 +1079,7 @@ export class Game {
     if (this.s.pending || !this.canAct(i)) return [];
     const out: any[] = [];
     const p = this.p(i);
-    const others = this.s.players.map((_: any, j: number) => j).filter((j: number) => j !== i && !this.p(j).forfeited);
+    const others = this.s.players.map((_: any, j: number) => j).filter((j: number) => j !== i && !this.p(j).forfeited && !this.p(j).sanctuary);
     const push = (c:any,a={},score=1,mode='play')=>{if(this.used(i)<this.limit(i)||this.freePlay(c,mode)||(mode==='bank'&&this.freeBank(i)))out.push({id:c.id,mode,args:a,score});};
     for (const c of p.hand) {
       if (c.evictedTurn === (this.s.turnSerial || 0)) continue;

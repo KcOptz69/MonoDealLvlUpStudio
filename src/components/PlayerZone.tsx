@@ -86,6 +86,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
     return fullColors.size;
   };
 
+  const targetGoal = state.targetSets || (state.enduranceMode ? 5 : 3);
   const setsCount = completeSetCount(player);
   const bankTotal = (player?.bank || []).reduce((sum, c) => sum + getCardDef(c).value, 0);
 
@@ -97,19 +98,22 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
   const selectedInHand = selectedCard && player?.hand.some((c) => c.id === selectedCard.id);
   const selectedDef = selectedInHand ? getCardDef(selectedCard) : null;
 
+  const playerEstates = player.protectedEstates?.length ? player.protectedEstates : player.protectedEstate ? [player.protectedEstate] : [];
+
   return (
     <section className={'player-zone'+(arranging?' arranging-properties':'')} aria-label="Your hand, properties and bank">
       <div className="center">
         <div className="property-area" data-hand-drop="field">
           <div className="sectionhead">
             <span className="desktop-player-identity"><PlayerToken index={player?.tokenIndex??0}/><span title={player?.name}>{player?.name}</span>{player.reserveTimer&&<ReserveTimer timer={player.reserveTimer}/>}</span>
-            <strong>YOUR FIELD · {setsCount} / 3 SETS</strong>
+            <strong>YOUR FIELD · {setsCount} / {targetGoal} SETS</strong>
             {player?.defending && <span className="defense">DEFENDING</span>}
+            {player?.sanctuary && <span className="sanctuary-badge" title="Protected from rent and hostile actions until your next turn">SANCTUARY</span>}
             {canArrange&&<button type="button" className={arranging?'gold arrange-toggle':'quiet arrange-toggle'} aria-pressed={arranging} onClick={()=>setArrange(!arranging)}>{arranging?'Done':'Arrange'}</button>}
           </div>
 
           {arranging&&<div className="arrange-help" role="status">{moveCard?'Choose a glowing set, or New set.':'Select a property to move.'}{moveCard&&!destinations.groups.length&&!destinations.newColors.length&&<span>No legal destination for this property.</span>}{player.groups.some(g=>g.house||g.hotel)&&<button type="button" className="quiet arrange-buildings" onClick={onRearrange}>Buildings</button>}{showNewSet&&<div className="arrange-new-colors" role="group" aria-label="New set color">{destinations.newColors.map(color=><button type="button" className="quiet" key={color} onClick={()=>moveTo(color)}><span style={{background:COLORS[color]?.hex}}/>{color}</button>)}</div>}</div>}
-          <div className="field-body">{player.jailed&&<img className="jail-field-icon" src="/ui/jail.png" alt="In Jail"/>}
+          <div className="field-body">{player.jailed&&<img className="jail-field-icon" src="/ui/jail.webp" alt="In Jail"/>}
             <div className="groups">
               {player && (player.groups.length > 0 || player.special.length > 0 || !!player.protectedEstate) ? (
                 <>
@@ -186,7 +190,7 @@ export const PlayerZone: React.FC<PlayerZoneProps> = ({
                     );
                   })}
 
-                  {player.protectedEstate&&<ProtectedEstateField card={player.protectedEstate} onPreview={c=>onSelectCard(c,0)}/>}
+                  {playerEstates.map(est=><ProtectedEstateField key={est.id} card={est} onPreview={c=>onSelectCard(c,0)}/>)}
                   {player.special.length > 0 && (
                     <section className="group specialgroup">
                       <div className="grouphead" style={{ '--c': '#a88037' } as React.CSSProperties}>

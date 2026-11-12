@@ -12,6 +12,7 @@ import '../rules.css';
 import { CardInstance, GameState, PropertyGroup } from '../types';
 import { getCardDef, COLORS, DECK } from '../engineBridge';
 import { getCardArt, STATIC_ART } from '../cardArt';
+import { useFullscreen } from '../fullscreen';
 
 // 1. Rules Modal
 export const RulesModal: React.FC<{ onClose: () => void }> = ({onClose}) => {
@@ -46,12 +47,13 @@ export const RulesModal: React.FC<{ onClose: () => void }> = ({onClose}) => {
         </div>
         <div id="rules-panel-payments" role="tabpanel" aria-labelledby="rules-tab-payments" hidden={tab!=='payments'}>
           <article className="rules-step"><figure className="rules-illustration"><div className="rules-card-examples rules-payment-art"><span>{art('money_5m','Money in your bank')}</span><span>{art('park_place','Property in your field')}</span><span>{art('i_owe_you','I Owe You payment replacement card')}</span></div></figure><div className="rules-copy"><h3>Pay from your bank or field.</h3><p>Overpayments receive no change. If you cannot cover the bill, pay all eligible assets. <strong>I Owe You</strong> can replace a payment.</p></div></article>
-          <article className="rules-step"><figure className="rules-illustration">{art('silver_rent','Silver Rent')}</figure><div className="rules-copy"><h3>Silver rent takes properties only.</h3><p>Silver Rent charges all opponents. Rent Any Color can charge one opponent for Silver. All-Color Property Wilds and Expansion Property can join Silver under their normal placement rules.</p></div></article>
+          <article className="rules-step"><figure className="rules-illustration">{art('silver_rent','Silver Rent')}</figure><div className="rules-copy"><h3>Silver rent takes properties only.</h3><p>Silver Rent charges all opponents. Rent Any Color can charge one opponent for Silver. All-Color Property Wilds and expansion cards can join Silver under their normal placement rules.</p></div></article>
           <article className="rules-step"><figure className="rules-illustration rules-no-art">{art('just_say_no','Just Say No reaction card')}<span className="rules-timer-badge">10s</span></figure><div className="rules-copy"><h3>Just Say No is free.</h3><p>Respond within <strong>10 seconds</strong> to block an action—or counter another No. Blocking an all-player action protects everyone.</p></div></article>
         </div>
         <div id="rules-panel-extra" role="tabpanel" aria-labelledby="rules-tab-extra" hidden={tab!=='extra'}>
           <article className="rules-step"><figure className="rules-illustration">{art('protected_estate','Protected Estate complete set')}</figure><div className="rules-copy"><h3>Protected Estate <span className="rules-player-badge">ROUND 10+</span></h3><p>At the end of your turn from <strong>round 10 onward</strong>, a bank of <strong>20M or more</strong> lets you buy this card. Pay <strong>20M from your bank</strong>; no change is given.</p><p>Counts as <strong>one complete set</strong> toward the three-set defense goal. <strong>One purchase per player.</strong> Its value is <strong>0M</strong>, and it cannot be stolen, transferred or used as payment.</p></div></article>
           <article className="rules-step"><figure className="rules-illustration">{art('multicolor_wildcard','All-color Property Wild')}</figure><div className="rules-copy"><h3>Deck refresh</h3><p>Each discard reshuffle adds <strong>10 all-color Property Wilds</strong> to the draw deck. These 0M wilds cannot pay bills.</p></div></article>
+          <article className="rules-step"><figure className="rules-illustration">{art('pass_go','Sanctuary Stimulus Relief')}</figure><div className="rules-copy"><h3>Sanctuary & Stimulus Relief <span className="rules-player-badge">ROUND 5+</span></h3><p>At turn start from <strong>round 5 onward</strong>, if you have <strong>no bank</strong> and <strong>no properties</strong> (0M all-color wilds allowed):</p><ul><li><strong>Stimulus Relief:</strong> Draw until your hand has <strong>7 cards</strong>.</li><li><strong>Sanctuary:</strong> Full immunity from Rent demands, Birthday fees, and targeted hostile actions until your next turn begins.</li></ul></div></article>
           <article className="rules-step"><figure className="rules-illustration"><div className="rules-gift-art"><PlayerToken index={0}/><span aria-hidden="true">→</span><img src={STATIC_ART.card_back} alt="A private hand card gift" draggable={false}/><span aria-hidden="true">→</span><PlayerToken index={1}/></div></figure><div className="rules-copy"><h3>Free donations <span className="rules-player-badge">4–5 players</span></h3><p>While anyone is defending, give hand cards to any opponent—even outside your turn.</p></div></article>
           <article className="rules-step"><figure className="rules-illustration"><div className="rules-score-art">{art('money_10m','Bank card value')}<span className="rules-round-badge"><small>ROUND</small><b>10</b></span>{art('baltic_avenue','Field property value')}</div><figcaption>BANK + FIELD</figcaption></figure><div className="rules-copy"><h3>Optional round-10 limit</h3><p>After everyone finishes round 10, highest <strong>bank + field value</strong> wins. Hand cards do not count. Tied leaders share the win.</p></div></article>
         </div>
@@ -100,6 +102,7 @@ export const SettingsModal: React.FC<{
   const [sound, setSound] = useState(soundEnabled);
   const [motion, setMotion] = useState(reducedMotion);
   const [fast,setFast]=useState(fastBots);
+  const { isFullscreen, toggleFullscreen, supported } = useFullscreen();
 
   return (
     <div className="overlay">
@@ -113,6 +116,19 @@ export const SettingsModal: React.FC<{
           <label className="setting-row"><span>Music</span><span className="setting-switch"><span>{music?'On':'Off'}</span><input type="checkbox" role="switch" checked={music} onChange={e=>setMusic(e.target.checked)}/></span></label>
           <label className="setting-row"><span>Sound effects</span><span className="setting-switch"><span>{sound?'On':'Off'}</span><input type="checkbox" role="switch" checked={sound} onChange={e=>setSound(e.target.checked)}/></span></label>
           <label className="setting-row"><span>Reduce motion</span><span className="setting-switch"><span>{motion?'On':'Off'}</span><input type="checkbox" role="switch" checked={motion} onChange={e=>setMotion(e.target.checked)}/></span></label>
+          {supported && (
+            <label className="setting-row">
+              <span>Fullscreen mode<small>Hide address bar and browser navigation</small></span>
+              <button
+                type="button"
+                className={isFullscreen ? 'gold' : 'quiet'}
+                style={{minHeight:'28px',padding:'3px 12px',fontSize:'11px',whiteSpace:'nowrap'}}
+                onClick={toggleFullscreen}
+              >
+                {isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+              </button>
+            </label>
+          )}
           <small>
             Games save automatically on this browser when local storage is available. No account or
             internet connection is required.
@@ -145,7 +161,7 @@ export const WinnerModal: React.FC<{
  <img className="victory-logo" src={STATIC_ART.logo} alt="Monopoly Deal Lvl. Up — made by Kaze"/>
  <div className="victory-plaque">
  <img src="/ui/victory-plaque.webp" alt=""/>
- <h1 id="victory-title" className="victory-accessible">{scoreResults.filter(r=>r.winner).length>1?'Shared victory':'Victory'}</h1>
+ <h1 id="victory-title" className="victory-accessible">{scoreResults.filter(r=>r.winner).length>1?'SHARED VICTORY':'Victory'}</h1>
  {endReason!=='round-limit'&&<><div className="victory-token"><PlayerToken index={winnerToken}/></div><strong className="victory-name">{winnerName}</strong></>}
  </div>
  {endReason==='round-limit'?<><div className="score-winners">{scoreResults.filter(r=>r.winner).map((row,i)=><div className="victory-identity" key={i}><PlayerToken index={row.token}/><strong>{row.name}</strong></div>)}</div><p>Round 10 complete · Highest bank + field value wins</p><table className="victory-scores"><thead><tr><th>Player</th><th>Bank</th><th>Field</th><th>Total</th></tr></thead><tbody>{[...scoreResults].sort((a,b)=>b.total-a.total).map((row,i)=><tr key={i} className={row.winner?'score-winner':''}><td>{row.name}</td><td>{row.bank}M</td><td>{row.field}M</td><td>{row.total}M</td></tr>)}</tbody></table></>:<><p>{shortDefense?'Three complete sets. Defended through two opponents’ turns.':'Three complete sets. Defended for a full rotation.'}</p><div className="victory-sets">{colors.map(g=><div key={g.color} style={{'--set':COLORS[g.color]?.hex||'#d6b354'} as React.CSSProperties}><strong>{g.color}</strong><div className="victory-property-cards">{g.cards.length?g.cards.map(card=><img key={card.id} className={isCardInverted(card,g.color)?'victory-inverted':undefined} src={getCardArt(card)} alt={getCardDef(card).name}/>):<img src={getCardArt('protected_estate')} alt="Protected Estate"/>}</div></div>)}</div></>}

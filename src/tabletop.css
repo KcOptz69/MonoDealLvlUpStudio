@@ -7,3 +7,11 @@ body{background:#071f27}.app{background:radial-gradient(ellipse at 45% 30%,#214c
 .player-zone .turncontrols{background:#ecdfbb;border-top:1px solid #b29b6a;color:#26443e}
 .player-zone .hand-action-hint,.player-zone .hand-actions strong{color:#385047}
 .player-zone .turncontrols .quiet{background:#e0d0a7;color:#22413d;border-color:#a68e5b}
+.topbar-fullscreen{display:inline-flex;align-items:center;justify-content:center;min-width:34px;min-height:30px;padding:3px 7px;color:#f2ebd4}
+.topbar-fullscreen svg{display:block;stroke:currentColor;transition:transform .15s ease}
+.topbar-fullscreen:hover svg{transform:scale(1.12)}
+.topbar-fullscreen.active{border-color:#edc776;color:#ffe8aa;background:#174744}
+.sanctuary-badge{display:inline-flex;align-items:center;background:linear-gradient(135deg,#1b6e68,#0e423f);color:#d0fff4;border:1px solid #4be3c1;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;letter-spacing:.8px;box-shadow:0 0 8px rgba(75,227,193,.35)}
+.sanctuary-status{color:#5cecd0!important}
+.opponent.sanctuary-active{border-color:#38b89e;box-shadow:inset 0 0 20px rgba(56,184,158,.18),0 0 10px rgba(56,184,158,.2)}
+
